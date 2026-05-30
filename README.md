@@ -1,4 +1,4 @@
-# AgroChain DApp (Modernized Stack)
+# AgriBlock DApp (Modernized Stack)
 
 AgroChain is a blockchain-based agricultural supply chain and micro-finance platform. It bridges the gap between farmers and consumers by combining immutable blockchain traceability with interest-free micro-finance. Direct connections, verified quality, and zero middlemen.
 
