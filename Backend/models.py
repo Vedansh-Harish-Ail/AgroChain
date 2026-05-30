@@ -60,6 +60,7 @@ class Farmer(db.Model):
     products = db.relationship('Product', backref='farmer', lazy=True, cascade="all, delete-orphan")
     investments = db.relationship('Investment', backref='farmer', lazy=True)
     ratings = db.relationship('Rating', backref='farmer', lazy=True)
+    crop_updates = db.relationship('CropUpdate', backref='farmer', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -228,5 +229,26 @@ class AuditLog(db.Model):
             'user_name': self.user.name if self.user else 'System',
             'action': self.action,
             'details': self.details,
+            'timestamp': self.timestamp.isoformat()
+        }
+
+
+class CropUpdate(db.Model):
+    __tablename__ = 'crop_updates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    farmer_id = db.Column(db.Integer, db.ForeignKey('farmers.id', ondelete='CASCADE'), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    day_count = db.Column(db.Integer, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'farmer_id': self.farmer_id,
+            'title': self.title,
+            'description': self.description,
+            'day_count': self.day_count,
             'timestamp': self.timestamp.isoformat()
         }

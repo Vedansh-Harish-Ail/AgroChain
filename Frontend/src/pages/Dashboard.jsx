@@ -159,7 +159,7 @@ export default function Dashboard() {
             </div>
             <div className="space-y-1">
               <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Trace Crop Supply Chain</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Enter a lot code or farmer ID to view the full verified lifecycle timeline.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Explore farms, trace crop timelines, check lab certificates, and verify ledger hashes.</p>
             </div>
           </Link>
 

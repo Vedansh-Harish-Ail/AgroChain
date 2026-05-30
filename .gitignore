@@ -1,5 +1,6 @@
 # Dependency directories
 node_modules/
+.claude/
 
 # Build and distribution directories
 dist/

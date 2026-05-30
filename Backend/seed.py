@@ -1,5 +1,5 @@
 from app import create_app
-from models import db, User, Farmer, Product, Investment, Rating, Transaction, AuditLog
+from models import db, User, Farmer, Product, Investment, Rating, Transaction, AuditLog, CropUpdate
 from datetime import datetime, timedelta
 
 def seed_database():
@@ -201,6 +201,63 @@ def seed_database():
             AuditLog(user_id=consumer.id, action="INVESTMENT_MADE", details="Consumer Amit Kumar invested 0.5 ETH in Lot 1001.")
         ]
         db.session.add_all(audit_list)
+        db.session.commit()
+        
+        # Seed crop updates (progress tracking milestones)
+        print("Seeding crop progress updates...")
+        updates = [
+            # For Crop 1 (Basmati Rice, expected yield 2500)
+            CropUpdate(
+                farmer_id=crop1.id,
+                title="Seeds Planted & Soil Prep",
+                description="Traditional Basmati seeds sown after machine-tilling soil and incorporating green manure.",
+                day_count=1
+            ),
+            CropUpdate(
+                farmer_id=crop1.id,
+                title="Irrigation & Transplanting Completed",
+                description="Saplings transplanted into flooded fields. Natural water management protocols established.",
+                day_count=20
+            ),
+            CropUpdate(
+                farmer_id=crop1.id,
+                title="Organic Fertilization Cycle 1",
+                description="Applied bio-fertilizer and vermicompost to boost nitrogen absorption and root depth.",
+                day_count=45
+            ),
+            CropUpdate(
+                farmer_id=crop1.id,
+                title="Quality Lab Inspection Approved",
+                description="Auditor verified absence of pesticide residues. Crop certified Grade A+ organic.",
+                day_count=75
+            ),
+            CropUpdate(
+                farmer_id=crop1.id,
+                title="Harvesting & Yield Recording",
+                description="Manual harvesting completed. Grains weighed and registered at 2,500 kg yield.",
+                day_count=90
+            ),
+            # For Crop 2 (Alphonso Mango, expected yield 1200)
+            CropUpdate(
+                farmer_id=crop2.id,
+                title="Orchard Pruning & Manuring",
+                description="Organic manure application completed under mango trees to prepare for winter flowering.",
+                day_count=1
+            ),
+            CropUpdate(
+                farmer_id=crop2.id,
+                title="Flowering & Biological Pest Control",
+                description="Flowering phase monitored. Introduced natural predators to handle aphids without chemical spray.",
+                day_count=30
+            ),
+            CropUpdate(
+                farmer_id=crop2.id,
+                title="Fruit Setting & Organic Inspection",
+                description="Inspection confirmed pure organic compliance. Yield estimated at 1,200 kg.",
+                day_count=60
+            )
+        ]
+        db.session.add_all(updates)
         db.session.commit()
         
         print("Database seeded with sample records successfully!")
