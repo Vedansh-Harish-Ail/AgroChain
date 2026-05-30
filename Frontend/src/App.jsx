@@ -221,58 +221,53 @@ const Navbar = ({ theme, toggleTheme }) => {
 };
 
 const MainLayout = ({ theme, toggleTheme }) => {
+  const location = useLocation();
+  const isLanding = location.pathname === '/';
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
-      <Navbar theme={theme} toggleTheme={toggleTheme} />
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Only show the app Navbar on non-landing pages */}
+      {!isLanding && <Navbar theme={theme} toggleTheme={toggleTheme} />}
+
+      {isLanding ? (
+        /* Landing page gets full-width, no padding */
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/explorer" element={<BlockchainExplorer />} />
-          <Route path="/consumer/track" element={<ConsumerTracking />} />
-          
-          {/* Protected Routes */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/farmer/register" element={
-            <ProtectedRoute roles={['FARMER', 'ADMIN']}>
-              <FarmerRegistration />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/tester/approve" element={
-            <ProtectedRoute roles={['TESTER', 'ADMIN']}>
-              <QualityTesting />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/tester/product" element={
-            <ProtectedRoute roles={['TESTER', 'ADMIN']}>
-              <ProductRegistration />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/finance" element={
-            <ProtectedRoute>
-              <FundingPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/admin" element={
-            <ProtectedRoute roles={['ADMIN']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
         </Routes>
-      </main>
-      <footer className="border-t border-slate-200 py-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400 bg-white dark:bg-slate-950">
-        <p>&copy; {new Date().getFullYear()} AgroChain Supply Chain DApp. Built with React, Flask & Hardhat.</p>
-      </footer>
+      ) : (
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/explorer" element={<BlockchainExplorer />} />
+            <Route path="/consumer/track" element={<ConsumerTracking />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute><Dashboard /></ProtectedRoute>
+            } />
+            <Route path="/farmer/register" element={
+              <ProtectedRoute roles={['FARMER', 'ADMIN']}><FarmerRegistration /></ProtectedRoute>
+            } />
+            <Route path="/tester/approve" element={
+              <ProtectedRoute roles={['TESTER', 'ADMIN']}><QualityTesting /></ProtectedRoute>
+            } />
+            <Route path="/tester/product" element={
+              <ProtectedRoute roles={['TESTER', 'ADMIN']}><ProductRegistration /></ProtectedRoute>
+            } />
+            <Route path="/finance" element={
+              <ProtectedRoute><FundingPage /></ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute roles={['ADMIN']}><AdminDashboard /></ProtectedRoute>
+            } />
+          </Routes>
+        </main>
+      )}
+
+      {!isLanding && (
+        <footer className="border-t border-slate-200 py-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400 bg-white dark:bg-slate-950">
+          <p>&copy; {new Date().getFullYear()} AgroChain Supply Chain DApp. Built with React, Flask & Hardhat.</p>
+        </footer>
+      )}
     </div>
   );
 };
