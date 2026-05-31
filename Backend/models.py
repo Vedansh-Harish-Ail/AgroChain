@@ -13,6 +13,8 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(50), nullable=False) # FARMER, TESTER, CONSUMER, ADMIN
     wallet_address = db.Column(db.String(42), unique=True, nullable=True) # Linked Metamask Address
+    wallet_type = db.Column(db.String(50), default='NONE') # NONE, METAMASK
+    onboarding_complete = db.Column(db.Boolean, default=False)
     is_approved = db.Column(db.Boolean, default=False) # For farmers/testers approval
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -35,6 +37,8 @@ class User(db.Model):
             'email': self.email,
             'role': self.role,
             'wallet_address': self.wallet_address,
+            'wallet_type': self.wallet_type,
+            'onboarding_complete': self.onboarding_complete,
             'is_approved': self.is_approved,
             'created_at': self.created_at.isoformat()
         }
@@ -53,6 +57,7 @@ class Farmer(db.Model):
     cultivation_date = db.Column(db.DateTime, nullable=False)
     tx_hash = db.Column(db.String(66), nullable=True) # Blockchain Transaction Hash
     block_number = db.Column(db.Integer, nullable=True)
+    blockchain_status = db.Column(db.String(50), default='DB_ONLY') # DB_ONLY, PENDING, VERIFIED
     is_approved = db.Column(db.Boolean, default=False) # Quality Tester approved cultivation
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -75,6 +80,7 @@ class Farmer(db.Model):
             'cultivation_date': self.cultivation_date.isoformat(),
             'tx_hash': self.tx_hash,
             'block_number': self.block_number,
+            'blockchain_status': self.blockchain_status,
             'is_approved': self.is_approved,
             'wallet_address': self.user.wallet_address if self.user else None,
             'created_at': self.created_at.isoformat()

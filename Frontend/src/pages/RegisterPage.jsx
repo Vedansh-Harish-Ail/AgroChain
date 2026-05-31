@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
-import { UserPlus, User, Mail, Lock, Briefcase, Wallet } from 'lucide-react';
+import { UserPlus, User, Mail, Lock, Briefcase, Wallet, ShieldCheck, ChevronRight } from 'lucide-react';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showWallet, setShowWallet] = useState(false);
   const navigate = useNavigate();
 
   const handleWalletLink = async () => {
@@ -153,12 +154,44 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Wallet Address (Optional)
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+            {role === 'FARMER' ? (
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-900/30 dark:bg-emerald-950/10">
+                <div className="flex gap-3">
+                  <ShieldCheck className="h-5 w-5 text-emerald-600 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">Quick Onboarding Enabled</p>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400">Farmers do not need a digital wallet to start. You can securely link one later when you need to verify crops.</p>
+                  </div>
+                </div>
+                {!showWallet && (
+                  <button 
+                    type="button"
+                    onClick={() => setShowWallet(true)}
+                    className="mt-3 text-xs font-medium text-emerald-600 hover:text-emerald-500 flex items-center gap-1"
+                  >
+                    I have a wallet already <ChevronRight className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/30">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Recommended: Link your MetaMask wallet now for full Web3 functionality.</p>
+                <button
+                  type="button"
+                  onClick={handleWalletLink}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 shadow-sm"
+                >
+                  <Wallet className="h-4 w-4" /> {isConnected ? 'Wallet Connected' : 'Connect MetaMask'}
+                </button>
+              </div>
+            )}
+
+            {(showWallet || role !== 'FARMER') && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Wallet Address (Optional)
+                </label>
+                <div className="relative">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <Wallet className="h-5 w-5 text-slate-400" />
                   </div>
@@ -170,18 +203,8 @@ export default function RegisterPage() {
                     placeholder="0x..."
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleWalletLink}
-                  className="rounded-xl border border-slate-200 px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 flex items-center gap-1.5 shrink-0"
-                >
-                  <Wallet className="h-4 w-4" /> Link MetaMask
-                </button>
               </div>
-              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                Linking your wallet permits immediate blockchain authentication and smart contract calls.
-              </p>
-            </div>
+            )}
           </div>
 
           <div>
@@ -194,7 +217,7 @@ export default function RegisterPage() {
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
               ) : (
                 <span className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" /> Register
+                  <UserPlus className="h-4 w-4" /> Create {role.charAt(0) + role.slice(1).toLowerCase()} Account
                 </span>
               )}
             </button>

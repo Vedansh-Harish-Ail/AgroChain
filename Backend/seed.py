@@ -22,7 +22,9 @@ def seed_database():
             email="farmer@agrochain.com", 
             role="FARMER", 
             is_approved=True,
-            wallet_address="0x70997970c51812dc3a010c7d01b50e0d17dc79c8" # Hardhat Account #1
+            wallet_address="0x70997970c51812dc3a010c7d01b50e0d17dc79c8", # Hardhat Account #1
+            wallet_type="METAMASK",
+            onboarding_complete=True
         )
         farmer.set_password("farmer123")
         db.session.add(farmer)
@@ -64,6 +66,7 @@ def seed_database():
             cultivation_date=datetime.utcnow() - timedelta(days=45),
             tx_hash="0x5f87b8b4081c7e9976378baea28db3f7b98d1a1b1c7e9976378baea28db3f7b98d",
             block_number=12,
+            blockchain_status="VERIFIED",
             is_approved=True
         )
         db.session.add(crop1)
@@ -78,10 +81,12 @@ def seed_database():
             cultivation_date=datetime.utcnow() - timedelta(days=60),
             tx_hash="0xa9b8c7d6e5f43210123456789abcdef0123456789abcdef0123456789abcdef0",
             block_number=15,
+            blockchain_status="VERIFIED",
             is_approved=True
         )
         db.session.add(crop2)
         
+        # This one is DB_ONLY (Lazy Wallet demonstration)
         crop3 = Farmer(
             user_id=farmer.id,
             farm_location="Nagpur, Maharashtra",
@@ -92,6 +97,7 @@ def seed_database():
             cultivation_date=datetime.utcnow() - timedelta(days=10),
             tx_hash=None,
             block_number=None,
+            blockchain_status="DB_ONLY",
             is_approved=False # Pending review
         )
         db.session.add(crop3)

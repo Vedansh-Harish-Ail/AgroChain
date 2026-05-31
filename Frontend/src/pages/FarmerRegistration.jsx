@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
-import { Sprout, Wallet, FileText, Calendar, Compass, ShieldAlert } from 'lucide-react';
+import { Sprout, Wallet, FileText, Calendar, Compass, ShieldCheck, Database, Info } from 'lucide-react';
 import axios from 'axios';
 
 export default function FarmerRegistration() {
@@ -32,70 +32,78 @@ export default function FarmerRegistration() {
     setTxDetails(null);
     setLoading(true);
 
-    if (!isConnected) {
-      const address = await connectWallet();
-      if (!address) {
-        setError('Please connect your MetaMask wallet to register details on the blockchain.');
+    // If wallet is connected, do the full blockchain flow
+    if (isConnected) {
+      try {
+        const farmerId = Math.floor(Date.now() / 1000);
+        const cultivationTimestamp = Math.floor(new Date(formData.cultivation_date).getTime() / 1000);
+
+        // 1. Call Smart Contract
+        const tx = await contracts.farmerRegistry.registerFarmer(
+          farmerId,
+          user.name,
+          formData.farm_location,
+          formData.farm_size,
+          formData.farming_type,
+          formData.crop_type,
+          parseInt(formData.expected_yield),
+          cultivationTimestamp
+        );
+
+        setTxDetails({ step: 'broadcasting', hash: tx.hash });
+        const receipt = await tx.wait();
+        const blockNumber = receipt.blockNumber;
+
+        setTxDetails({ step: 'confirmed', hash: tx.hash, block: blockNumber });
+
+        // 2. Log transaction to Explorer Index
+        await axios.post('/api/explorer/log-tx', {
+          tx_hash: tx.hash,
+          block_number: blockNumber,
+          from_address: tx.from,
+          to_address: tx.to,
+          amount: 0,
+          method_name: 'registerFarmer',
+          event_data: JSON.stringify({
+            farmerId,
+            farmerName: user.name,
+            cropType: formData.crop_type,
+            farmingType: formData.farming_type
+          })
+        });
+
+        // 3. Save to database
+        await axios.post('/api/farmer/register', {
+          ...formData,
+          tx_hash: tx.hash,
+          block_number: blockNumber
+        });
+
         setLoading(false);
+        alert('Crop registered on blockchain successfully!');
+        navigate('/dashboard');
         return;
+      } catch (err) {
+        console.error("Blockchain error:", err);
+        setError("Blockchain transaction failed. You can still register locally for now.");
+        // Continue to local registration if blockchain fails but they want to proceed
       }
     }
 
+    // Local / Database only registration (Lazy Wallet)
     try {
-      // Generate a unique Farmer/Project ID based on timestamp
-      const farmerId = Math.floor(Date.now() / 1000);
-      const cultivationTimestamp = Math.floor(new Date(formData.cultivation_date).getTime() / 1000);
-
-      // 1. Call Smart Contract
-      const tx = await contracts.farmerRegistry.registerFarmer(
-        farmerId,
-        user.name,
-        formData.farm_location,
-        formData.farm_size,
-        formData.farming_type,
-        formData.crop_type,
-        parseInt(formData.expected_yield),
-        cultivationTimestamp
-      );
-
-      setTxDetails({ step: 'broadcasting', hash: tx.hash });
-
-      // Wait for block confirmation
-      const receipt = await tx.wait();
-      const blockNumber = receipt.blockNumber;
-
-      setTxDetails({ step: 'confirmed', hash: tx.hash, block: blockNumber });
-
-      // 2. Log transaction to Explorer Index
-      await axios.post('/api/explorer/log-tx', {
-        tx_hash: tx.hash,
-        block_number: blockNumber,
-        from_address: tx.from,
-        to_address: tx.to,
-        amount: 0,
-        method_name: 'registerFarmer',
-        event_data: JSON.stringify({
-          farmerId,
-          farmerName: user.name,
-          cropType: formData.crop_type,
-          farmingType: formData.farming_type
-        })
-      });
-
-      // 3. Save to database
       await axios.post('/api/farmer/register', {
         ...formData,
-        tx_hash: tx.hash,
-        block_number: blockNumber
+        tx_hash: null,
+        block_number: null
       });
 
       setLoading(false);
-      alert('Crop details registered on blockchain and database successfully!');
+      alert('Crop details saved to your profile! You can verify this on the blockchain later.');
       navigate('/dashboard');
-
     } catch (err) {
       console.error(err);
-      setError(err.reason || err.message || 'Transaction failed. Check your MetaMask settings.');
+      setError(err.response?.data?.message || 'Failed to save crop details.');
       setLoading(false);
     }
   };
@@ -109,9 +117,23 @@ export default function FarmerRegistration() {
           </div>
           <div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Register Crop Cultivation</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Record crop details to the blockchain ledger</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Record your current crop details</p>
           </div>
         </div>
+
+        {/* Informational Banner for Lazy Wallet */}
+        {!isConnected && (
+          <div className="mb-6 rounded-2xl bg-blue-50/50 border border-blue-100 p-4 dark:bg-blue-900/10 dark:border-blue-900/30 flex gap-3">
+            <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Simplified Registration</p>
+              <p className="text-xs text-blue-700 dark:text-blue-400">
+                You are currently registering in "Local Mode". Your details will be saved to our secure database immediately. 
+                You can link a digital wallet later to earn "Blockchain Verified" status.
+              </p>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mb-6 rounded-xl bg-rose-50 p-4 text-sm text-rose-600 dark:bg-rose-950/30 dark:text-rose-400">
@@ -245,20 +267,35 @@ export default function FarmerRegistration() {
             </div>
           </div>
 
-          <div className="pt-4">
+          <div className="pt-4 flex flex-col gap-3">
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-emerald-500 shadow-md shadow-emerald-600/20 transition disabled:opacity-50"
+              className={`w-full flex justify-center items-center gap-2 rounded-xl px-4 py-3.5 text-sm font-bold text-white shadow-md transition-all duration-300 disabled:opacity-50 ${
+                isConnected 
+                ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20' 
+                : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20'
+              }`}
             >
               {loading ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
               ) : (
                 <span className="flex items-center gap-2">
-                  <Wallet className="h-4.5 w-4.5" /> Submit to Blockchain & DB
+                  {isConnected ? <ShieldCheck className="h-5 w-5" /> : <Database className="h-5 w-5" />}
+                  {isConnected ? 'Secure Registration (Blockchain)' : 'Standard Registration (Database)'}
                 </span>
               )}
             </button>
+            
+            {!isConnected && !loading && (
+              <button
+                type="button"
+                onClick={connectWallet}
+                className="w-full flex justify-center items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+              >
+                <Wallet className="h-4 w-4 text-emerald-600" /> Switch to Blockchain Mode
+              </button>
+            )}
           </div>
         </form>
       </div>

@@ -4,20 +4,22 @@ import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
 import { 
   Sprout, FileCheck, Coins, Eye, Cpu, Settings, ShieldCheck, 
-  HelpCircle, UserCheck, CheckCircle2, TrendingUp, Layers
+  HelpCircle, UserCheck, CheckCircle2, TrendingUp, Layers, AlertCircle, ArrowRight, Wallet
 } from 'lucide-react';
 import axios from 'axios';
 
 export default function Dashboard() {
   const { user, linkWallet } = useAuth();
-  const { walletAddress, isConnected, connectWallet } = useWallet();
+  const { walletAddress, isConnected, connectWallet, contracts } = useWallet();
   const [stats, setStats] = useState({
     cropsCount: 0,
     lotsCount: 0,
     investmentsCount: 0,
     ratingsCount: 0
   });
+  const [myCrops, setMyCrops] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [verifying, setVerifying] = useState(null);
   const navigate = useNavigate();
 
   const handleWalletLink = async () => {
@@ -27,6 +29,60 @@ export default function Dashboard() {
     }
     if (address) {
       await linkWallet(address);
+    }
+  };
+
+  const handleLazyVerify = async (crop) => {
+    if (!isConnected) {
+      const address = await connectWallet();
+      if (!address) return;
+    }
+
+    try {
+      setVerifying(crop.id);
+      const farmerId = Math.floor(Date.now() / 1000);
+      const cultivationTimestamp = Math.floor(new Date(crop.cultivation_date).getTime() / 1000);
+
+      // 1. Contract Call
+      const tx = await contracts.farmerRegistry.registerFarmer(
+        farmerId,
+        user.name,
+        crop.farm_location,
+        crop.farm_size,
+        crop.farming_type,
+        crop.crop_type,
+        parseInt(crop.expected_yield),
+        cultivationTimestamp
+      );
+
+      const receipt = await tx.wait();
+      
+      // 2. Log to Explorer
+      await axios.post('/api/explorer/log-tx', {
+        tx_hash: tx.hash,
+        block_number: receipt.blockNumber,
+        from_address: tx.from,
+        to_address: tx.to,
+        amount: 0,
+        method_name: 'registerFarmer (Lazy)',
+        event_data: JSON.stringify({ farmerId, cropId: crop.id })
+      });
+
+      // 3. Update DB
+      await axios.post(`/api/farmer/update-blockchain-status/${crop.id}`, {
+        tx_hash: tx.hash,
+        block_number: receipt.blockNumber
+      });
+
+      // Refresh list
+      const res = await axios.get('/api/farmer/my-crops');
+      setMyCrops(res.data);
+      alert('Crop successfully verified on blockchain!');
+    } catch (err) {
+      console.error(err);
+      alert('Verification failed. Please try again.');
+    } finally {
+      setVerifying(null);
     }
   };
 
@@ -41,8 +97,13 @@ export default function Dashboard() {
           cropsCount: cropsList.data.length,
           lotsCount: lotsList.data.length,
           investmentsCount: explorerSummary.data.total_transactions || 0,
-          ratingsCount: 0 // Mocked/calculated
+          ratingsCount: 0 
         });
+
+        if (user?.role === 'FARMER') {
+          const myCropsRes = await axios.get('/api/farmer/my-crops');
+          setMyCrops(myCropsRes.data);
+        }
       } catch (err) {
         console.error("Failed to load dashboard metrics:", err);
       } finally {
@@ -50,7 +111,7 @@ export default function Dashboard() {
       }
     };
     fetchStats();
-  }, []);
+  }, [user]);
 
   const getRoleBadge = (role) => {
     switch (role) {
@@ -64,7 +125,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 py-4">
       {/* Profile Welcome Block */}
-      <div className="relative overflow-hidden rounded-2xl bg-white p-6 sm:p-8 border border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="relative overflow-hidden rounded-3xl bg-white p-6 sm:p-8 border border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-950 dark:text-white">
@@ -75,16 +136,25 @@ export default function Dashboard() {
             </span>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Welcome to your unified Web2 + Web3 AgroChain control panel.
+            Welcome to your unified AgroChain control panel.
           </p>
         </div>
 
-        {/* MetaMask Link Checker */}
         <div className="shrink-0">
           {user?.wallet_address ? (
             <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-xs text-slate-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400 font-mono">
               <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Wallet Linked: {user.wallet_address.substring(0, 6)}...{user.wallet_address.substring(user.wallet_address.length - 4)}</span>
+              <span>Wallet: {user.wallet_address.substring(0, 6)}...{user.wallet_address.substring(user.wallet_address.length - 4)}</span>
+            </div>
+          ) : user?.role === 'FARMER' ? (
+            <div className="flex items-center gap-3">
+               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 italic">No wallet required for basic use</span>
+               <button
+                onClick={handleWalletLink}
+                className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 text-xs font-semibold shadow-sm transition-all"
+              >
+                <Wallet className="h-4 w-4" /> Link Secure Wallet
+              </button>
             </div>
           ) : (
             <button
@@ -97,12 +167,38 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Lazy Wallet Alert for Farmers */}
+      {user?.role === 'FARMER' && myCrops.some(c => c.blockchain_status === 'DB_ONLY') && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 dark:border-blue-900/30 dark:bg-blue-950/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex gap-4">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/40 text-blue-600 rounded-xl shrink-0">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-blue-900 dark:text-blue-100 text-lg">Blockchain Verification Pending</h4>
+              <p className="text-sm text-blue-700 dark:text-blue-400 max-w-xl">
+                Some of your registered crops are only saved locally. To increase your trust score and attract more investors, verify them on the blockchain.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              const el = document.getElementById('pending-verification');
+              el?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="whitespace-nowrap flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-blue-600/20 transition"
+          >
+            Review Pending <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Metrics Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Crops Listed</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Network Crops</p>
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : stats.cropsCount}</h3>
             </div>
             <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-600 dark:text-emerald-400">
@@ -138,7 +234,7 @@ export default function Dashboard() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Global Trust</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Farmer Trust</p>
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">98.4%</h3>
             </div>
             <div className="p-2 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400">
@@ -147,6 +243,47 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Farmer's Crop Status (Lazy Verification) */}
+      {user?.role === 'FARMER' && myCrops.length > 0 && (
+        <div id="pending-verification" className="space-y-4">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Your Crop Registration History</h3>
+          <div className="grid grid-cols-1 gap-4">
+            {myCrops.map(crop => (
+              <div key={crop.id} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`p-2.5 rounded-xl ${crop.blockchain_status === 'VERIFIED' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40' : 'bg-slate-50 text-slate-400 dark:bg-slate-800'}`}>
+                    <Sprout className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white">{crop.crop_type}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{crop.farm_location} • {crop.expected_yield}kg</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  {crop.blockchain_status === 'VERIFIED' ? (
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-full">
+                      <ShieldCheck className="h-3.5 w-3.5" /> Blockchain Verified
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => handleLazyVerify(crop)}
+                      disabled={verifying === crop.id}
+                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition disabled:opacity-50"
+                    >
+                      {verifying === crop.id ? (
+                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      ) : <ShieldCheck className="h-3.5 w-3.5" />}
+                      Verify Now
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Grid Menu of Actions */}
       <div>

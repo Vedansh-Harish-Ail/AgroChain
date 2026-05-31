@@ -27,7 +27,8 @@ export const WalletProvider = ({ children }) => {
             await initializeWallet(browserProvider);
           }
         } catch (err) {
-          console.error("Wallet detection error:", err);
+          // Log as warning rather than error to avoid blocking non-web3 flows
+          console.warn("Wallet connection suppressed during initial load:", err);
         }
       };
       checkConnection();
@@ -85,7 +86,7 @@ export const WalletProvider = ({ children }) => {
       return address.toLowerCase();
     } catch (err) {
       console.error("Failed to initialize wallet:", err);
-      setError("Failed to initialize contracts. Make sure you are connected to the correct network.");
+      // Removed setError here to prevent blocking UI for farmers
       return null;
     }
   };

@@ -32,6 +32,11 @@ def register_crop(current_user):
     except ValueError:
         return jsonify({'message': 'expected_yield must be an integer'}), 400
 
+    # Determine blockchain status
+    # If tx_hash is provided, it's VERIFIED (or PENDING confirmation, but let's say VERIFIED for simplicity)
+    # If not, it's DB_ONLY (Lazy Wallet)
+    blockchain_status = 'VERIFIED' if tx_hash else 'DB_ONLY'
+
     new_farmer_project = Farmer(
         user_id=current_user.id,
         farm_location=farm_location,
@@ -42,6 +47,7 @@ def register_crop(current_user):
         cultivation_date=cultivation_date,
         tx_hash=tx_hash,
         block_number=block_number,
+        blockchain_status=blockchain_status,
         is_approved=False # Pending Quality Tester approval
     )
     
@@ -52,7 +58,7 @@ def register_crop(current_user):
     audit = AuditLog(
         user_id=current_user.id,
         action='FARMER_CROP_REGISTERED',
-        details=f"Farmer {current_user.name} registered crop {crop_type} (ID: {new_farmer_project.id})."
+        details=f"Farmer {current_user.name} registered crop {crop_type} (ID: {new_farmer_project.id}, Status: {blockchain_status})."
     )
     db.session.add(audit)
     db.session.commit()
@@ -61,6 +67,43 @@ def register_crop(current_user):
         'message': 'Crop registered successfully in the system!',
         'crop': new_farmer_project.to_dict()
     }), 201
+
+
+@farmer_bp.route('/update-blockchain-status/<int:crop_id>', methods=['POST'])
+@roles_allowed('FARMER', 'ADMIN')
+def update_blockchain_status(current_user, crop_id):
+    data = request.get_json() or {}
+    tx_hash = data.get('tx_hash')
+    block_number = data.get('block_number')
+    
+    if not tx_hash:
+        return jsonify({'message': 'Missing transaction hash'}), 400
+        
+    crop = Farmer.query.get(crop_id)
+    if not crop:
+        return jsonify({'message': 'Crop not found'}), 404
+        
+    if crop.user_id != current_user.id and current_user.role != 'ADMIN':
+        return jsonify({'message': 'Unauthorized'}), 403
+        
+    crop.tx_hash = tx_hash
+    crop.block_number = block_number
+    crop.blockchain_status = 'VERIFIED'
+    db.session.commit()
+    
+    # Audit log
+    audit = AuditLog(
+        user_id=current_user.id,
+        action='CROP_BLOCKCHAIN_VERIFIED',
+        details=f"Crop {crop.id} verified on blockchain with hash {tx_hash}."
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Blockchain status updated successfully!',
+        'crop': crop.to_dict()
+    }), 200
 
 
 @farmer_bp.route('/my-crops', methods=['GET'])
