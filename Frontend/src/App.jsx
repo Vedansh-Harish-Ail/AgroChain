@@ -223,6 +223,7 @@ const Navbar = ({ theme, toggleTheme }) => {
 const MainLayout = ({ theme, toggleTheme }) => {
   const location = useLocation();
   const isLanding = location.pathname === '/';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -263,7 +264,7 @@ const MainLayout = ({ theme, toggleTheme }) => {
         </main>
       )}
 
-      {!isLanding && (
+      {!isLanding && !isAuthPage && (
         <footer className="border-t border-slate-200 py-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400 bg-white dark:bg-slate-950">
           <p>&copy; {new Date().getFullYear()} AgroChain Supply Chain DApp. Built with React, Flask & Hardhat.</p>
         </footer>

@@ -91,10 +91,10 @@ Deployment script: [deploy.js](file:///c:/MY%20PROJECTS/AgroChain-Morden/Blockch
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | `admin@agrochain.com` | `admin123` |
-| Farmer | `farmer@agrochain.com` | `farmer123` |
-| Tester | `tester@agrochain.com` | `tester123` |
-| Consumer | `consumer@agrochain.com` | `consumer123` |
+| Admin | `admin@gmail.com` | `test@123` |
+| Farmer | `farmer@gmail.com` | `test@123` |
+| Tester | `tester@gmail.com` | `test@123` |
+| Consumer | `consumer@gmail.com` | `test@123` |
 
 ---
 

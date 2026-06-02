@@ -2,53 +2,60 @@ from app import create_app
 from models import db, User, Farmer, Product, Investment, Rating, Transaction, AuditLog, CropUpdate
 from datetime import datetime, timedelta
 
-def seed_database():
+def seed_database(reset=False):
     app = create_app()
     with app.app_context():
-        print("Clearing database...")
-        db.drop_all()
-        db.create_all()
-        
+        if reset:
+            print("Clearing database...")
+            db.drop_all()
+            db.create_all()
+        else:
+            db.create_all()
+            # Skip seeding if database already contains users/data to preserve existing registrations
+            if User.query.first() is not None:
+                print("Database already contains users. Skipping database seeding to preserve existing accounts.")
+                print("To reset the database, run: py seed.py --reset")
+                return
+
         print("Seeding users...")
         
         # Admin
-        admin = User(name="System Administrator", email="admin@agrochain.com", role="ADMIN", is_approved=True)
-        admin.set_password("admin123")
+        admin = User(name="System Administrator", email="admin@gmail.com", role="ADMIN", is_approved=True)
+        admin.set_password("test@123")
         db.session.add(admin)
         
         # Farmer
         farmer = User(
             name="Rajesh Patel", 
-            email="farmer@agrochain.com", 
+            email="farmer@gmail.com", 
             role="FARMER", 
             is_approved=True,
             wallet_address="0x70997970c51812dc3a010c7d01b50e0d17dc79c8", # Hardhat Account #1
             wallet_type="METAMASK",
             onboarding_complete=True
         )
-        farmer.set_password("farmer123")
+        farmer.set_password("test@123")
         db.session.add(farmer)
         
         # Tester
         tester = User(
             name="Dr. Anita Sharma (Quality Inspector)", 
-            email="tester@agrochain.com", 
-            role="TESTER", 
+            email="tester@gmail.com", role="TESTER", 
             is_approved=True,
             wallet_address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266" # Hardhat Account #0 (Deployer)
         )
-        tester.set_password("tester123")
+        tester.set_password("test@123")
         db.session.add(tester)
         
         # Consumer
         consumer = User(
             name="Amit Kumar (Retail Investor)", 
-            email="consumer@agrochain.com", 
+            email="consumer@gmail.com", 
             role="CONSUMER", 
             is_approved=True,
             wallet_address="0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc" # Hardhat Account #2
         )
-        consumer.set_password("consumer123")
+        consumer.set_password("test@123")
         db.session.add(consumer)
         
         db.session.commit()
@@ -269,4 +276,6 @@ def seed_database():
         print("Database seeded with sample records successfully!")
 
 if __name__ == '__main__':
-    seed_database()
+    import sys
+    reset_db = '--reset' in sys.argv or '--force' in sys.argv
+    seed_database(reset=reset_db)

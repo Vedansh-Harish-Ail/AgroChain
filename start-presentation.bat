@@ -13,7 +13,7 @@ cd /d "C:\MY PROJECTS\AgroChain-Morden"
 
 REM ==== 3️⃣ Start Blockchain Node in a new window -------------------------
 echo Starting Hardhat Blockchain Node...
-start "Blockchain Node" cmd /k "cd Blockchain ^&^ echo y | npx hardhat node"
+start "Blockchain Node" cmd /k "cd Blockchain & echo y | npx hardhat node"
 
 REM ==== 4️⃣ Wait for Node to start ----------------------------------------
 timeout /t 5 >nul
