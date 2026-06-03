@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
-import { Sprout, Wallet, FileText, Calendar, Compass, ShieldCheck, Database, Info } from 'lucide-react';
+import { Sprout, Wallet, FileText, Calendar, Compass, ShieldCheck, Database, Info, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 
 export default function FarmerRegistration() {
@@ -112,6 +112,12 @@ export default function FarmerRegistration() {
     <div className="max-w-2xl mx-auto py-6">
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
           <div className="p-3 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 rounded-2xl">
             <Sprout className="h-6 w-6" />
           </div>

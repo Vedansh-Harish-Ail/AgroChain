@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
-import { FileCheck, Wallet, Calendar, Tag, ShieldCheck } from 'lucide-react';
+import { FileCheck, Wallet, Calendar, Tag, ShieldCheck, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { ethers } from 'ethers';
 
@@ -131,6 +131,12 @@ export default function ProductRegistration() {
     <div className="max-w-2xl mx-auto py-6">
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
           <div className="p-3 bg-blue-100 dark:bg-blue-950/40 text-blue-600 rounded-2xl">
             <FileCheck className="h-6 w-6" />
           </div>
@@ -244,6 +250,9 @@ export default function ProductRegistration() {
                   placeholder="e.g. 0.5"
                 />
               </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Estimated value: Rs. {Math.round(parseFloat(formData.price_eth || 0) * 250000).toLocaleString('en-IN')} (at 1 ETH = Rs. 2,50,000)
+              </p>
             </div>
 
             <div>

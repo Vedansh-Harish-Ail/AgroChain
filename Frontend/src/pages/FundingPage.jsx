@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
-import { Coins, Wallet, History, Users, Tag, TrendingUp, DollarSign } from 'lucide-react';
+import { Coins, Wallet, History, Users, Tag, TrendingUp, DollarSign, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { ethers } from 'ethers';
 
 export default function FundingPage() {
   const { isConnected, connectWallet, contracts } = useWallet();
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   const [products, setProducts] = useState([]);
   const [myInvestments, setMyInvestments] = useState([]);
@@ -124,11 +126,19 @@ export default function FundingPage() {
 
   return (
     <div className="space-y-8 py-4">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <Coins className="h-6 w-6 text-emerald-600" /> Crop Micro-Finance Marketplace
-        </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Back local farmers directly by funding crop batches with zero interest. Track yields and earn sales margins.</p>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition shrink-0"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Coins className="h-6 w-6 text-emerald-600" /> Crop Micro-Finance Marketplace
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Back local farmers directly by funding crop batches with zero interest. Track yields and earn sales margins.</p>
+        </div>
       </div>
 
       {error && (
@@ -161,7 +171,7 @@ export default function FundingPage() {
             ) : (
               <div className="grid md:grid-cols-2 gap-6">
                 {products.map((product) => {
-                  const ethPrice = ethers.formatEther(product.price);
+                  const ethPrice = ethers.formatEther(product.price.toString());
                   return (
                     <div
                       key={product.lot_number}
@@ -185,7 +195,7 @@ export default function FundingPage() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-400">Target Value</span>
-                            <span className="font-bold text-slate-950 dark:text-white">{ethPrice} ETH</span>
+                            <span className="font-bold text-slate-950 dark:text-white">Rs. {Math.round(parseFloat(ethPrice) * 250000).toLocaleString('en-IN')} ({ethPrice} ETH)</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-400">Expiry Limit</span>
@@ -235,7 +245,7 @@ export default function FundingPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Price Target</span>
-                    <span>{ethers.formatEther(selectedProduct.price)} ETH</span>
+                    <span>Rs. {Math.round(parseFloat(ethers.formatEther(selectedProduct.price.toString())) * 250000).toLocaleString('en-IN')} ({ethers.formatEther(selectedProduct.price.toString())} ETH)</span>
                   </div>
                 </div>
 
@@ -250,6 +260,9 @@ export default function FundingPage() {
                       onChange={(e) => setFundAmount(e.target.value)}
                       className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                     />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Estimated value: Rs. {Math.round(parseFloat(fundAmount || 0) * 250000).toLocaleString('en-IN')}
+                    </p>
                   </div>
 
                   <div>
@@ -309,7 +322,7 @@ export default function FundingPage() {
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                            {ethers.formatEther(inv.amount)} ETH
+                            Rs. {Math.round(parseFloat(ethers.formatEther(inv.amount.toString())) * 250000).toLocaleString('en-IN')} ({ethers.formatEther(inv.amount.toString())} ETH)
                           </p>
                           <span className="text-[10px] uppercase font-bold text-slate-400">{inv.status}</span>
                         </div>

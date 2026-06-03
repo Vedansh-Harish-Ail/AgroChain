@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timezone
 from models import db, Transaction
 
 explorer_bp = Blueprint('explorer', __name__)
@@ -38,7 +38,7 @@ def log_transaction():
         amount=amount,
         method_name=method_name,
         event_data=event_data,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
     
     db.session.add(new_tx)

@@ -19,6 +19,7 @@ import FundingPage from './pages/FundingPage';
 import ConsumerTracking from './pages/ConsumerTracking';
 import BlockchainExplorer from './pages/BlockchainExplorer';
 import AdminDashboard from './pages/AdminDashboard';
+import CropHistory from './pages/CropHistory';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, roles }) => {
@@ -248,6 +249,9 @@ const MainLayout = ({ theme, toggleTheme }) => {
             <Route path="/farmer/register" element={
               <ProtectedRoute roles={['FARMER', 'ADMIN']}><FarmerRegistration /></ProtectedRoute>
             } />
+            <Route path="/farmer/crops" element={
+              <ProtectedRoute roles={['FARMER', 'ADMIN']}><CropHistory /></ProtectedRoute>
+            } />
             <Route path="/tester/approve" element={
               <ProtectedRoute roles={['TESTER', 'ADMIN']}><QualityTesting /></ProtectedRoute>
             } />
@@ -264,11 +268,7 @@ const MainLayout = ({ theme, toggleTheme }) => {
         </main>
       )}
 
-      {!isLanding && !isAuthPage && (
-        <footer className="border-t border-slate-200 py-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400 bg-white dark:bg-slate-950">
-          <p>&copy; {new Date().getFullYear()} AgroChain Supply Chain DApp. Built with React, Flask & Hardhat.</p>
-        </footer>
-      )}
+
     </div>
   );
 };

@@ -1,26 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
 import { 
   UserPlus, User, Mail, Lock, Briefcase, Wallet, 
-  ShieldCheck, ChevronRight, Sparkles, Eye, EyeOff 
+  ShieldCheck, ChevronRight, Sparkles, Eye, EyeOff,
+  Phone, KeyRound
 } from 'lucide-react';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, sendOtp } = useAuth();
   const { walletAddress, isConnected, connectWallet } = useWallet();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('CONSUMER');
   const [customWallet, setCustomWallet] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [devOtpMessage, setDevOtpMessage] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   const handleWalletLink = async () => {
     if (!isConnected) {
@@ -31,15 +46,47 @@ export default function RegisterPage() {
     }
   };
 
+  const handleSendOtp = async () => {
+    if (!phoneNumber) {
+      setError('Please enter a phone number first.');
+      return;
+    }
+    setError('');
+    setDevOtpMessage('');
+    setSendingOtp(true);
+    const result = await sendOtp(phoneNumber);
+    setSendingOtp(false);
+    if (result.success) {
+      setOtpSent(true);
+      setSuccess('OTP sent successfully! Please check your phone.');
+      if (result.data?.dev_otp) {
+        setDevOtpMessage(`Developer Fallback OTP: ${result.data.dev_otp}`);
+      }
+      setCountdown(60);
+    } else {
+      setError(result.message);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (!phoneNumber) {
+      setError('Phone number is required.');
+      return;
+    }
+    if (!otpCode) {
+      setError('OTP verification code is required.');
+      return;
+    }
+
     setLoading(true);
 
     const activeWallet = customWallet || (isConnected ? walletAddress : '');
 
-    const result = await register(name, email, password, role, activeWallet);
+    const result = await register(name, email, password, role, activeWallet, phoneNumber, otpCode);
     setLoading(false);
 
     if (result.success) {
@@ -51,6 +98,7 @@ export default function RegisterPage() {
       setError(result.message);
     }
   };
+
 
   return (
     <div className="flex min-h-[75vh] items-center justify-center py-4 px-4">
@@ -217,9 +265,80 @@ export default function RegisterPage() {
                     <option value="TESTER">Quality Authority</option>
                     <option value="ADMIN">System Admin</option>
                   </select>
+            </div>
+
+            {/* Phone Number & OTP Verification Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="phoneNumber" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Phone Number
+                </label>
+                <div className="relative flex gap-2">
+                  <div className="relative flex-grow">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <Phone className="h-4 w-4 text-slate-400" />
+                    </div>
+                    <input
+                      type="tel"
+                      id="phoneNumber"
+                      required
+                      placeholder="+919876543210"
+                      disabled={otpSent}
+                      className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-70"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={sendingOtp || countdown > 0}
+                    onClick={handleSendOtp}
+                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition-colors whitespace-nowrap"
+                  >
+                    {sendingOtp ? 'Sending...' : countdown > 0 ? `Resend (${countdown}s)` : otpSent ? 'Resend OTP' : 'Send OTP'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="otpCode" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  OTP Code {otpSent && <span className="text-emerald-600 dark:text-emerald-400 font-normal">(Sent)</span>}
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <KeyRound className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    id="otpCode"
+                    required
+                    maxLength={6}
+                    placeholder="Enter 6-digit OTP"
+                    disabled={!otpSent}
+                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-50"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                  />
                 </div>
               </div>
             </div>
+
+            {devOtpMessage && (
+              <div className="p-2.5 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30 flex items-center justify-between font-mono">
+                <span>{devOtpMessage}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(devOtpMessage.split(': ')[1]);
+                    setSuccess('OTP copied to clipboard!');
+                    setTimeout(() => setSuccess(''), 2000);
+                  }}
+                  className="text-[10px] font-bold text-amber-800 dark:text-amber-300 underline uppercase"
+                >
+                  Copy
+                </button>
+              </div>
+            )}
 
             {/* Compact Conditional Wallet Section */}
             {role === 'FARMER' ? (

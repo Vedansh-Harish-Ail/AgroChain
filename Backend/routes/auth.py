@@ -1,8 +1,109 @@
-from flask import Blueprint, request, jsonify
-from models import db, User, AuditLog
+from flask import Blueprint, request, jsonify, current_app
+from models import db, User, AuditLog, OTPVerification
 from utils.auth import generate_token, token_required
+import random
+import json
+import base64
+import urllib.request
+import urllib.error
+from datetime import datetime, timedelta, timezone
 
 auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route('/send-otp', methods=['POST'])
+def send_otp():
+    data = request.get_json() or {}
+    phone_number = data.get('phone_number')
+    
+    if not phone_number:
+        return jsonify({'message': 'Phone number is required'}), 400
+        
+    phone_number = phone_number.strip()
+    
+    # Check if user already exists with this phone number
+    if User.query.filter_by(phone_number=phone_number).first():
+        return jsonify({'message': 'Phone number already registered'}), 400
+        
+    # Generate 6-digit OTP code
+    otp_code = f"{random.randint(100000, 999999)}"
+    
+    # Save OTP to database (Upsert: delete existing for this phone number first)
+    existing_otp = OTPVerification.query.filter_by(phone_number=phone_number).first()
+    if existing_otp:
+        db.session.delete(existing_otp)
+        db.session.commit()
+        
+    # sqlite timezone safety
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=5)
+    new_otp = OTPVerification(
+        phone_number=phone_number,
+        otp_code=otp_code,
+        expires_at=expires_at
+    )
+    db.session.add(new_otp)
+    db.session.commit()
+    
+    sms_enabled = current_app.config.get('SMS_ENABLED', False)
+    sms_url = current_app.config.get('SMS_GATEWAY_URL')
+    sms_user = current_app.config.get('SMS_GATEWAY_USER')
+    sms_pass = current_app.config.get('SMS_GATEWAY_PASSWORD')
+    
+    sms_sent = False
+    error_msg = None
+    
+    if sms_enabled and sms_url:
+        try:
+            # Build payload matching the SMS Gate format
+            payload = {
+                "textMessage": {
+                    "text": f"Your AgroChain registration OTP is: {otp_code}. Valid for 5 minutes."
+                },
+                "phoneNumbers": [phone_number]
+            }
+            data_bytes = json.dumps(payload).encode('utf-8')
+            
+            # Create request
+            req = urllib.request.Request(sms_url, data=data_bytes, method='POST')
+            req.add_header('Content-Type', 'application/json')
+            
+            # Basic Authentication
+            if sms_user and sms_pass:
+                auth_str = f"{sms_user}:{sms_pass}"
+                auth_encoded = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
+                req.add_header('Authorization', f'Basic {auth_encoded}')
+                
+            # Perform network request to the local device gateway
+            with urllib.request.urlopen(req, timeout=5) as response:
+                if response.status == 200:
+                    sms_sent = True
+                else:
+                    error_msg = f"Gateway returned status {response.status}"
+        except urllib.error.URLError as e:
+            error_msg = f"URL Error connecting to gateway: {e.reason}"
+        except Exception as e:
+            error_msg = f"Unexpected error sending SMS: {str(e)}"
+    else:
+        error_msg = "SMS Gateway is disabled or not configured."
+        
+    if sms_sent:
+        return jsonify({
+            'message': 'OTP sent successfully via SMS.',
+            'phone_number': phone_number
+        }), 200
+    else:
+        # Fallback to dev mode so local testing isn't blocked
+        print(f"\n--- [SMS DEV FALLBACK] ---")
+        print(f"To: {phone_number}")
+        print(f"OTP Code: {otp_code}")
+        print(f"Gateway Error: {error_msg}")
+        print(f"--------------------------\n")
+        return jsonify({
+            'message': 'OTP generated (Developer Mode Fallback).',
+            'phone_number': phone_number,
+            'dev_otp': otp_code,
+            'warning': f'SMS delivery failed/disabled. Details: {error_msg}'
+        }), 200
+
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -13,9 +114,11 @@ def register():
     password = data.get('password')
     role = data.get('role')
     wallet_address = data.get('wallet_address')
+    phone_number = data.get('phone_number')
+    otp_code = data.get('otp_code')
     
-    if not name or not email or not password or not role:
-        return jsonify({'message': 'Missing required fields'}), 400
+    if not name or not email or not password or not role or not phone_number or not otp_code:
+        return jsonify({'message': 'Missing required fields, including phone number and OTP'}), 400
         
     if role not in ['FARMER', 'TESTER', 'CONSUMER', 'ADMIN']:
         return jsonify({'message': 'Invalid role specified'}), 400
@@ -23,13 +126,29 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({'message': 'Email address already registered'}), 400
         
+    if User.query.filter_by(phone_number=phone_number).first():
+        return jsonify({'message': 'Phone number already registered'}), 400
+        
     if wallet_address and User.query.filter_by(wallet_address=wallet_address).first():
         return jsonify({'message': 'Wallet address already linked to another account'}), 400
         
+    # Verify OTP
+    verification = OTPVerification.query.filter_by(phone_number=phone_number).first()
+    if not verification or verification.otp_code != str(otp_code):
+        return jsonify({'message': 'Invalid OTP code'}), 400
+        
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    if now > verification.expires_at:
+        return jsonify({'message': 'OTP has expired. Please request a new one.'}), 400
+        
+    # Clean up OTP record on success
+    db.session.delete(verification)
+    
     # Create new user
     new_user = User(
         name=name,
         email=email,
+        phone_number=phone_number,
         role=role,
         wallet_address=wallet_address.lower() if wallet_address else None,
         # Admin is auto-approved, others approved by default or admin
@@ -44,10 +163,11 @@ def register():
     audit = AuditLog(
         user_id=new_user.id,
         action='USER_REGISTERED',
-        details=f"User {name} registered with role {role}."
+        details=f"User {name} registered with role {role} and phone {phone_number}."
     )
     db.session.add(audit)
     db.session.commit()
+
     
     return jsonify({
         'message': 'User registered successfully!',

@@ -1,6 +1,6 @@
 from app import create_app
 from models import db, User, Farmer, Product, Investment, Rating, Transaction, AuditLog, CropUpdate
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 def seed_database(reset=False):
     app = create_app()
@@ -20,7 +20,7 @@ def seed_database(reset=False):
         print("Seeding users...")
         
         # Admin
-        admin = User(name="System Administrator", email="admin@gmail.com", role="ADMIN", is_approved=True)
+        admin = User(name="System Administrator", email="admin@gmail.com", phone_number="+10000000001", role="ADMIN", is_approved=True)
         admin.set_password("test@123")
         db.session.add(admin)
         
@@ -28,6 +28,7 @@ def seed_database(reset=False):
         farmer = User(
             name="Rajesh Patel", 
             email="farmer@gmail.com", 
+            phone_number="+10000000002",
             role="FARMER", 
             is_approved=True,
             wallet_address="0x70997970c51812dc3a010c7d01b50e0d17dc79c8", # Hardhat Account #1
@@ -40,7 +41,9 @@ def seed_database(reset=False):
         # Tester
         tester = User(
             name="Dr. Anita Sharma (Quality Inspector)", 
-            email="tester@gmail.com", role="TESTER", 
+            email="tester@gmail.com", 
+            phone_number="+10000000003",
+            role="TESTER", 
             is_approved=True,
             wallet_address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266" # Hardhat Account #0 (Deployer)
         )
@@ -51,12 +54,14 @@ def seed_database(reset=False):
         consumer = User(
             name="Amit Kumar (Retail Investor)", 
             email="consumer@gmail.com", 
+            phone_number="+10000000004",
             role="CONSUMER", 
             is_approved=True,
             wallet_address="0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc" # Hardhat Account #2
         )
         consumer.set_password("test@123")
         db.session.add(consumer)
+
         
         db.session.commit()
         print("Users seeded successfully!")
@@ -70,7 +75,7 @@ def seed_database(reset=False):
             farming_type="Organic",
             crop_type="Basmati Rice",
             expected_yield=2500,
-            cultivation_date=datetime.utcnow() - timedelta(days=45),
+            cultivation_date=datetime.now(timezone.utc) - timedelta(days=45),
             tx_hash="0x5f87b8b4081c7e9976378baea28db3f7b98d1a1b1c7e9976378baea28db3f7b98d",
             block_number=12,
             blockchain_status="VERIFIED",
@@ -85,7 +90,7 @@ def seed_database(reset=False):
             farming_type="Organic",
             crop_type="Alphonso Mango",
             expected_yield=1200,
-            cultivation_date=datetime.utcnow() - timedelta(days=60),
+            cultivation_date=datetime.now(timezone.utc) - timedelta(days=60),
             tx_hash="0xa9b8c7d6e5f43210123456789abcdef0123456789abcdef0123456789abcdef0",
             block_number=15,
             blockchain_status="VERIFIED",
@@ -101,7 +106,7 @@ def seed_database(reset=False):
             farming_type="Non-Organic",
             crop_type="Organic Cotton",
             expected_yield=1800,
-            cultivation_date=datetime.utcnow() - timedelta(days=10),
+            cultivation_date=datetime.now(timezone.utc) - timedelta(days=10),
             tx_hash=None,
             block_number=None,
             blockchain_status="DB_ONLY",
@@ -119,8 +124,8 @@ def seed_database(reset=False):
             crop_name="Basmati Rice",
             quality_grade="Grade A+",
             price=1500000000000000000, # 1.5 ETH in Wei
-            test_date=datetime.utcnow() - timedelta(days=10),
-            expiry_date=datetime.utcnow() + timedelta(days=365),
+            test_date=datetime.now(timezone.utc) - timedelta(days=10),
+            expiry_date=datetime.now(timezone.utc) + timedelta(days=365),
             certification_status="APPROVED",
             tx_hash="0xbc9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f43210123456789abcdef0123456789ab",
             block_number=20
@@ -133,8 +138,8 @@ def seed_database(reset=False):
             crop_name="Alphonso Mango",
             quality_grade="Grade A",
             price=3000000000000000000, # 3.0 ETH in Wei
-            test_date=datetime.utcnow() - timedelta(days=5),
-            expiry_date=datetime.utcnow() + timedelta(days=30),
+            test_date=datetime.now(timezone.utc) - timedelta(days=5),
+            expiry_date=datetime.now(timezone.utc) + timedelta(days=30),
             certification_status="APPROVED",
             tx_hash="0xcd8e7f6a5b4c3d2e1f0a9b8c7d6e5f43210123456789abcdef0123456789abcde",
             block_number=22

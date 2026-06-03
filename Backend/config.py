@@ -11,3 +11,10 @@ class Config:
     # Force absolute path for SQLite
     DATABASE_PATH = os.path.join(BASE_DIR, 'agrochain.db')
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{DATABASE_PATH}"
+
+    # SMS Gateway Configurations
+    SMS_ENABLED = os.environ.get('SMS_ENABLED', 'False').lower() == 'true'
+    SMS_GATEWAY_URL = os.environ.get('SMS_GATEWAY_URL', '')
+    SMS_GATEWAY_USER = os.environ.get('SMS_GATEWAY_USER', '')
+    SMS_GATEWAY_PASSWORD = os.environ.get('SMS_GATEWAY_PASSWORD', '')
+

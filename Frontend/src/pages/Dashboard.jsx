@@ -19,7 +19,6 @@ export default function Dashboard() {
   });
   const [myCrops, setMyCrops] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [verifying, setVerifying] = useState(null);
   const navigate = useNavigate();
 
   const handleWalletLink = async () => {
@@ -32,59 +31,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleLazyVerify = async (crop) => {
-    if (!isConnected) {
-      const address = await connectWallet();
-      if (!address) return;
-    }
-
-    try {
-      setVerifying(crop.id);
-      const farmerId = Math.floor(Date.now() / 1000);
-      const cultivationTimestamp = Math.floor(new Date(crop.cultivation_date).getTime() / 1000);
-
-      // 1. Contract Call
-      const tx = await contracts.farmerRegistry.registerFarmer(
-        farmerId,
-        user.name,
-        crop.farm_location,
-        crop.farm_size,
-        crop.farming_type,
-        crop.crop_type,
-        parseInt(crop.expected_yield),
-        cultivationTimestamp
-      );
-
-      const receipt = await tx.wait();
-      
-      // 2. Log to Explorer
-      await axios.post('/api/explorer/log-tx', {
-        tx_hash: tx.hash,
-        block_number: receipt.blockNumber,
-        from_address: tx.from,
-        to_address: tx.to,
-        amount: 0,
-        method_name: 'registerFarmer (Lazy)',
-        event_data: JSON.stringify({ farmerId, cropId: crop.id })
-      });
-
-      // 3. Update DB
-      await axios.post(`/api/farmer/update-blockchain-status/${crop.id}`, {
-        tx_hash: tx.hash,
-        block_number: receipt.blockNumber
-      });
-
-      // Refresh list
-      const res = await axios.get('/api/farmer/my-crops');
-      setMyCrops(res.data);
-      alert('Crop successfully verified on blockchain!');
-    } catch (err) {
-      console.error(err);
-      alert('Verification failed. Please try again.');
-    } finally {
-      setVerifying(null);
-    }
-  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -182,10 +128,7 @@ export default function Dashboard() {
             </div>
           </div>
           <button 
-            onClick={() => {
-              const el = document.getElementById('pending-verification');
-              el?.scrollIntoView({ behavior: 'smooth' });
-            }}
+            onClick={() => navigate('/farmer/crops')}
             className="whitespace-nowrap flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-blue-600/20 transition"
           >
             Review Pending <ArrowRight className="h-4 w-4" />
@@ -244,47 +187,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Farmer's Crop Status (Lazy Verification) */}
-      {user?.role === 'FARMER' && myCrops.length > 0 && (
-        <div id="pending-verification" className="space-y-4">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Your Crop Registration History</h3>
-          <div className="grid grid-cols-1 gap-4">
-            {myCrops.map(crop => (
-              <div key={crop.id} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className={`p-2.5 rounded-xl ${crop.blockchain_status === 'VERIFIED' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40' : 'bg-slate-50 text-slate-400 dark:bg-slate-800'}`}>
-                    <Sprout className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white">{crop.crop_type}</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{crop.farm_location} • {crop.expected_yield}kg</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  {crop.blockchain_status === 'VERIFIED' ? (
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-full">
-                      <ShieldCheck className="h-3.5 w-3.5" /> Blockchain Verified
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => handleLazyVerify(crop)}
-                      disabled={verifying === crop.id}
-                      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition disabled:opacity-50"
-                    >
-                      {verifying === crop.id ? (
-                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                      ) : <ShieldCheck className="h-3.5 w-3.5" />}
-                      Verify Now
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Grid Menu of Actions */}
       <div>
         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Operations Console</h3>
@@ -318,11 +220,11 @@ export default function Dashboard() {
             </div>
             <div className="space-y-1">
               <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Microfinance Portal</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Fund farmers directly with test ETH and track investment metrics.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Fund farmers directly with test ETH / Rupees (Rs.) and track investment metrics.</p>
             </div>
           </Link>
 
-          {/* Farmer Specific Action */}
+          {/* Farmer Specific Action: Register Crops */}
           {(user?.role === 'FARMER' || user?.role === 'ADMIN') && (
             <Link to="/farmer/register" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl text-emerald-600 group-hover:scale-105 transition-transform shrink-0">
@@ -331,6 +233,19 @@ export default function Dashboard() {
               <div className="space-y-1">
                 <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Register Crops</h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">FARMER: Register a new cultivation lot to request quality verifications.</p>
+              </div>
+            </Link>
+          )}
+
+          {/* Farmer Specific Action: My Crop */}
+          {(user?.role === 'FARMER' || user?.role === 'ADMIN') && (
+            <Link to="/farmer/crops" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl text-emerald-600 group-hover:scale-105 transition-transform shrink-0">
+                <Layers className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">My Crop</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">FARMER: View your crop registration history and track blockchain verification status.</p>
               </div>
             </Link>
           )}
@@ -374,6 +289,7 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
     </div>
   );
 }

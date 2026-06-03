@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
-import { Search, CheckCircle, XCircle, ShieldAlert, Cpu, UserCheck } from 'lucide-react';
+import { Search, CheckCircle, XCircle, ShieldAlert, Cpu, UserCheck, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 
 export default function QualityTesting() {
@@ -125,11 +125,19 @@ export default function QualityTesting() {
   return (
     <div className="space-y-8 py-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <UserCheck className="h-6 w-6 text-emerald-600" /> Cultivation Quality Approvals
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Search farmer crop listings and verify agricultural credentials on-chain</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <UserCheck className="h-6 w-6 text-emerald-600" /> Cultivation Quality Approvals
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Search farmer crop listings and verify agricultural credentials on-chain</p>
+          </div>
         </div>
 
         {/* Search Bar */}

@@ -56,20 +56,36 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, role, walletAddress) => {
+  const register = async (name, email, password, role, walletAddress, phoneNumber, otpCode) => {
     try {
       const res = await axios.post('/api/auth/register', {
         name,
         email,
         password,
         role,
-        wallet_address: walletAddress || null
+        wallet_address: walletAddress || null,
+        phone_number: phoneNumber,
+        otp_code: otpCode
       });
       return { success: true, user: res.data.user };
     } catch (err) {
       return {
         success: false,
         message: err.response?.data?.message || 'Registration failed. Please try again.'
+      };
+    }
+  };
+
+  const sendOtp = async (phoneNumber) => {
+    try {
+      const res = await axios.post('/api/auth/send-otp', {
+        phone_number: phoneNumber
+      });
+      return { success: true, data: res.data };
+    } catch (err) {
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Failed to send OTP. Please check the phone number.'
       };
     }
   };
@@ -97,11 +113,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, linkWallet }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, linkWallet, sendOtp }}>
       {children}
     </AuthContext.Provider>
   );
 };
+
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

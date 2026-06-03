@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -13,6 +14,7 @@ import { ethers } from 'ethers';
 export default function ConsumerTracking() {
   const { isConnected, connectWallet, contracts } = useWallet();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Navigation state: 'explorer', 'profile', 'details'
   const [view, setView] = useState('explorer');
@@ -254,7 +256,7 @@ export default function ConsumerTracking() {
   // Investment Calculations
   const totalFundingWei = investments.reduce((sum, inv) => sum + BigInt(inv.amount), BigInt(0));
   const totalFundingEth = parseFloat(ethers.formatEther(totalFundingWei)).toFixed(4);
-  const targetPriceEth = product ? parseFloat(ethers.formatEther(product.price)) : 0;
+  const targetPriceEth = product ? parseFloat(ethers.formatEther(product.price.toString())) : 0;
   const fundingPercentage = targetPriceEth > 0 ? Math.min(Math.round((parseFloat(totalFundingEth) / targetPriceEth) * 100), 100) : 0;
 
   return (
@@ -264,16 +266,24 @@ export default function ConsumerTracking() {
       {view === 'explorer' && (
         <div className="space-y-8">
           {/* Header */}
-          <div className="text-center max-w-2xl mx-auto space-y-3">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
-              <ShieldCheck className="h-3.5 w-3.5" /> Immutable Supply Chain Directory
+          <div className="flex items-start gap-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition shrink-0"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="text-left space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                <ShieldCheck className="h-3.5 w-3.5" /> Immutable Supply Chain Directory
+              </div>
+              <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white sm:text-4xl">
+                AgriBlock Discovery Portal
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Browse registered farms, verify agricultural quality inspects, trace crop timelines, and review decentralized ratings.
+              </p>
             </div>
-            <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white sm:text-4xl">
-              AgriBlock Discovery Portal
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Browse registered farms, verify agricultural quality inspects, trace crop timelines, and review decentralized ratings.
-            </p>
           </div>
 
           {/* Filters Bar */}
@@ -593,7 +603,7 @@ export default function ConsumerTracking() {
                 <div className="grid sm:grid-cols-3 gap-4 text-center text-xs">
                   <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl">
                     <span className="text-slate-400 block mb-0.5">Escrow Funding Received</span>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">{totalFundingEth} ETH</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">Rs. {Math.round(parseFloat(totalFundingEth || 0) * 250000).toLocaleString('en-IN')} ({totalFundingEth} ETH)</span>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl">
                     <span className="text-slate-400 block mb-0.5">Active Investors</span>

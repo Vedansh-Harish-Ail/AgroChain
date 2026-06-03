@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
@@ -10,13 +10,14 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    phone_number = db.Column(db.String(20), unique=True, nullable=True)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(50), nullable=False) # FARMER, TESTER, CONSUMER, ADMIN
     wallet_address = db.Column(db.String(42), unique=True, nullable=True) # Linked Metamask Address
     wallet_type = db.Column(db.String(50), default='NONE') # NONE, METAMASK
     onboarding_complete = db.Column(db.Boolean, default=False)
     is_approved = db.Column(db.Boolean, default=False) # For farmers/testers approval
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     farmer_profile = db.relationship('Farmer', backref='user', uselist=False, cascade="all, delete-orphan")
@@ -35,6 +36,7 @@ class User(db.Model):
             'id': self.id,
             'name': self.name,
             'email': self.email,
+            'phone_number': self.phone_number,
             'role': self.role,
             'wallet_address': self.wallet_address,
             'wallet_type': self.wallet_type,
@@ -42,6 +44,26 @@ class User(db.Model):
             'is_approved': self.is_approved,
             'created_at': self.created_at.isoformat()
         }
+
+
+class OTPVerification(db.Model):
+    __tablename__ = 'otp_verifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    phone_number = db.Column(db.String(20), unique=True, nullable=False)
+    otp_code = db.Column(db.String(6), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'phone_number': self.phone_number,
+            'otp_code': self.otp_code,
+            'expires_at': self.expires_at.isoformat(),
+            'created_at': self.created_at.isoformat()
+        }
+
 
 
 class Farmer(db.Model):
@@ -59,7 +81,7 @@ class Farmer(db.Model):
     block_number = db.Column(db.Integer, nullable=True)
     blockchain_status = db.Column(db.String(50), default='DB_ONLY') # DB_ONLY, PENDING, VERIFIED
     is_approved = db.Column(db.Boolean, default=False) # Quality Tester approved cultivation
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     products = db.relationship('Product', backref='farmer', lazy=True, cascade="all, delete-orphan")
@@ -100,8 +122,8 @@ class Product(db.Model):
     certification_status = db.Column(db.String(50), nullable=False) # APPROVED, REJECTED
     tx_hash = db.Column(db.String(66), nullable=True)
     block_number = db.Column(db.Integer, nullable=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     investments = db.relationship('Investment', backref='product', lazy=True)
@@ -137,8 +159,8 @@ class Investment(db.Model):
     block_number = db.Column(db.Integer, nullable=True)
     profit_percentage = db.Column(db.Integer, default=10) # expected profit rate
     status = db.Column(db.String(50), default='ACTIVE') # ACTIVE, COMPLETED, REFUNDED
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
@@ -171,8 +193,8 @@ class Rating(db.Model):
     comment = db.Column(db.Text, nullable=True)
     tx_hash = db.Column(db.String(66), nullable=True)
     block_number = db.Column(db.Integer, nullable=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
@@ -201,7 +223,7 @@ class Transaction(db.Model):
     from_address = db.Column(db.String(42), nullable=False)
     to_address = db.Column(db.String(42), nullable=True)
     amount = db.Column(db.BigInteger, default=0) # Value sent in Wei
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     method_name = db.Column(db.String(100), nullable=True)
     event_data = db.Column(db.Text, nullable=True) # Serialized event logs JSON
 
@@ -226,7 +248,7 @@ class AuditLog(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     action = db.Column(db.String(100), nullable=False) # e.g. LOGIN, USER_APPROVED, CROP_REGISTERED
     details = db.Column(db.Text, nullable=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
@@ -247,7 +269,7 @@ class CropUpdate(db.Model):
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
     day_count = db.Column(db.Integer, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {

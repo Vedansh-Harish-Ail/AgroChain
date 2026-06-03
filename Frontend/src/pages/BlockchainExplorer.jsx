@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Cpu, Search, Layers, Calendar, ArrowRight, ArrowLeftRight, HelpCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Cpu, Search, Layers, Calendar, ArrowRight, ArrowLeftRight, HelpCircle, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { ethers } from 'ethers';
 
 export default function BlockchainExplorer() {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [txs, setTxs] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,6 +54,15 @@ export default function BlockchainExplorer() {
 
   return (
     <div className="space-y-8 py-4">
+      {/* Back button */}
+      <div className="flex items-center">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center justify-center h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition shrink-0"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+      </div>
       {/* Explorer Banner */}
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">
         <div className="max-w-2xl mx-auto text-center space-y-6">
@@ -164,7 +175,7 @@ export default function BlockchainExplorer() {
                   <div>
                     <span className="text-xs text-slate-400 uppercase tracking-wider block font-sans">Value Transferred</span>
                     <span className="text-slate-900 dark:text-white font-semibold">
-                      {selectedTx.amount > 0 ? `${ethers.formatEther(selectedTx.amount)} ETH` : '0 ETH'}
+                      {selectedTx.amount > 0 ? `Rs. ${Math.round(parseFloat(ethers.formatEther(selectedTx.amount.toString())) * 250000).toLocaleString('en-IN')} (${ethers.formatEther(selectedTx.amount.toString())} ETH)` : 'Rs. 0 (0 ETH)'}
                     </span>
                   </div>
                 </div>
@@ -215,7 +226,7 @@ export default function BlockchainExplorer() {
                             </span>
                           </td>
                           <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
-                            {tx.amount > 0 ? `${ethers.formatEther(tx.amount)} ETH` : '0'}
+                            {tx.amount > 0 ? `Rs. ${Math.round(parseFloat(ethers.formatEther(tx.amount.toString())) * 250000).toLocaleString('en-IN')} (${ethers.formatEther(tx.amount.toString())} ETH)` : '0'}
                           </td>
                           <td className="py-3.5 px-4 font-sans text-slate-500 dark:text-slate-450">
                             {new Date(tx.timestamp).toLocaleTimeString()}

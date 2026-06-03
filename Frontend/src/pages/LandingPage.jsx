@@ -100,32 +100,32 @@ const marketplaceItems = [
     alt: 'Organic Tomatoes',
     name: 'Premium Organic Tomatoes',
     farm: 'GreenValley Farms',
-    location: 'Salinas, CA',
-    price: '$1.20 / lb',
+    location: 'Nashik, Maharashtra',
+    price: '₹40 / kg',
   },
   {
     img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBPw-B3iiDUqUWe-FqFnPs-1fU6g0OIQWY8-lHcB2O-W46zyNDk2bNTe-kAEcm8wezhBpQv3w4LL-EY2X6kAHC7qnO1IvAnizEofClBIHlhkH0xElbWJkTp5ZNuNg19yMpNCBq_U1aTtr6IIrZlug_UrJ_x6GXA2UhoIXgvly3XZMEucH2Fzxg8gQwTCvG8XEByg75XZoE2w_dm1C1Ibt6SN-kq4ldeVJD6Fzs6ixrUBDBYAnTYxV5i8XmlmbPskZnUeKf1EAe78uc',
     alt: 'Basmati Rice',
     name: 'High-Yield Basmati Rice',
     farm: 'Punjab Agro Hub',
-    location: 'Punjab, India',
-    price: '$850 / ton',
+    location: 'Amritsar, Punjab',
+    price: '₹60,000 / ton',
   },
   {
     img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBmVnpoDcmu5hYJrEIrUVi555IGtBZL2PkjjsnNhobauMKqLVJaD1xuOvh_IOl42P-kcEeEPlb6932johAomyY_mOOAqO4dqnMhy4wquD9w_PZx5h_HxQE4lzm72cyyo05Nss_IFE1Oo1oBfGtrnLIgA_YOmZFZkU5LvYdqRrq5w482HE6-1f3pFWPa5j0ua5MJ99fIoqxIJhRZoNjzK2qL50E3gy_XVj3QlKRta3QF15FFlLdih3ozBkHW0QJzmB3qN3kVhSwKyj0',
     alt: 'Sunflower Seeds',
     name: 'Organic Sunflower Seeds',
     farm: 'HelioTerra Farms',
-    location: 'Kyiv, UA',
-    price: '$410 / ton',
+    location: 'Nagpur, Maharashtra',
+    price: '₹35,000 / ton',
   },
   {
     img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAp_M47RIRkIBAuR87atc_9Wg2mCfvqNe2l9m_Z0ozXqCKm_CtGQYraIYrp2UDBKOjG94HJTylkD9TFEv2d9CIhi9o-9WDXhEymMYGwk8-ZvNquWH1NvdJwMOaKJTqYiKKxTzsTvutit5H0Q1jH54eOkExGex9MfJyHCGyCcPKjXIKjlDdr4nUV_ySeDOHIHzRoFaU6Sqjuy9ZQvruTFJ3EtZdqmMdOqM3CGNwuOf7wHUmySifoy8spxg8AhoW7MTnCTKdu-65QOQU',
     alt: 'Arabica Coffee',
     name: 'Grade-A Arabica Beans',
     farm: 'Andean Growers',
-    location: 'Antioquia, CO',
-    price: '$4.80 / lb',
+    location: 'Chikmagalur, Karnataka',
+    price: '₹350 / kg',
   },
 ];
 
@@ -426,7 +426,7 @@ export default function LandingPage() {
               <Sprout className="h-6 w-6" /> AgroChain
             </div>
             <p className="text-sm text-slate-400 max-w-xs leading-relaxed">
-              © 2024 AgroChain Ecosystem. Global Ledger for Agricultural Integrity.
+              © {new Date().getFullYear()} AgroChain Ecosystem. Global Ledger for Agricultural Integrity.
             </p>
           </div>
 
