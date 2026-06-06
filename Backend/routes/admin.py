@@ -36,6 +36,35 @@ def approve_user(current_user, user_id):
     }), 200
 
 
+@admin_bp.route('/verify-farmer/<int:user_id>', methods=['POST'])
+@roles_allowed('ADMIN')
+def verify_farmer(current_user, user_id):
+    user = User.query.get(user_id)
+    if not user or user.role != 'FARMER':
+        return jsonify({'message': 'Farmer not found'}), 404
+        
+    data = request.get_json() or {}
+    verify = data.get('verify', True)
+    
+    user.is_verified_farmer = verify
+    db.session.commit()
+    
+    # Audit log
+    action = 'FARMER_PROFILE_VERIFIED' if verify else 'FARMER_PROFILE_UNVERIFIED'
+    audit = AuditLog(
+        user_id=current_user.id,
+        action=action,
+        details=f"Admin {current_user.name} set verification status for farmer {user.name} to {verify}."
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({
+        'message': f"Farmer profile {'verified' if verify else 'unverified'} successfully!",
+        'user': user.to_dict()
+    }), 200
+
+
 @admin_bp.route('/audit-logs', methods=['GET'])
 @roles_allowed('ADMIN')
 def get_audit_logs(current_user):
@@ -51,6 +80,7 @@ def get_analytics(current_user):
     farmer_count = User.query.filter_by(role='FARMER').count()
     tester_count = User.query.filter_by(role='TESTER').count()
     consumer_count = User.query.filter_by(role='CONSUMER').count()
+    investor_count = User.query.filter_by(role='INVESTOR').count()
     
     # Funding Volume
     total_funding = db.session.query(db.func.sum(Investment.amount)).scalar() or 0
@@ -80,7 +110,8 @@ def get_analytics(current_user):
         'user_counts': {
             'farmers': farmer_count,
             'testers': tester_count,
-            'consumers': consumer_count
+            'consumers': consumer_count,
+            'investors': investor_count
         },
         'total_funding_wei': total_funding,
         'crop_categories': crop_categories,

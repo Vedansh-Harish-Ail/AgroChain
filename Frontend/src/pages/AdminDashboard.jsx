@@ -11,6 +11,94 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const renderLogDetails = (details) => {
+    if (!details) return null;
+    
+    const txRegex = /(0x[a-fA-F0-9]{64})/;
+    const cropRegex = /(crop ID \d+|Crop \d+|crop ID: \d+|Crop ID: \d+|ID: \d+)/i;
+    const lotRegex = /(Lot \d+|lot \d+)/i;
+    
+    const parts = [];
+    let remaining = details;
+    
+    while (remaining) {
+      const txMatch = remaining.match(txRegex);
+      const cropMatch = remaining.match(cropRegex);
+      const lotMatch = remaining.match(lotRegex);
+      
+      if (!txMatch && !cropMatch && !lotMatch) {
+        parts.push(remaining);
+        break;
+      }
+      
+      const txIndex = txMatch ? txMatch.index : Infinity;
+      const cropIndex = cropMatch ? cropMatch.index : Infinity;
+      const lotIndex = lotMatch ? lotMatch.index : Infinity;
+      
+      const minIndex = Math.min(txIndex, cropIndex, lotIndex);
+      
+      if (minIndex === txIndex) {
+        const matchText = txMatch[0];
+        const matchIdx = txMatch.index;
+        parts.push(remaining.substring(0, matchIdx));
+        parts.push(
+          <a
+            key={remaining + matchIdx + 'tx'}
+            href={`/explorer`}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/explorer', { state: { searchQuery: matchText } });
+            }}
+            className="font-mono text-[10px] bg-purple-50 text-purple-650 dark:bg-purple-950/40 dark:text-purple-400 hover:underline px-1.5 py-0.5 rounded border border-purple-100 dark:border-purple-900 inline-block font-semibold ml-1"
+          >
+            {matchText.substring(0, 8)}...{matchText.substring(matchText.length - 6)}
+          </a>
+        );
+        remaining = remaining.substring(matchIdx + matchText.length);
+      } else if (minIndex === cropIndex) {
+        const matchText = cropMatch[0];
+        const matchIdx = cropMatch.index;
+        const digits = matchText.match(/\d+/)[0];
+        parts.push(remaining.substring(0, matchIdx));
+        parts.push(
+          <a
+            key={remaining + matchIdx + 'crop'}
+            href={`/explorer`}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/explorer', { state: { searchType: 'CROP', query: digits } });
+            }}
+            className="font-bold text-emerald-600 hover:underline dark:text-emerald-400 font-mono text-[11px] ml-1"
+          >
+            {matchText}
+          </a>
+        );
+        remaining = remaining.substring(matchIdx + matchText.length);
+      } else {
+        const matchText = lotMatch[0];
+        const matchIdx = lotMatch.index;
+        const digits = matchText.match(/\d+/)[0];
+        parts.push(remaining.substring(0, matchIdx));
+        parts.push(
+          <a
+            key={remaining + matchIdx + 'lot'}
+            href={`/explorer`}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/explorer', { state: { searchType: 'LOT', query: digits } });
+            }}
+            className="font-bold text-cyan-600 hover:underline dark:text-cyan-400 font-mono text-[11px] ml-1"
+          >
+            {matchText}
+          </a>
+        );
+        remaining = remaining.substring(matchIdx + matchText.length);
+      }
+    }
+    
+    return <span>{parts}</span>;
+  };
+
   const loadAdminData = async () => {
     try {
       const uRes = await axios.get('/api/admin/users');
@@ -94,6 +182,10 @@ export default function AdminDashboard() {
                   <div className="flex justify-between">
                     <span className="text-slate-500">Consumers</span>
                     <span className="font-bold">{analytics.user_counts.consumers}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Investors</span>
+                    <span className="font-bold">{analytics.user_counts.investors || 0}</span>
                   </div>
                 </div>
               </div>
@@ -214,7 +306,7 @@ export default function AdminDashboard() {
                       <span className="font-semibold text-purple-600 dark:text-purple-400">{log.action}</span>
                       <span className="text-[10px] text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
                     </div>
-                    <p className="text-slate-600 dark:text-slate-450 leading-tight">{log.details}</p>
+                    <p className="text-slate-600 dark:text-slate-455 leading-tight">{renderLogDetails(log.details)}</p>
                     <p className="text-[9px] text-slate-400">Trigger: {log.user_name}</p>
                   </div>
                 ))}

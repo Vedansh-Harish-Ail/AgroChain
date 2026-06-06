@@ -6,15 +6,16 @@ finance_bp = Blueprint('finance', __name__)
 
 @finance_bp.route('/invest', methods=['POST'])
 @token_required
+@roles_allowed('INVESTOR', 'CONSUMER', 'ADMIN')
 def make_investment(current_user):
     data = request.get_json() or {}
     
     farmer_id = data.get('farmer_id')
     lot_number = data.get('lot_number')
     amount = data.get('amount')
-    tx_hash = data.get('tx_hash')
-    block_number = data.get('block_number')
     profit_percentage = data.get('profit_percentage', 10)
+    terms = data.get('terms', '')
+    message = data.get('message', '')
     
     if not farmer_id or not lot_number or not amount:
         return jsonify({'message': 'Missing required fields'}), 400
@@ -42,10 +43,10 @@ def make_investment(current_user):
         farmer_id=farmer_id,
         lot_number=lot_number,
         amount=amount,
-        tx_hash=tx_hash,
-        block_number=block_number,
         profit_percentage=profit_percentage,
-        status='ACTIVE'
+        terms=terms,
+        message=message,
+        status='PENDING'
     )
     
     db.session.add(new_investment)
@@ -54,20 +55,21 @@ def make_investment(current_user):
     # Audit log
     audit = AuditLog(
         user_id=current_user.id,
-        action='INVESTMENT_MADE',
-        details=f"Investor {current_user.name} funded Farmer project {farmer_id} Lot {lot_number} with {amount} Wei."
+        action='PROPOSAL_SUBMITTED',
+        details=f"Investor {current_user.name} submitted a funding proposal for Farmer {farmer_id} Lot {lot_number} with Rs. {amount}."
     )
     db.session.add(audit)
     db.session.commit()
     
     return jsonify({
-        'message': 'Investment successfully recorded!',
+        'message': 'Proposal submitted successfully!',
         'investment': new_investment.to_dict()
     }), 201
 
 
 @finance_bp.route('/my-investments', methods=['GET'])
 @token_required
+@roles_allowed('INVESTOR', 'CONSUMER', 'ADMIN')
 def get_my_investments(current_user):
     investments = Investment.query.filter_by(investor_id=current_user.id).all()
     return jsonify([inv.to_dict() for inv in investments]), 200
@@ -77,6 +79,18 @@ def get_my_investments(current_user):
 def get_farmer_investments(farmer_id):
     investments = Investment.query.filter_by(farmer_id=farmer_id).all()
     return jsonify([inv.to_dict() for inv in investments]), 200
+
+
+@finance_bp.route('/received-proposals', methods=['GET'])
+@roles_allowed('FARMER')
+def get_received_proposals(current_user):
+    crops = Farmer.query.filter_by(user_id=current_user.id).all()
+    if not crops:
+        return jsonify([]), 200
+    
+    crop_ids = [crop.id for crop in crops]
+    proposals = Investment.query.filter(Investment.farmer_id.in_(crop_ids)).all()
+    return jsonify([prop.to_dict() for prop in proposals]), 200
 
 
 @finance_bp.route('/all', methods=['GET'])
@@ -96,15 +110,17 @@ def update_investment_status(current_user, investment_id):
     data = request.get_json() or {}
     status = data.get('status')
     
-    if status not in ['ACTIVE', 'COMPLETED', 'REFUNDED']:
+    if status not in ['PENDING', 'ACCEPTED', 'DECLINED']:
         return jsonify({'message': 'Invalid status'}), 400
         
-    # Verify authorization (only Admin or the Farmer who received the investment can mark it completed/refunded)
+    # Verify authorization (only Admin or the Farmer who received the investment can mark it accepted/declined)
     farmer_user_id = investment.farmer.user_id
     if current_user.id != farmer_user_id and current_user.role != 'ADMIN':
         return jsonify({'message': 'Unauthorized to modify this investment status'}), 403
         
     investment.status = status
+    if status == 'ACCEPTED':
+        investment.farmer.timeline_status = 'FUNDING_COMPLETED'
     db.session.commit()
     
     # Audit log

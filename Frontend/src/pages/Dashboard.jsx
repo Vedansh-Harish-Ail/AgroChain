@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
 import { 
   Sprout, FileCheck, Coins, Eye, Cpu, Settings, ShieldCheck, 
-  HelpCircle, UserCheck, CheckCircle2, TrendingUp, Layers, AlertCircle, ArrowRight, Wallet
+  HelpCircle, UserCheck, CheckCircle2, TrendingUp, Layers, AlertCircle, ArrowRight, Wallet, Mail, Phone
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -19,6 +19,9 @@ export default function Dashboard() {
   });
   const [myCrops, setMyCrops] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [proposals, setProposals] = useState([]);
+  const [loadingProposals, setLoadingProposals] = useState(false);
+  const [proposalError, setProposalError] = useState('');
   const navigate = useNavigate();
 
   const handleWalletLink = async () => {
@@ -28,6 +31,31 @@ export default function Dashboard() {
     }
     if (address) {
       await linkWallet(address);
+    }
+  };
+
+  const fetchProposals = async () => {
+    setLoadingProposals(true);
+    try {
+      const res = await axios.get('/api/finance/received-proposals');
+      setProposals(res.data);
+    } catch (err) {
+      console.error("Failed to load proposals:", err);
+    } finally {
+      setLoadingProposals(false);
+    }
+  };
+
+  const handleProposalAction = async (proposalId, status) => {
+    setProposalError('');
+    try {
+      await axios.post(`/api/finance/update-status/${proposalId}`, { status });
+      const res = await axios.get('/api/finance/received-proposals');
+      setProposals(res.data);
+      alert(`Proposal successfully ${status.toLowerCase()}ed!`);
+    } catch (err) {
+      console.error(err);
+      setProposalError('Failed to update proposal status.');
     }
   };
 
@@ -49,6 +77,7 @@ export default function Dashboard() {
         if (user?.role === 'FARMER') {
           const myCropsRes = await axios.get('/api/farmer/my-crops');
           setMyCrops(myCropsRes.data);
+          fetchProposals();
         }
       } catch (err) {
         console.error("Failed to load dashboard metrics:", err);
@@ -64,6 +93,7 @@ export default function Dashboard() {
       case 'ADMIN': return 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400';
       case 'FARMER': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400';
       case 'TESTER': return 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400';
+      case 'INVESTOR': return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-400';
       default: return 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400';
     }
   };
@@ -113,17 +143,17 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Lazy Wallet Alert for Farmers */}
-      {user?.role === 'FARMER' && myCrops.some(c => c.blockchain_status === 'DB_ONLY') && (
+      {/* Pending Inspection Alert for Farmers */}
+      {user?.role === 'FARMER' && myCrops.some(c => c.verification_status === 'PENDING') && (
         <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5 dark:border-blue-900/30 dark:bg-blue-950/20 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex gap-4">
             <div className="p-3 bg-blue-100 dark:bg-blue-900/40 text-blue-600 rounded-xl shrink-0">
               <AlertCircle className="h-6 w-6" />
             </div>
             <div>
-              <h4 className="font-bold text-blue-900 dark:text-blue-100 text-lg">Blockchain Verification Pending</h4>
+              <h4 className="font-bold text-blue-900 dark:text-blue-100 text-lg">Quality Audits Pending</h4>
               <p className="text-sm text-blue-700 dark:text-blue-400 max-w-xl">
-                Some of your registered crops are only saved locally. To increase your trust score and attract more investors, verify them on the blockchain.
+                Some of your registered crop cultivations are awaiting on-site quality inspections and blockchain certification by verifiers.
               </p>
             </div>
           </div>
@@ -131,7 +161,7 @@ export default function Dashboard() {
             onClick={() => navigate('/farmer/crops')}
             className="whitespace-nowrap flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-blue-600/20 transition"
           >
-            Review Pending <ArrowRight className="h-4 w-4" />
+            Review Status <ArrowRight className="h-4 w-4" />
           </button>
         </div>
       )}
@@ -289,6 +319,109 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Received Partnership Proposals Section (Farmers only) */}
+      {user?.role === 'FARMER' && (
+        <div className="space-y-6 pt-4">
+          <div className="border-t border-slate-200 dark:border-slate-800 pt-6">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Coins className="h-5 w-5 text-emerald-650" /> Received Letters of Intent (LOI)
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Review Letters of Intent (LOI) and partnership proposals submitted by verified investors for your certified crop lots.</p>
+          </div>
+          
+          {proposalError && (
+            <div className="p-3 text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-xl dark:bg-rose-950/30 dark:text-rose-450 dark:border-rose-900/30">
+              {proposalError}
+            </div>
+          )}
+
+          {loadingProposals ? (
+            <div className="flex justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+            </div>
+          ) : proposals.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-350 p-8 text-center text-slate-400 dark:border-slate-850 dark:text-slate-500 text-xs">
+              No Letters of Intent (LOI) received yet.
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-6">
+              {proposals.map((prop) => (
+                <div 
+                  key={prop.id} 
+                  className={`rounded-2xl border bg-white p-6 shadow-sm dark:bg-slate-900 flex flex-col justify-between transition-all duration-300 ${
+                    prop.status === 'ACCEPTED' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 
+                    prop.status === 'DECLINED' ? 'border-slate-200 opacity-60 dark:border-slate-850' : 
+                    'border-slate-200 dark:border-slate-800'
+                  }`}
+                >
+                  <div className="space-y-4 text-xs">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-bold text-slate-950 dark:text-white text-sm">LOI from {prop.investor_name}</span>
+                        <p className="text-slate-450 dark:text-slate-500 text-[10px] mt-0.5">Lot Number: {prop.lot_number}</p>
+                      </div>
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        prop.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400' :
+                        prop.status === 'DECLINED' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-450' :
+                        'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-450'
+                      }`}>{prop.status}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl text-[11px]">
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Proposed Funding</span>
+                        <p className="font-bold text-slate-900 dark:text-white">Rs. {prop.amount.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Returns Share</span>
+                        <p className="font-bold text-slate-900 dark:text-white">{prop.profit_percentage}% yield margin</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 border-t border-slate-100 dark:border-slate-850 pt-3 text-[11px]">
+                      <p className="text-slate-700 dark:text-slate-355"><strong>Proposed Terms:</strong> {prop.terms}</p>
+                      <p className="text-slate-705 dark:text-slate-350 italic"><strong>Message:</strong> "{prop.message}"</p>
+                    </div>
+
+                    {/* Unlocked Contact Panel */}
+                    {prop.status === 'ACCEPTED' && (
+                      <div className="rounded-xl bg-emerald-50 border border-emerald-100/50 dark:bg-emerald-950/20 dark:border-emerald-900/40 p-3 space-y-1.5 text-[11px] animate-in fade-in duration-300">
+                        <p className="font-bold text-emerald-800 dark:text-emerald-450 flex items-center gap-1">
+                          <ShieldCheck className="h-4 w-4" /> Connection Established
+                        </p>
+                        <p className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mt-1">
+                          <Mail className="h-3.5 w-3.5 text-slate-400" /> {prop.investor_email || 'consumer@gmail.com'}
+                        </p>
+                        <p className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <Phone className="h-3.5 w-3.5 text-slate-400" /> {prop.investor_phone || '+10000000004'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {prop.status === 'PENDING' && (
+                    <div className="flex gap-2.5 mt-5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        onClick={() => handleProposalAction(prop.id, 'ACCEPTED')}
+                        className="flex-1 py-2 rounded-xl bg-emerald-650 hover:bg-emerald-600 text-white font-bold text-xs transition"
+                      >
+                        Accept Proposal
+                      </button>
+                      <button
+                        onClick={() => handleProposalAction(prop.id, 'DECLINED')}
+                        className="flex-1 py-2 rounded-xl border border-slate-200 text-rose-600 hover:bg-rose-50 dark:border-slate-800 dark:hover:bg-rose-950/30 font-bold text-xs transition"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

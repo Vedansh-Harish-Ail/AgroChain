@@ -33,7 +33,10 @@ def seed_database(reset=False):
             is_approved=True,
             wallet_address="0x70997970c51812dc3a010c7d01b50e0d17dc79c8", # Hardhat Account #1
             wallet_type="METAMASK",
-            onboarding_complete=True
+            onboarding_complete=True,
+            government_id="GOV1234567",
+            ownership_proof_url="https://agrochain-docs.s3.amazonaws.com/proofs/rajesh_land.pdf",
+            is_verified_farmer=True
         )
         farmer.set_password("test@123")
         db.session.add(farmer)
@@ -62,7 +65,39 @@ def seed_database(reset=False):
         consumer.set_password("test@123")
         db.session.add(consumer)
 
-        
+        # Investor
+        investor = User(
+            name="Suresh Mehta (Agri Investor)", 
+            email="investor@gmail.com", 
+            phone_number="+10000000005",
+            role="INVESTOR", 
+            is_approved=True,
+            wallet_address="0x90f79bf6eb2c4f870365e785982e1f101e93b906" # Hardhat Account #3
+        )
+        investor.set_password("test@123")
+        db.session.add(investor)
+
+        # Seed 5 additional farmers requested by user
+        additional_farmers = []
+        farmer_names = ["Ramesh Kumar", "Sanjay Singh", "Vijay Sharma", "Anil Verma", "Manoj Patil"]
+        for i in range(1, 6):
+            f_user = User(
+                name=farmer_names[i-1],
+                email=f"farmer{i}@gmail.com",
+                phone_number=f"+1000000010{i}",
+                role="FARMER",
+                is_approved=True,
+                wallet_address=f"0x{i}0997970c51812dc3a010c7d01b50e0d17dc79c8"[:42],
+                wallet_type="METAMASK",
+                onboarding_complete=True,
+                government_id=f"GOV000000{i}",
+                ownership_proof_url=f"https://agrochain-docs.s3.amazonaws.com/proofs/farmer{i}_land.pdf",
+                is_verified_farmer=True
+            )
+            f_user.set_password("test@123")
+            db.session.add(f_user)
+            additional_farmers.append(f_user)
+
         db.session.commit()
         print("Users seeded successfully!")
         
@@ -79,7 +114,16 @@ def seed_database(reset=False):
             tx_hash="0x5f87b8b4081c7e9976378baea28db3f7b98d1a1b1c7e9976378baea28db3f7b98d",
             block_number=12,
             blockchain_status="VERIFIED",
-            is_approved=True
+            is_approved=True,
+            timeline_status="PRODUCT_AVAILABLE",
+            land_survey_no="SUR-BAS-2026-101",
+            gps_latitude=18.5204,
+            gps_longitude=73.8567,
+            evidence_photos="[\"https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=600&q=80\"]",
+            verification_status="VERIFIED",
+            tester_remarks="All organic parameters verified. Soil nitrogen levels are excellent. Land survey deed validated.",
+            tester_id=3,
+            verification_date=datetime.now(timezone.utc) - timedelta(days=40)
         )
         db.session.add(crop1)
         
@@ -94,7 +138,16 @@ def seed_database(reset=False):
             tx_hash="0xa9b8c7d6e5f43210123456789abcdef0123456789abcdef0123456789abcdef0",
             block_number=15,
             blockchain_status="VERIFIED",
-            is_approved=True
+            is_approved=True,
+            timeline_status="TESTER_APPROVED",
+            land_survey_no="SUR-MNG-2026-302",
+            gps_latitude=19.9975,
+            gps_longitude=73.7898,
+            evidence_photos="[\"https://images.unsplash.com/photo-1553137148-ebb587be616c?auto=format&fit=crop&w=600&q=80\"]",
+            verification_status="VERIFIED",
+            tester_remarks="Orchard meets organic standards. Biological control methods for pests are verified. Recommended Grade A.",
+            tester_id=3,
+            verification_date=datetime.now(timezone.utc) - timedelta(days=55)
         )
         db.session.add(crop2)
         
@@ -110,9 +163,45 @@ def seed_database(reset=False):
             tx_hash=None,
             block_number=None,
             blockchain_status="DB_ONLY",
-            is_approved=False # Pending review
+            is_approved=False, # Pending review
+            timeline_status="CROP_REGISTERED",
+            land_survey_no="SUR-CTN-2026-409",
+            gps_latitude=21.1458,
+            gps_longitude=79.0882,
+            evidence_photos="[\"https://images.unsplash.com/photo-1594751543129-6701ad44e95b?auto=format&fit=crop&w=600&q=80\"]",
+            verification_status="PENDING"
         )
         db.session.add(crop3)
+
+        # Seed crops for additional farmers
+        additional_crops = []
+        crop_types = ["Premium Wheat", "Organic Sugarcane", "Yellow Turmeric", "Sweet Corn", "Organic Soybeans"]
+        locations = ["Punjab", "Uttar Pradesh", "Tamil Nadu", "Bihar", "Madhya Pradesh"]
+        for i, f_user in enumerate(additional_farmers):
+            crop = Farmer(
+                user_id=f_user.id,
+                farm_location=f"{locations[i]}, India",
+                farm_size="4 Hectares",
+                farming_type="Organic",
+                crop_type=crop_types[i],
+                expected_yield=2000 + i * 200,
+                cultivation_date=datetime.now(timezone.utc) - timedelta(days=30 + i * 5),
+                tx_hash=f"0x{i+3}f87b8b4081c7e9976378baea28db3f7b98d1a1b1c7e9976378baea28db3f7b98d"[:66],
+                block_number=13 + i,
+                blockchain_status="VERIFIED",
+                is_approved=True,
+                timeline_status="PRODUCT_AVAILABLE",
+                land_survey_no=f"SUR-ADD-2026-00{i}",
+                gps_latitude=20.0 + i * 1.5,
+                gps_longitude=75.0 + i * 1.5,
+                evidence_photos="[\"https://images.unsplash.com/photo-1594751543129-6701ad44e95b?auto=format&fit=crop&w=600&q=80\"]",
+                verification_status="VERIFIED",
+                tester_remarks="Seeded pre-verified additional crop listing.",
+                tester_id=3,
+                verification_date=datetime.now(timezone.utc) - timedelta(days=25 + i * 5)
+            )
+            db.session.add(crop)
+            additional_crops.append(crop)
         
         db.session.commit()
         
@@ -145,19 +234,36 @@ def seed_database(reset=False):
             block_number=22
         )
         db.session.add(product2)
+
+        # Seed products for additional crops
+        for i, crop in enumerate(additional_crops):
+            product = Product(
+                lot_number=2001 + i,
+                farmer_id=crop.id,
+                crop_name=crop.crop_type,
+                quality_grade="Grade A",
+                price=1000000000000000000 + i * 200000000000000000,
+                test_date=datetime.now(timezone.utc) - timedelta(days=5),
+                expiry_date=datetime.now(timezone.utc) + timedelta(days=180),
+                certification_status="APPROVED",
+                tx_hash=f"0x{i+3}bc9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f43210123456789abcdef0123456789ab"[:66],
+                block_number=21 + i
+            )
+            db.session.add(product)
+
         db.session.commit()
         
-        # Seed investments
+        # Seed investments (proposals)
         print("Seeding investments...")
         investment1 = Investment(
             investor_id=consumer.id,
             farmer_id=crop1.id,
             lot_number=product1.lot_number,
-            amount=500000000000000000, # 0.5 ETH in Wei
-            tx_hash="0xdef102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
-            block_number=25,
+            amount=150000, # Rs. 150,000
             profit_percentage=12,
-            status="ACTIVE"
+            terms="Lump sum payment return after successful harvest sales.",
+            message="We are interested in backing your organic Basmati Rice crop lot. We can discuss further over email.",
+            status="ACCEPTED"
         )
         db.session.add(investment1)
         db.session.commit()

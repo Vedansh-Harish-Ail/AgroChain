@@ -6,7 +6,7 @@ import {
   Search, ShieldCheck, Star, Award, CheckCircle2, 
   ChevronRight, MessageSquare, Plus, Calendar, MapPin, 
   Coins, Activity, FileText, UserCheck, History, Sparkles, 
-  AlertCircle, Filter, ArrowLeft, Loader2
+  AlertCircle, Filter, ArrowLeft, Loader2, ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
 import { ethers } from 'ethers';
@@ -52,6 +52,19 @@ export default function ConsumerTracking() {
   const [loadingRating, setLoadingRating] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState('');
+
+  const getPhotosList = (evidencePhotos) => {
+    if (!evidencePhotos) return [];
+    try {
+      const parsed = JSON.parse(evidencePhotos);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      if (typeof evidencePhotos === 'string') {
+        return evidencePhotos.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+    return [];
+  };
 
   // 1. Initial Load of Farmer Directory
   useEffect(() => {
@@ -366,6 +379,27 @@ export default function ConsumerTracking() {
                       <p className="text-xs text-slate-400 flex items-center gap-1">
                         <MapPin className="h-3.5 w-3.5 text-rose-500" /> {f.location}
                       </p>
+
+                      {/* Overall Rating Stars */}
+                      <div className="flex items-center gap-2 mt-1">
+                        {f.average_rating > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <div className="flex gap-0.5 text-amber-500">
+                              {Array.from({ length: Math.round(f.average_rating) }).map((_, i) => (
+                                <Star key={i} className="h-3 w-3 fill-amber-500 text-amber-500" />
+                              ))}
+                              {Array.from({ length: 5 - Math.round(f.average_rating) }).map((_, i) => (
+                                <Star key={i} className="h-3 w-3 text-slate-205 dark:text-slate-700" />
+                              ))}
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                              {f.average_rating} ({f.rating_count})
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-405 italic">No ratings</span>
+                        )}
+                      </div>
                     </div>
                     <span className="text-[10px] font-mono px-2 py-1 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                       ID: #{f.id}
@@ -466,6 +500,27 @@ export default function ConsumerTracking() {
                       <p>Cultivation Date: <span className="text-slate-800 dark:text-slate-200">{new Date(crop.cultivation_date).toLocaleDateString()}</span></p>
                     </div>
 
+                    {/* Ratings on crop card */}
+                    <div className="flex items-center gap-1 mt-2">
+                      {crop.average_rating > 0 ? (
+                        <div className="flex items-center gap-1">
+                          <div className="flex gap-0.5 text-amber-500">
+                            {Array.from({ length: Math.round(crop.average_rating) }).map((_, i) => (
+                              <Star key={i} className="h-3 w-3 fill-amber-500 text-amber-500" />
+                            ))}
+                            {Array.from({ length: 5 - Math.round(crop.average_rating) }).map((_, i) => (
+                              <Star key={i} className="h-3 w-3 text-slate-205 dark:text-slate-800" />
+                            ))}
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                            {crop.average_rating} ({crop.rating_count})
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-405 italic">No ratings</span>
+                      )}
+                    </div>
+
                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-emerald-650 font-bold">
                       <span>View Details &rarr;</span>
                     </div>
@@ -493,6 +548,28 @@ export default function ConsumerTracking() {
             
             {/* Left Content (Span 2) */}
             <div className="lg:col-span-2 space-y-8">
+
+              {selectedCrop.verification_status !== 'VERIFIED' ? (
+                <div className="rounded-2xl bg-rose-50/50 border border-rose-100 p-5 dark:bg-rose-950/20 dark:border-rose-900/30 flex gap-3 text-left">
+                  <AlertCircle className="h-6 w-6 text-rose-600 dark:text-rose-450 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-rose-900 dark:text-rose-205">Unverified Crop Warning</p>
+                    <p className="text-xs text-rose-700 dark:text-rose-400 leading-relaxed font-medium">
+                      This crop listing has not been verified by agricultural quality authorities yet. Capital investments or purchases are not recommended until it has been inspected and locked on the blockchain.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-emerald-50/55 border border-emerald-100 p-5 dark:bg-emerald-950/20 dark:border-emerald-900/30 flex gap-3 text-left">
+                  <ShieldCheck className="h-6 w-6 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Quality Verified & On-Chain Anchored</p>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed font-medium">
+                      This crop listing has been verified on-site by certified inspectors. All land survey details, GPS coordinates, and biochem results are signed and permanently stored on the ledger.
+                    </p>
+                  </div>
+                </div>
+              )}
               
               {/* SECTION 1: Crop Information */}
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-850 dark:bg-slate-900 space-y-5">
@@ -506,11 +583,17 @@ export default function ConsumerTracking() {
                     </h3>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                    selectedCrop.is_approved 
+                    selectedCrop.verification_status === 'VERIFIED' 
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-450 dark:border-emerald-900' 
+                      : selectedCrop.verification_status === 'REJECTED'
+                      ? 'bg-rose-50 text-rose-700 border-rose-250 dark:bg-rose-950/30 dark:text-rose-450 dark:border-rose-900'
                       : 'bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-amber-450 dark:border-amber-900'
                   }`}>
-                    {selectedCrop.is_approved ? 'Verified Crop' : 'Inspection Pending'}
+                    {selectedCrop.verification_status === 'VERIFIED' 
+                      ? 'Verified & On-Chain' 
+                      : selectedCrop.verification_status === 'REJECTED'
+                      ? 'Rejected by Inspector'
+                      : 'Inspection Pending'}
                   </span>
                 </div>
 
@@ -570,66 +653,141 @@ export default function ConsumerTracking() {
                     <div>
                       <span className="text-slate-400 block">Assigned Auditor</span>
                       <p className="font-bold text-slate-950 dark:text-white mt-0.5">
-                        {selectedCrop.is_approved ? 'Dr. Anita Sharma (Quality Inspector)' : 'Review Pending'}
+                        {selectedCrop.tester_name || (selectedCrop.is_approved ? 'Dr. Anita Sharma (Quality Inspector)' : 'Review Pending')}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Land Survey Number</span>
+                      <p className="font-mono font-semibold text-slate-950 dark:text-white mt-0.5">
+                        {selectedCrop.land_survey_no || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">GPS Coordinates</span>
+                      <p className="font-mono font-semibold text-slate-950 dark:text-white mt-0.5 flex items-center gap-1.5">
+                        {selectedCrop.gps_latitude ? `Lat: ${selectedCrop.gps_latitude}, Lng: ${selectedCrop.gps_longitude}` : 'N/A'}
+                        {selectedCrop.gps_latitude && (
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${selectedCrop.gps_latitude},${selectedCrop.gps_longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-emerald-600 hover:underline flex items-center gap-0.5"
+                          >
+                            <MapPin className="h-3 w-3" /> View Map <ExternalLink className="h-2 w-2" />
+                          </a>
+                        )}
                       </p>
                     </div>
                     <div>
                       <span className="text-slate-400 block">Inspection Approval Timestamp</span>
                       <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
-                        {product ? new Date(product.test_date).toLocaleString() : 'N/A'}
+                        {selectedCrop.verification_date 
+                          ? new Date(selectedCrop.verification_date).toLocaleString() 
+                          : (product ? new Date(product.test_date).toLocaleString() : 'N/A')}
                       </p>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <span className="text-slate-400 block">Quality remarks / lab notes</span>
-                    <p className="italic text-slate-600 dark:text-slate-400 bg-emerald-50/20 border border-emerald-100/50 p-3 rounded-lg dark:bg-slate-950 dark:border-slate-800">
-                      {selectedCrop.is_approved 
-                        ? '"All crop biochemistry parameters satisfy chemical-free farming regulations. Soil toxicity check passed. Verified compliant organic grade."' 
-                        : '"Awaiting initial on-site testing logs and verification parameters."'}
-                    </p>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-slate-400 block">Quality remarks / lab notes</span>
+                      <p className="italic text-slate-600 dark:text-slate-400 bg-emerald-50/20 border border-emerald-100/50 p-3 rounded-lg dark:bg-slate-950 dark:border-slate-800">
+                        {selectedCrop.tester_remarks 
+                          ? `"${selectedCrop.tester_remarks}"` 
+                          : (selectedCrop.is_approved 
+                            ? '"All crop biochemistry parameters satisfy chemical-free farming regulations. Soil toxicity check passed. Verified compliant organic grade."' 
+                            : '"Awaiting initial on-site testing logs and verification parameters."')}
+                      </p>
+                    </div>
                   </div>
+
+                  {getPhotosList(selectedCrop.evidence_photos).length > 0 && (
+                    <div className="sm:col-span-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 block mb-2 font-medium">Submitted Field Evidence</span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {getPhotosList(selectedCrop.evidence_photos).map((url, i) => (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            key={i}
+                            className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 aspect-square hover:opacity-80 transition block"
+                          >
+                            <img src={url} alt="Field Evidence" className="h-full w-full object-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* SECTION 4: Funding Transparency */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-850 dark:bg-slate-900 space-y-6">
-                <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              {/* SECTION 4: Partnership & Funding Status */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-855 dark:bg-slate-900 space-y-5">
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-center">
                   <h4 className="font-extrabold text-slate-900 dark:text-white text-md flex items-center gap-2">
-                    <Coins className="h-5 w-5 text-emerald-600" /> Capital & Escrow Transparency
+                    <Coins className="h-5 w-5 text-emerald-600" /> Partnership & Funding Status
                   </h4>
+                  {investments.some(inv => inv.status === 'ACCEPTED') ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 uppercase tracking-wider">
+                      Funded & Partnered
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 uppercase tracking-wider">
+                      Open for Proposals
+                    </span>
+                  )}
                 </div>
 
-                <div className="grid sm:grid-cols-3 gap-4 text-center text-xs">
-                  <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl">
-                    <span className="text-slate-400 block mb-0.5">Escrow Funding Received</span>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">Rs. {Math.round(parseFloat(totalFundingEth || 0) * 250000).toLocaleString('en-IN')} ({totalFundingEth} ETH)</span>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl">
-                    <span className="text-slate-400 block mb-0.5">Active Investors</span>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">{investments.length}</span>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl">
-                    <span className="text-slate-400 block mb-0.5">Target Completion</span>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">{fundingPercentage}%</span>
-                  </div>
-                </div>
+                {investments.some(inv => inv.status === 'ACCEPTED') ? (
+                  (() => {
+                    const acceptedLoi = investments.find(inv => inv.status === 'ACCEPTED');
+                    return (
+                      <div className="space-y-4 text-xs">
+                        <div className="grid sm:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl">
+                          <div>
+                            <span className="text-slate-400 block mb-0.5">Investor Partner</span>
+                            <span className="font-bold text-slate-900 dark:text-white">{acceptedLoi.investor_name}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block mb-0.5">Funding Capital</span>
+                            <span className="font-bold text-emerald-650 dark:text-emerald-450">Rs. {acceptedLoi.amount.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block mb-0.5">Returns Share</span>
+                            <span className="font-semibold text-slate-900 dark:text-white">{acceptedLoi.profit_percentage}% yield margin</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block mb-0.5">Agreement Date</span>
+                            <span className="font-mono">{new Date(acceptedLoi.timestamp).toLocaleDateString()}</span>
+                          </div>
+                        </div>
 
-                {/* Progress bar */}
-                <div className="space-y-1">
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${fundingPercentage}%` }} 
-                    />
-                  </div>
-                </div>
+                        <div className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl dark:bg-slate-950 dark:border-slate-800 leading-relaxed text-[11px]">
+                          <p className="text-slate-650 dark:text-slate-400"><strong>Mutual Terms:</strong> "{acceptedLoi.terms}"</p>
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="space-y-4 text-xs">
+                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                      This certified crop lot is open for micro-finance investments. Verified partners can submit custom profit margin proposals and Letter of Intents (LOI) to fund labor, seeds, and organic fertilizers.
+                    </p>
 
-                <div className="rounded-xl border border-slate-100 p-3 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/50">
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                    <span className="font-bold text-emerald-650 dark:text-emerald-450">AgriBlock Escrow Statement:</span> Crowdsourced micro-investments directly fund the organic seeds, biological fertilizers, and fair-wage labor for this crop lot. Funds are locked in Solidity escrow contracts and released in stages based on validator milestones.
-                  </p>
-                </div>
+                    {product && product.certification_status === 'APPROVED' && (
+                      <div className="pt-2">
+                        <button
+                          onClick={() => navigate('/finance', { state: { selectLot: product.lot_number } })}
+                          className="w-full flex justify-center items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-650 dark:hover:bg-emerald-600 text-white py-3 text-xs font-bold transition shadow-md shadow-emerald-650/10"
+                        >
+                          <Coins className="h-4 w-4" /> 
+                          {user?.role === 'FARMER' ? 'View Received Proposals' : 'Submit Letter of Intent / Propose Partnership'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Feedback list */}
@@ -675,72 +833,100 @@ export default function ConsumerTracking() {
                   <Sparkles className="h-5 w-5 text-emerald-600" /> Traceability Timeline
                 </h3>
 
-                <div className="relative border-l-2 border-emerald-100 dark:border-slate-800 ml-3 pl-6 space-y-6 text-xs">
-                  
-                  {/* Step 1: Crop Registered */}
-                  <div className="relative">
-                    <div className="absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-4 ring-white dark:ring-slate-900">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-                    </div>
-                    <h4 className="font-bold text-slate-950 dark:text-white">Crop Registered</h4>
-                    <p className="text-slate-500 mt-0.5">Farmer declared crop on-chain.</p>
-                  </div>
+                {(() => {
+                  const getStatusStepNumber = (status) => {
+                    switch (status) {
+                      case 'CROP_REGISTERED': return 1;
+                      case 'QUALITY_TESTED': return 2;
+                      case 'TESTER_APPROVED': return 3;
+                      case 'FUNDING_COMPLETED': return 4;
+                      case 'READY_TO_HARVEST': return 5;
+                      case 'HARVEST_COMPLETED': return 6;
+                      case 'PRODUCT_AVAILABLE': return 7;
+                      default: return 1;
+                    }
+                  };
+                  const activeStep = getStatusStepNumber(selectedCrop.timeline_status || 'CROP_REGISTERED');
+                  return (
+                    <div className="relative border-l-2 border-emerald-100 dark:border-slate-800 ml-3 pl-6 space-y-6 text-xs">
+                      
+                      {/* Step 1: Crop Registered */}
+                      <div className="relative">
+                        <div className="absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-4 ring-white dark:ring-slate-900">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <h4 className="font-bold text-slate-950 dark:text-white">Crop Registered</h4>
+                        <p className="text-slate-500 mt-0.5">Farmer declared crop on-chain.</p>
+                      </div>
 
-                  {/* Step 2: Quality Tested */}
-                  <div className="relative">
-                    <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                      product ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                    }`}>
-                      <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-                    </div>
-                    <h4 className={`font-bold ${product ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Quality Tested</h4>
-                    <p className="text-slate-500 mt-0.5">Biochemical metrics assessed.</p>
-                  </div>
+                      {/* Step 2: Quality Tested */}
+                      <div className="relative">
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
+                          activeStep >= 2 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                        }`}>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <h4 className={`font-bold ${activeStep >= 2 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Quality Tested</h4>
+                        <p className="text-slate-500 mt-0.5">Biochemical metrics assessed.</p>
+                      </div>
 
-                  {/* Step 3: Tester Approved */}
-                  <div className="relative">
-                    <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                      selectedCrop.is_approved ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                    }`}>
-                      <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-                    </div>
-                    <h4 className={`font-bold ${selectedCrop.is_approved ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Tester Approved</h4>
-                    <p className="text-slate-500 mt-0.5">Lab signs off and certifies crop.</p>
-                  </div>
+                      {/* Step 3: Tester Approved */}
+                      <div className="relative">
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
+                          activeStep >= 3 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                        }`}>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <h4 className={`font-bold ${activeStep >= 3 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Tester Approved</h4>
+                        <p className="text-slate-500 mt-0.5">Lab signs off and certifies crop.</p>
+                      </div>
 
-                  {/* Step 4: Funding Completed */}
-                  <div className="relative">
-                    <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                      fundingPercentage >= 100 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                    }`}>
-                      <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-                    </div>
-                    <h4 className={`font-bold ${fundingPercentage >= 100 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Funding Completed</h4>
-                    <p className="text-slate-500 mt-0.5">Target capital reached on-ledger.</p>
-                  </div>
+                      {/* Step 4: Funding Completed */}
+                      <div className="relative">
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
+                          activeStep >= 4 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                        }`}>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <h4 className={`font-bold ${activeStep >= 4 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Funding Completed</h4>
+                        <p className="text-slate-500 mt-0.5">Target capital reached on-ledger.</p>
+                      </div>
 
-                  {/* Step 5: Harvest Completed */}
-                  <div className="relative">
-                    <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                      product ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                    }`}>
-                      <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-                    </div>
-                    <h4 className={`font-bold ${product ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Harvest Completed</h4>
-                    <p className="text-slate-500 mt-0.5">Yield is safely collected.</p>
-                  </div>
+                      {/* Step 5: Ready to Harvest */}
+                      <div className="relative">
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
+                          activeStep >= 5 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                        }`}>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <h4 className={`font-bold ${activeStep >= 5 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Ready to Harvest</h4>
+                        <p className="text-slate-500 mt-0.5">Farmer marked crop as ready for harvest.</p>
+                      </div>
 
-                  {/* Step 6: Product Available */}
-                  <div className="relative">
-                    <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                      product && product.certification_status === 'APPROVED' ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                    }`}>
-                      <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                      {/* Step 6: Harvest Completed */}
+                      <div className="relative">
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
+                          activeStep >= 6 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                        }`}>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <h4 className={`font-bold ${activeStep >= 6 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Harvest Completed</h4>
+                        <p className="text-slate-500 mt-0.5">Yield is safely collected.</p>
+                      </div>
+
+                      {/* Step 7: Product Available */}
+                      <div className="relative">
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
+                          activeStep >= 7 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                        }`}>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <h4 className={`font-bold ${activeStep >= 7 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Product Available</h4>
+                        <p className="text-slate-500 mt-0.5">Batch ready with QR and trust seal.</p>
+                      </div>
                     </div>
-                    <h4 className={`font-bold ${product && product.certification_status === 'APPROVED' ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Product Available</h4>
-                    <p className="text-slate-500 mt-0.5">Batch ready with QR and trust seal.</p>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
 
               {/* SECTION 6: Farmer Crop Updates */}
@@ -775,9 +961,19 @@ export default function ConsumerTracking() {
                 <div className="space-y-3 text-xs">
                   <div>
                     <span className="text-slate-400 block mb-0.5">Verification Status</span>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900">
-                      Verified Immutable
-                    </span>
+                    {selectedCrop.verification_status === 'VERIFIED' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900">
+                        Verified & On-Chain Anchored
+                      </span>
+                    ) : selectedCrop.verification_status === 'REJECTED' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-105 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900">
+                        Audit Failed & Rejected
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-105 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900">
+                        Awaiting Inspector Signatures (DB Only)
+                      </span>
+                    )}
                   </div>
 
                   {selectedCrop.tx_hash && (

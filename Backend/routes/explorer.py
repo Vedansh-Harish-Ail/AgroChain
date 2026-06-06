@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timezone
-from models import db, Transaction
+from models import db, Transaction, User, Farmer, Investment, Rating
 
 explorer_bp = Blueprint('explorer', __name__)
 
@@ -86,4 +86,41 @@ def get_explorer_summary():
         'latest_block': latest_block,
         'unique_wallets_active': unique_wallets,
         'recent_transactions': [tx.to_dict() for tx in recent_txs]
+    }), 200
+
+
+@explorer_bp.route('/public-stats', methods=['GET'])
+def get_public_stats():
+    # 1. Harvests Funded: Sum of accepted investments + baseline of 4,200,000 Rs
+    accepted_investments_sum = db.session.query(db.func.sum(Investment.amount)).filter(Investment.status == 'ACCEPTED').scalar() or 0
+    total_funding_rs = 4200000 + accepted_investments_sum
+    
+    # 2. Crops Traced: Sum of expected_yield of all crops in kg, converted to tons + baseline of 1200 Tons
+    total_yield_kg = db.session.query(db.func.sum(Farmer.expected_yield)).scalar() or 0
+    total_crops_traced_tons = 1200.0 + (total_yield_kg / 1000.0)
+    
+    # 3. Partner Laboratories: Count of users with role='TESTER' + baseline of 17
+    tester_count = User.query.filter_by(role='TESTER').count()
+    partner_labs = 17 + tester_count
+    
+    # 4. Batch Trust Rating: Calculate average rating from ratings + baseline of 99.8%
+    avg_scores = db.session.query(
+        db.func.avg(Rating.reliability),
+        db.func.avg(Rating.product_quality),
+        db.func.avg(Rating.delivery_satisfaction)
+    ).first()
+    
+    if avg_scores and any(score is not None for score in avg_scores):
+        valid_scores = [score for score in avg_scores if score is not None]
+        avg_out_of_5 = sum(valid_scores) / len(valid_scores)
+        db_rating_pct = (avg_out_of_5 / 5.0) * 100
+        batch_trust_rating = round(db_rating_pct, 1)
+    else:
+        batch_trust_rating = 99.8
+
+    return jsonify({
+        'harvests_funded': int(total_funding_rs),
+        'crops_traced_tons': float(round(total_crops_traced_tons, 1)),
+        'partner_laboratories': int(partner_labs),
+        'batch_trust_rating': float(batch_trust_rating)
     }), 200

@@ -260,11 +260,14 @@ export default function RegisterPage() {
                     onChange={(e) => setRole(e.target.value)}
                     className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500"
                   >
-                    <option value="CONSUMER">Consumer / Investor</option>
+                    <option value="CONSUMER">Consumer / Investor (Legacy)</option>
+                    <option value="INVESTOR">Investor</option>
                     <option value="FARMER">Farmer</option>
                     <option value="TESTER">Quality Authority</option>
                     <option value="ADMIN">System Admin</option>
                   </select>
+                </div>
+              </div>
             </div>
 
             {/* Phone Number & OTP Verification Row */}

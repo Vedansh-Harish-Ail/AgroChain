@@ -120,7 +120,7 @@ def register():
     if not name or not email or not password or not role or not phone_number or not otp_code:
         return jsonify({'message': 'Missing required fields, including phone number and OTP'}), 400
         
-    if role not in ['FARMER', 'TESTER', 'CONSUMER', 'ADMIN']:
+    if role not in ['FARMER', 'TESTER', 'CONSUMER', 'INVESTOR', 'ADMIN']:
         return jsonify({'message': 'Invalid role specified'}), 400
         
     if User.query.filter_by(email=email).first():
@@ -152,7 +152,7 @@ def register():
         role=role,
         wallet_address=wallet_address.lower() if wallet_address else None,
         # Admin is auto-approved, others approved by default or admin
-        is_approved=(role in ['CONSUMER', 'ADMIN'])
+        is_approved=(role in ['CONSUMER', 'INVESTOR', 'ADMIN'])
     )
     new_user.set_password(password)
     

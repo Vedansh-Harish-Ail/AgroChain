@@ -19,8 +19,12 @@ class User(db.Model):
     is_approved = db.Column(db.Boolean, default=False) # For farmers/testers approval
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
+    government_id = db.Column(db.String(100), nullable=True)
+    ownership_proof_url = db.Column(db.String(255), nullable=True)
+    is_verified_farmer = db.Column(db.Boolean, default=False)
+    
     # Relationships
-    farmer_profile = db.relationship('Farmer', backref='user', uselist=False, cascade="all, delete-orphan")
+    farmer_profile = db.relationship('Farmer', backref=db.backref('user', foreign_keys='Farmer.user_id'), uselist=False, cascade="all, delete-orphan", foreign_keys='Farmer.user_id')
     audit_logs = db.relationship('AuditLog', backref='user', lazy=True)
     investments = db.relationship('Investment', backref='investor', lazy=True)
     ratings = db.relationship('Rating', backref='consumer', lazy=True)
@@ -42,6 +46,9 @@ class User(db.Model):
             'wallet_type': self.wallet_type,
             'onboarding_complete': self.onboarding_complete,
             'is_approved': self.is_approved,
+            'government_id': self.government_id,
+            'ownership_proof_url': self.ownership_proof_url,
+            'is_verified_farmer': self.is_verified_farmer,
             'created_at': self.created_at.isoformat()
         }
 
@@ -81,15 +88,39 @@ class Farmer(db.Model):
     block_number = db.Column(db.Integer, nullable=True)
     blockchain_status = db.Column(db.String(50), default='DB_ONLY') # DB_ONLY, PENDING, VERIFIED
     is_approved = db.Column(db.Boolean, default=False) # Quality Tester approved cultivation
+    timeline_status = db.Column(db.String(50), default='CROP_REGISTERED') # CROP_REGISTERED, QUALITY_TESTED, TESTER_APPROVED, FUNDING_COMPLETED, READY_TO_HARVEST, HARVEST_COMPLETED, PRODUCT_AVAILABLE
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # New fields
+    land_survey_no = db.Column(db.String(100), nullable=True)
+    gps_latitude = db.Column(db.Float, nullable=True)
+    gps_longitude = db.Column(db.Float, nullable=True)
+    evidence_photos = db.Column(db.Text, nullable=True) # JSON or comma-separated list of URLs
+    verification_status = db.Column(db.String(50), default='PENDING') # PENDING, VERIFIED, REJECTED
+    tester_remarks = db.Column(db.Text, nullable=True)
+    tester_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    verification_date = db.Column(db.DateTime, nullable=True)
+
     # Relationships
+    tester = db.relationship('User', foreign_keys=[tester_id])
     products = db.relationship('Product', backref='farmer', lazy=True, cascade="all, delete-orphan")
     investments = db.relationship('Investment', backref='farmer', lazy=True)
     ratings = db.relationship('Rating', backref='farmer', lazy=True)
     crop_updates = db.relationship('CropUpdate', backref='farmer', lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
+        # Calculate average rating
+        ratings = self.ratings
+        if ratings:
+            reliability_avg = sum([r.reliability for r in ratings]) / len(ratings)
+            quality_avg = sum([r.product_quality for r in ratings]) / len(ratings)
+            delivery_avg = sum([r.delivery_satisfaction for r in ratings]) / len(ratings)
+            overall_avg = round((reliability_avg + quality_avg + delivery_avg) / 3, 1)
+            rating_count = len(ratings)
+        else:
+            overall_avg = 0.0
+            rating_count = 0
+
         return {
             'id': self.id,
             'user_id': self.user_id,
@@ -104,8 +135,20 @@ class Farmer(db.Model):
             'block_number': self.block_number,
             'blockchain_status': self.blockchain_status,
             'is_approved': self.is_approved,
+            'timeline_status': self.timeline_status,
+            'average_rating': overall_avg,
+            'rating_count': rating_count,
             'wallet_address': self.user.wallet_address if self.user else None,
-            'created_at': self.created_at.isoformat()
+            'created_at': self.created_at.isoformat(),
+            'land_survey_no': self.land_survey_no,
+            'gps_latitude': self.gps_latitude,
+            'gps_longitude': self.gps_longitude,
+            'evidence_photos': self.evidence_photos,
+            'verification_status': self.verification_status,
+            'tester_remarks': self.tester_remarks,
+            'tester_id': self.tester_id,
+            'tester_name': self.tester.name if self.tester else None,
+            'verification_date': self.verification_date.isoformat() if self.verification_date else None
         }
 
 
@@ -130,6 +173,18 @@ class Product(db.Model):
     ratings = db.relationship('Rating', backref='product', lazy=True)
 
     def to_dict(self):
+        # Calculate average rating
+        ratings = self.ratings
+        if ratings:
+            reliability_avg = sum([r.reliability for r in ratings]) / len(ratings)
+            quality_avg = sum([r.product_quality for r in ratings]) / len(ratings)
+            delivery_avg = sum([r.delivery_satisfaction for r in ratings]) / len(ratings)
+            overall_avg = round((reliability_avg + quality_avg + delivery_avg) / 3, 1)
+            rating_count = len(ratings)
+        else:
+            overall_avg = 0.0
+            rating_count = 0
+
         return {
             'lot_number': self.lot_number,
             'farmer_id': self.farmer_id,
@@ -143,6 +198,8 @@ class Product(db.Model):
             'tx_hash': self.tx_hash,
             'block_number': self.block_number,
             'timestamp': self.timestamp.isoformat(),
+            'average_rating': overall_avg,
+            'rating_count': rating_count,
             'created_at': self.created_at.isoformat()
         }
 
@@ -154,11 +211,13 @@ class Investment(db.Model):
     investor_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     farmer_id = db.Column(db.Integer, db.ForeignKey('farmers.id', ondelete='CASCADE'), nullable=False)
     lot_number = db.Column(db.Integer, db.ForeignKey('products.lot_number', ondelete='CASCADE'), nullable=False)
-    amount = db.Column(db.BigInteger, nullable=False) # Amount in Wei
+    amount = db.Column(db.BigInteger, nullable=False) # Proposed investment amount in Rs.
     tx_hash = db.Column(db.String(66), nullable=True)
     block_number = db.Column(db.Integer, nullable=True)
     profit_percentage = db.Column(db.Integer, default=10) # expected profit rate
-    status = db.Column(db.String(50), default='ACTIVE') # ACTIVE, COMPLETED, REFUNDED
+    status = db.Column(db.String(50), default='PENDING') # PENDING, ACCEPTED, DECLINED
+    terms = db.Column(db.Text, nullable=True)
+    message = db.Column(db.Text, nullable=True)
     timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -167,14 +226,20 @@ class Investment(db.Model):
             'id': self.id,
             'investor_id': self.investor_id,
             'investor_name': self.investor.name if self.investor else None,
+            'investor_email': self.investor.email if self.investor else None,
+            'investor_phone': self.investor.phone_number if self.investor else None,
             'farmer_id': self.farmer_id,
             'farmer_name': self.farmer.user.name if self.farmer and self.farmer.user else None,
+            'farmer_email': self.farmer.user.email if self.farmer and self.farmer.user else None,
+            'farmer_phone': self.farmer.user.phone_number if self.farmer and self.farmer.user else None,
             'lot_number': self.lot_number,
             'amount': self.amount,
             'tx_hash': self.tx_hash,
             'block_number': self.block_number,
             'profit_percentage': self.profit_percentage,
             'status': self.status,
+            'terms': self.terms,
+            'message': self.message,
             'timestamp': self.timestamp.isoformat(),
             'created_at': self.created_at.isoformat()
         }

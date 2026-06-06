@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
-import { Search, CheckCircle, XCircle, ShieldAlert, Cpu, UserCheck, ArrowLeft } from 'lucide-react';
+import { Search, CheckCircle, XCircle, ShieldAlert, Cpu, UserCheck, ArrowLeft, MapPin, ExternalLink, Image } from 'lucide-react';
 import axios from 'axios';
 
 export default function QualityTesting() {
@@ -9,6 +9,7 @@ export default function QualityTesting() {
   const [crops, setCrops] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCrop, setSelectedCrop] = useState(null);
+  const [remarks, setRemarks] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
   const [txDetails, setTxDetails] = useState(null);
@@ -54,6 +55,12 @@ export default function QualityTesting() {
     setTxDetails(null);
     setLoading(true);
 
+    if (!remarks) {
+      setError('Please add inspection remarks before approving.');
+      setLoading(false);
+      return;
+    }
+
     if (!isConnected) {
       const address = await connectWallet();
       if (!address) {
@@ -64,8 +71,27 @@ export default function QualityTesting() {
     }
 
     try {
+      let tx;
       // 1. Call Smart Contract
-      const tx = await contracts.farmerRegistry.approveFarmer(crop.id);
+      if (crop.blockchain_status === 'DB_ONLY') {
+        const cultivationTimestamp = Math.floor(new Date(crop.cultivation_date).getTime() / 1000);
+        const farmerWallet = crop.wallet_address || "0x0000000000000000000000000000000000000000";
+
+        tx = await contracts.farmerRegistry["approveFarmer(uint256,string,string,string,string,string,uint256,uint256,address)"](
+          crop.id,
+          crop.farmer_name || "Unknown Farmer",
+          crop.farm_location || "",
+          crop.farm_size || "",
+          crop.farming_type || "Organic",
+          crop.crop_type || "",
+          parseInt(crop.expected_yield || 0),
+          cultivationTimestamp,
+          farmerWallet
+        );
+      } else {
+        tx = await contracts.farmerRegistry["approveFarmer(uint256)"](crop.id);
+      }
+
       setTxDetails({ step: 'broadcasting', hash: tx.hash });
 
       const receipt = await tx.wait();
@@ -83,19 +109,24 @@ export default function QualityTesting() {
         event_data: JSON.stringify({
           farmerId: crop.id,
           farmerName: crop.farmer_name,
-          verifier: tx.from
+          verifier: tx.from,
+          surveyNo: crop.land_survey_no
         })
       });
 
       // 3. Update status in Database
       await axios.post(`/api/quality/approve/${crop.id}`, {
         tx_hash: tx.hash,
-        block_number: blockNumber
+        block_number: blockNumber,
+        tester_remarks: remarks
       });
 
       setLoading(false);
-      alert(`Farmer crop ID ${crop.id} has been approved on-chain!`);
-      
+      alert(`Farmer crop ID ${crop.id} has been verified and registered on-chain successfully!`);
+      setSelectedCrop(null);
+      setRemarks('');
+      fetchPendingCrops();
+
       // Proceed directly to certify product lot
       navigate('/tester/product', { state: { cropId: crop.id, cropName: crop.crop_type } });
 
@@ -107,12 +138,19 @@ export default function QualityTesting() {
   };
 
   const handleReject = async (crop) => {
+    if (!remarks) {
+      setError('Please add inspection remarks detailing the reason for rejection.');
+      return;
+    }
     if (!window.confirm("Are you sure you want to reject this crop registration?")) return;
     setLoading(true);
     try {
-      await axios.post(`/api/quality/reject/${crop.id}`);
+      await axios.post(`/api/quality/reject/${crop.id}`, {
+        tester_remarks: remarks
+      });
       alert("Crop rejected.");
       setSelectedCrop(null);
+      setRemarks('');
       fetchPendingCrops();
     } catch (err) {
       console.error(err);
@@ -120,6 +158,20 @@ export default function QualityTesting() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper to parse evidence photos
+  const getPhotosList = (evidencePhotos) => {
+    if (!evidencePhotos) return [];
+    try {
+      const parsed = JSON.parse(evidencePhotos);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      if (typeof evidencePhotos === 'string') {
+        return evidencePhotos.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+    return [];
   };
 
   return (
@@ -136,7 +188,7 @@ export default function QualityTesting() {
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <UserCheck className="h-6 w-6 text-emerald-600" /> Cultivation Quality Approvals
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Search farmer crop listings and verify agricultural credentials on-chain</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Verify crop locations, survey details, and log them securely on-chain</p>
           </div>
         </div>
 
@@ -161,7 +213,7 @@ export default function QualityTesting() {
       </div>
 
       {error && (
-        <div className="rounded-xl bg-rose-50 p-4 text-sm text-rose-600 dark:bg-rose-950/30 dark:text-rose-400">
+        <div className="rounded-xl bg-rose-50 p-4 text-sm text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 font-medium">
           {error}
         </div>
       )}
@@ -197,7 +249,7 @@ export default function QualityTesting() {
                     <th className="py-3 px-4">Crop ID</th>
                     <th className="py-3 px-4">Farmer</th>
                     <th className="py-3 px-4">Crop Type</th>
-                    <th className="py-3 px-4">Yield (kg)</th>
+                    <th className="py-3 px-4">Survey Number</th>
                     <th className="py-3 px-4">Date</th>
                   </tr>
                 </thead>
@@ -205,7 +257,11 @@ export default function QualityTesting() {
                   {crops.map((crop) => (
                     <tr
                       key={crop.id}
-                      onClick={() => setSelectedCrop(crop)}
+                      onClick={() => {
+                        setSelectedCrop(crop);
+                        setRemarks('');
+                        setError('');
+                      }}
                       className={`border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition ${
                         selectedCrop?.id === crop.id ? 'bg-emerald-50/40 dark:bg-emerald-950/20' : ''
                       }`}
@@ -213,7 +269,7 @@ export default function QualityTesting() {
                       <td className="py-3 px-4 font-semibold text-emerald-600 dark:text-emerald-400 font-mono">{crop.id}</td>
                       <td className="py-3 px-4">{crop.farmer_name}</td>
                       <td className="py-3 px-4 font-semibold">{crop.crop_type}</td>
-                      <td className="py-3 px-4">{crop.expected_yield}</td>
+                      <td className="py-3 px-4 font-mono text-xs">{crop.land_survey_no || 'N/A'}</td>
                       <td className="py-3 px-4">{new Date(crop.cultivation_date).toLocaleDateString()}</td>
                     </tr>
                   ))}
@@ -231,32 +287,79 @@ export default function QualityTesting() {
 
               <div className="space-y-4 text-sm">
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <span className="text-slate-400">Crop ID</span>
+                  <span className="text-slate-400 font-medium">Crop ID</span>
                   <span className="font-mono font-semibold">{selectedCrop.id}</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <span className="text-slate-400">Farmer Name</span>
-                  <span className="font-semibold">{selectedCrop.farmer_name}</span>
+                  <span className="text-slate-400 font-medium">Farmer Name</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-250">{selectedCrop.farmer_name}</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <span className="text-slate-400">Location</span>
-                  <span>{selectedCrop.farm_location}</span>
+                  <span className="text-slate-400 font-medium">Survey Number</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-250">{selectedCrop.land_survey_no || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <span className="text-slate-400">Farm Size</span>
+                  <span className="text-slate-400 font-medium">Location</span>
+                  <span className="text-right max-w-[180px] truncate">{selectedCrop.farm_location}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <span className="text-slate-400 font-medium">GPS Coordinates</span>
+                  <span className="font-mono text-xs flex flex-col items-end">
+                    <span>Lat: {selectedCrop.gps_latitude}</span>
+                    <span>Lng: {selectedCrop.gps_longitude}</span>
+                    {selectedCrop.gps_latitude && selectedCrop.gps_longitude && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${selectedCrop.gps_latitude},${selectedCrop.gps_longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-emerald-600 hover:underline flex items-center gap-0.5 mt-1 font-semibold"
+                      >
+                        <MapPin className="h-3 w-3" /> View on Map <ExternalLink className="h-2 w-2" />
+                      </a>
+                    )}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <span className="text-slate-400 font-medium">Farm Size</span>
                   <span>{selectedCrop.farm_size}</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <span className="text-slate-400">Farming Method</span>
+                  <span className="text-slate-400 font-medium">Farming Method</span>
                   <span className="font-semibold text-emerald-600">{selectedCrop.farming_type}</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <span className="text-slate-400">Expected Yield</span>
+                  <span className="text-slate-400 font-medium">Expected Yield</span>
                   <span className="font-semibold">{selectedCrop.expected_yield} kg</span>
                 </div>
-                <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <span className="text-slate-400">Wallet Address</span>
-                  <span className="font-mono text-xs">{selectedCrop.wallet_address || 'Not Linked'}</span>
+
+                {/* Evidence Photos Section */}
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <span className="text-slate-400 font-medium block mb-2">Evidence Photos</span>
+                  {getPhotosList(selectedCrop.evidence_photos).length === 0 ? (
+                    <span className="text-xs text-slate-500 italic">No photo evidence submitted.</span>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {getPhotosList(selectedCrop.evidence_photos).map((url, i) => (
+                        <a href={url} target="_blank" rel="noopener noreferrer" key={i} className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 aspect-square hover:opacity-80 transition block">
+                          <img src={url} alt="Crop Evidence" className="h-full w-full object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Remarks Input */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
+                    Tester remarks / verification details
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Enter details on soil test, survey matching, pesticide levels, and verification status..."
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none"
+                  ></textarea>
                 </div>
               </div>
 

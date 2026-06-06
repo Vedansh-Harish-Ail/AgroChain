@@ -80,6 +80,43 @@ contract FarmerRegistry is AccessControl {
         emit FarmerApproved(_farmerId, msg.sender);
     }
 
+    function approveFarmer(
+        uint256 _farmerId,
+        string memory _name,
+        string memory _location,
+        string memory _size,
+        string memory _farmingType,
+        string memory _cropType,
+        uint256 _expectedYield,
+        uint256 _cultivationDate,
+        address _farmerWallet
+    ) public {
+        require(hasRole(TESTER_ROLE, msg.sender) || hasRole(ADMIN_ROLE, msg.sender), "Caller is not an authorized tester or admin");
+        
+        if (!farmers[_farmerId].isRegistered) {
+            farmers[_farmerId] = Farmer({
+                farmerId: _farmerId,
+                farmerName: _name,
+                farmLocation: _location,
+                farmSize: _size,
+                farmingType: _farmingType,
+                cropType: _cropType,
+                expectedYield: _expectedYield,
+                cultivationDate: _cultivationDate,
+                walletAddress: _farmerWallet,
+                isRegistered: true,
+                isApproved: true
+            });
+            farmerIds.push(_farmerId);
+            emit FarmerRegistered(_farmerId, _name, _farmerWallet, _cropType);
+        } else {
+            require(!farmers[_farmerId].isApproved, "Farmer already approved");
+            farmers[_farmerId].isApproved = true;
+        }
+
+        emit FarmerApproved(_farmerId, msg.sender);
+    }
+
     function rejectFarmer(uint256 _farmerId) public {
         require(hasRole(TESTER_ROLE, msg.sender) || hasRole(ADMIN_ROLE, msg.sender), "Caller is not an authorized tester or admin");
         require(farmers[_farmerId].isRegistered, "Farmer not registered");

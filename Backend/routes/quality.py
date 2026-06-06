@@ -7,6 +7,7 @@ quality_bp = Blueprint('quality', __name__)
 @quality_bp.route('/approve/<int:crop_id>', methods=['POST'])
 @roles_allowed('TESTER', 'ADMIN')
 def approve_crop(current_user, crop_id):
+    from datetime import datetime, timezone
     crop = Farmer.query.get(crop_id)
     if not crop:
         return jsonify({'message': 'Crop registration not found'}), 404
@@ -14,10 +15,18 @@ def approve_crop(current_user, crop_id):
     data = request.get_json() or {}
     tx_hash = data.get('tx_hash')
     block_number = data.get('block_number')
+    tester_remarks = data.get('tester_remarks')
     
     crop.is_approved = True
+    crop.verification_status = 'VERIFIED'
+    crop.tester_remarks = tester_remarks
+    crop.tester_id = current_user.id
+    crop.verification_date = datetime.now(timezone.utc)
+    crop.timeline_status = 'TESTER_APPROVED'
+    
     if tx_hash:
         crop.tx_hash = tx_hash
+        crop.blockchain_status = 'VERIFIED'
     if block_number:
         crop.block_number = block_number
         
@@ -27,7 +36,7 @@ def approve_crop(current_user, crop_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='FARMER_CROP_APPROVED',
-        details=f"Quality Authority {current_user.name} approved crop ID {crop_id}."
+        details=f"Quality Authority {current_user.name} approved crop ID {crop_id} with remarks: {tester_remarks}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -41,18 +50,27 @@ def approve_crop(current_user, crop_id):
 @quality_bp.route('/reject/<int:crop_id>', methods=['POST'])
 @roles_allowed('TESTER', 'ADMIN')
 def reject_crop(current_user, crop_id):
+    from datetime import datetime, timezone
     crop = Farmer.query.get(crop_id)
     if not crop:
         return jsonify({'message': 'Crop registration not found'}), 404
         
+    data = request.get_json() or {}
+    tester_remarks = data.get('tester_remarks')
+    
     crop.is_approved = False
+    crop.verification_status = 'REJECTED'
+    crop.tester_remarks = tester_remarks
+    crop.tester_id = current_user.id
+    crop.verification_date = datetime.now(timezone.utc)
+    
     db.session.commit()
     
     # Audit log
     audit = AuditLog(
         user_id=current_user.id,
         action='FARMER_CROP_REJECTED',
-        details=f"Quality Authority {current_user.name} rejected crop ID {crop_id}."
+        details=f"Quality Authority {current_user.name} rejected crop ID {crop_id} with remarks: {tester_remarks}."
     )
     db.session.add(audit)
     db.session.commit()

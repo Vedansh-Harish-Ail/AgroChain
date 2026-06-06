@@ -51,6 +51,9 @@ const Navbar = ({ theme, toggleTheme }) => {
   const { walletAddress, isConnected, connectWallet } = useWallet();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   const handleWalletConnect = async () => {
     await connectWallet();
@@ -68,12 +71,16 @@ const Navbar = ({ theme, toggleTheme }) => {
             
             {/* Desktop Nav Links */}
             <div className="hidden md:ml-8 md:flex md:space-x-4">
-              <Link to="/explorer" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-emerald-600 dark:text-slate-300 dark:hover:text-emerald-400">
-                <Cpu className="h-4 w-4" /> Explorer
-              </Link>
-              <Link to="/consumer/track" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-emerald-600 dark:text-slate-300 dark:hover:text-emerald-400">
-                <Eye className="h-4 w-4" /> Traceability
-              </Link>
+              {!isAuthPage && (
+                <>
+                  <Link to="/explorer" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-emerald-600 dark:text-slate-300 dark:hover:text-emerald-400">
+                    <Cpu className="h-4 w-4" /> Explorer
+                  </Link>
+                  <Link to="/consumer/track" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-emerald-600 dark:text-slate-300 dark:hover:text-emerald-400">
+                    <Eye className="h-4 w-4" /> Traceability
+                  </Link>
+                </>
+              )}
               {user && (
                 <Link to="/dashboard" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 hover:text-emerald-600 dark:text-slate-300 dark:hover:text-emerald-400">
                   <LayoutDashboard className="h-4 w-4" /> Dashboard
@@ -158,20 +165,24 @@ const Navbar = ({ theme, toggleTheme }) => {
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950 space-y-3">
-          <Link
-            to="/explorer"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900"
-          >
-            Blockchain Explorer
-          </Link>
-          <Link
-            to="/consumer/track"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900"
-          >
-            Traceability Portal
-          </Link>
+          {!isAuthPage && (
+            <>
+              <Link
+                to="/explorer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900"
+              >
+                Blockchain Explorer
+              </Link>
+              <Link
+                to="/consumer/track"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900"
+              >
+                Traceability Portal
+              </Link>
+            </>
+          )}
           {user && (
             <Link
               to="/dashboard"
@@ -234,7 +245,7 @@ const MainLayout = ({ theme, toggleTheme }) => {
       {isLanding ? (
         /* Landing page gets full-width, no padding */
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<LandingPage theme={theme} toggleTheme={toggleTheme} />} />
         </Routes>
       ) : (
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

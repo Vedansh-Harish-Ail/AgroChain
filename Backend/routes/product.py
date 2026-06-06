@@ -56,6 +56,9 @@ def register_product(current_user):
         block_number=block_number
     )
     
+    if certification_status == 'APPROVED':
+        farmer_project.timeline_status = 'PRODUCT_AVAILABLE'
+
     db.session.add(new_product)
     db.session.commit()
     
