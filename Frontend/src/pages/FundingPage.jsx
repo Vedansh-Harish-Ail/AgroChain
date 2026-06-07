@@ -17,6 +17,8 @@ export default function FundingPage() {
   const [myInvestments, setMyInvestments] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   
+  const wizardRef = React.useRef(null);
+  
   // Funding Wizard form states
   const [wizardStep, setWizardStep] = useState(1);
   const [proposedAmount, setProposedAmount] = useState('50000');
@@ -70,6 +72,13 @@ export default function FundingPage() {
       const ethPrice = parseFloat(ethers.formatEther(selectedProduct.price.toString()));
       const rsPrice = Math.round(ethPrice * 250000);
       setProposedAmount(Math.round(rsPrice * 0.5).toString());
+      
+      // Smooth scroll the wizard panel into view
+      setTimeout(() => {
+        if (wizardRef.current) {
+          wizardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 50);
     }
   }, [selectedProduct]);
 
@@ -240,7 +249,7 @@ export default function FundingPage() {
           </div>
 
           {/* Right Side: Partnership Wizard Panel */}
-          <div className="space-y-6">
+          <div ref={wizardRef} className="space-y-6 lg:sticky lg:top-24 lg:self-start">
             {selectedProduct ? (
               user?.role === 'FARMER' ? (
                 /* Read-only crop details card for Farmer role */

@@ -20,6 +20,7 @@ import ConsumerTracking from './pages/ConsumerTracking';
 import BlockchainExplorer from './pages/BlockchainExplorer';
 import AdminDashboard from './pages/AdminDashboard';
 import CropHistory from './pages/CropHistory';
+import SubmittedLOIs from './pages/SubmittedLOIs';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, roles }) => {
@@ -262,6 +263,9 @@ const MainLayout = ({ theme, toggleTheme }) => {
             } />
             <Route path="/farmer/crops" element={
               <ProtectedRoute roles={['FARMER', 'ADMIN']}><CropHistory /></ProtectedRoute>
+            } />
+            <Route path="/investor/lois" element={
+              <ProtectedRoute roles={['INVESTOR', 'ADMIN']}><SubmittedLOIs /></ProtectedRoute>
             } />
             <Route path="/tester/approve" element={
               <ProtectedRoute roles={['TESTER', 'ADMIN']}><QualityTesting /></ProtectedRoute>

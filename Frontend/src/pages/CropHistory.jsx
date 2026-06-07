@@ -6,6 +6,7 @@ import {
   FileText, Award, Download, ExternalLink 
 } from 'lucide-react';
 import axios from 'axios';
+import html2pdf from 'html2pdf.js';
 
 export default function CropHistory() {
   const { user } = useAuth();
@@ -54,6 +55,145 @@ export default function CropHistory() {
       console.error(err);
       alert('Failed to update timeline status: ' + (err.response?.data?.message || err.message));
     }
+  };
+
+  const handleDownloadLetterPDF = () => {
+    const element = document.getElementById('approval-letter-print-area');
+    if (!element) return;
+
+    const opt = {
+      margin:       [0.4, 0.4, 0.4, 0.4],
+      filename:     `Approval_Letter_Crop_${selectedCropForLetter.id}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      },
+      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+
+    const originalStyle = element.getAttribute('style') || '';
+    element.style.backgroundColor = '#ffffff';
+    element.style.color = '#0f172a';
+    element.style.borderColor = '#cbd5e1';
+
+    const styledElements = [];
+    const textElements = element.querySelectorAll('span, p, strong, h2, div');
+    textElements.forEach(el => {
+      const origColor = el.style.color;
+      styledElements.push({ el, type: 'color', val: origColor });
+      
+      if (el.classList.contains('text-slate-400') || el.classList.contains('text-slate-450') || el.classList.contains('text-slate-455')) {
+        el.style.color = '#64748b';
+      } else if (el.classList.contains('text-emerald-600')) {
+        el.style.color = '#059669';
+      } else if (el.classList.contains('text-blue-600')) {
+        el.style.color = '#2563eb';
+      } else {
+        el.style.color = '#0f172a';
+      }
+    });
+
+    const bgElements = element.querySelectorAll('.bg-slate-50, .dark\\:bg-slate-950, .dark\\:bg-slate-950\\/40');
+    bgElements.forEach(el => {
+      const origBg = el.style.backgroundColor;
+      styledElements.push({ el, type: 'bg', val: origBg });
+      el.style.backgroundColor = '#f8fafc';
+      el.style.color = '#0f172a';
+    });
+
+    html2pdf().from(element).set(opt).save().then(() => {
+      element.setAttribute('style', originalStyle);
+      styledElements.forEach(({ el, type, val }) => {
+        if (type === 'color') {
+          el.style.color = val;
+        } else if (type === 'bg') {
+          el.style.backgroundColor = val;
+        }
+      });
+    }).catch(err => {
+      console.error("Failed to generate PDF", err);
+      element.setAttribute('style', originalStyle);
+      styledElements.forEach(({ el, type, val }) => {
+        if (type === 'color') {
+          el.style.color = val;
+        } else if (type === 'bg') {
+          el.style.backgroundColor = val;
+        }
+      });
+    });
+  };
+
+  const handleDownloadCertificatePDF = () => {
+    const element = document.getElementById('batch-certificate-print-area');
+    if (!element) return;
+
+    const opt = {
+      margin:       [0.4, 0.4, 0.4, 0.4],
+      filename:     `Quality_Certificate_Lot_${selectedCropForCertificate.product.lot_number}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      },
+      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+
+    const originalStyle = element.getAttribute('style') || '';
+    element.style.backgroundColor = '#ffffff';
+    element.style.color = '#0f172a';
+    element.style.borderColor = '#10b981';
+
+    const styledElements = [];
+    const textElements = element.querySelectorAll('span, p, strong, h2, div');
+    textElements.forEach(el => {
+      const origColor = el.style.color;
+      styledElements.push({ el, type: 'color', val: origColor });
+      
+      if (el.classList.contains('text-slate-400') || el.classList.contains('text-slate-505')) {
+        el.style.color = '#64748b';
+      } else if (el.classList.contains('text-emerald-800') || el.classList.contains('text-emerald-455')) {
+        el.style.color = '#065f46';
+      } else {
+        el.style.color = '#0f172a';
+      }
+    });
+
+    const bgElements = element.querySelectorAll('.bg-slate-50, .dark\\:bg-slate-950, .bg-emerald-100, .bg-emerald-50');
+    bgElements.forEach(el => {
+      const origBg = el.style.backgroundColor;
+      styledElements.push({ el, type: 'bg', val: origBg });
+      if (el.classList.contains('bg-emerald-100')) {
+        el.style.backgroundColor = '#d1fae5';
+      } else if (el.classList.contains('bg-emerald-50')) {
+        el.style.backgroundColor = '#ecfdf5';
+      } else {
+        el.style.backgroundColor = '#f8fafc';
+      }
+    });
+
+    html2pdf().from(element).set(opt).save().then(() => {
+      element.setAttribute('style', originalStyle);
+      styledElements.forEach(({ el, type, val }) => {
+        if (type === 'color') {
+          el.style.color = val;
+        } else if (type === 'bg') {
+          el.style.backgroundColor = val;
+        }
+      });
+    }).catch(err => {
+      console.error("Failed to generate PDF", err);
+      element.setAttribute('style', originalStyle);
+      styledElements.forEach(({ el, type, val }) => {
+        if (type === 'color') {
+          el.style.color = val;
+        } else if (type === 'bg') {
+          el.style.backgroundColor = val;
+        }
+      });
+    });
   };
 
   const getStatusLabel = (status) => {
@@ -417,15 +557,21 @@ export default function CropHistory() {
             <div className="flex justify-end gap-3 pt-2 print:hidden">
               <button
                 onClick={() => setSelectedCropForLetter(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-350 dark:hover:bg-slate-800 transition"
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-705 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-350 dark:hover:bg-slate-800 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={() => window.print()}
-                className="rounded-xl bg-slate-900 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 hover:bg-slate-800 px-6 py-2.5 text-xs font-bold transition flex items-center gap-1.5"
+                className="rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 transition"
               >
-                Print Letter / Save PDF
+                Print Letter
+              </button>
+              <button
+                onClick={handleDownloadLetterPDF}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 text-xs font-bold transition flex items-center gap-1.5"
+              >
+                <Download className="h-4 w-4" /> Download PDF
               </button>
             </div>
 
@@ -531,15 +677,21 @@ export default function CropHistory() {
             <div className="flex justify-end gap-3 pt-2 print:hidden">
               <button
                 onClick={() => setSelectedCropForCertificate(null)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-350 dark:hover:bg-slate-800 transition"
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-705 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-350 dark:hover:bg-slate-800 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={() => window.print()}
+                className="rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 transition"
+              >
+                Print Certificate
+              </button>
+              <button
+                onClick={handleDownloadCertificatePDF}
                 className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 text-xs font-bold transition flex items-center gap-1.5"
               >
-                Print Certificate & QR
+                <Download className="h-4 w-4" /> Download PDF
               </button>
             </div>
 

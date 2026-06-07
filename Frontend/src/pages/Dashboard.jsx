@@ -22,6 +22,16 @@ export default function Dashboard() {
   const [proposals, setProposals] = useState([]);
   const [loadingProposals, setLoadingProposals] = useState(false);
   const [proposalError, setProposalError] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadPendingApprovals, setUnreadPendingApprovals] = useState(0);
+  const [unreadPendingCerts, setUnreadPendingCerts] = useState(0);
+  const [unreadMyCropUpdates, setUnreadMyCropUpdates] = useState(0);
+  const [unreadProposals, setUnreadProposals] = useState(0);
+
+  const [currentPendingApprovalIds, setCurrentPendingApprovalIds] = useState([]);
+  const [currentPendingCertIds, setCurrentPendingCertIds] = useState([]);
+  const [currentFarmerCropStatuses, setCurrentFarmerCropStatuses] = useState({});
+
   const navigate = useNavigate();
 
   const handleWalletLink = async () => {
@@ -39,8 +49,45 @@ export default function Dashboard() {
     try {
       const res = await axios.get('/api/finance/received-proposals');
       setProposals(res.data);
+
+      const seenProposals = JSON.parse(localStorage.getItem('farmer_seen_proposals') || '[]');
+      let unread = 0;
+      const currentPendingIds = [];
+      res.data.forEach(prop => {
+        if (prop.status === 'PENDING') {
+          currentPendingIds.push(prop.id);
+          if (!seenProposals.includes(prop.id)) {
+            unread++;
+          }
+        }
+      });
+      setUnreadProposals(unread);
+      if (unread > 0) {
+        localStorage.setItem('farmer_seen_proposals', JSON.stringify(currentPendingIds));
+      }
     } catch (err) {
       console.error("Failed to load proposals:", err);
+    } finally {
+      setLoadingProposals(false);
+    }
+  };
+
+  const fetchSubmittedLOIs = async () => {
+    setLoadingProposals(true);
+    try {
+      const res = await axios.get('/api/finance/my-investments');
+      setProposals(res.data);
+      
+      const seenStatuses = JSON.parse(localStorage.getItem('seen_loi_statuses') || '{}');
+      let unread = 0;
+      res.data.forEach(loi => {
+        if (loi.status !== 'PENDING' && seenStatuses[loi.id] !== loi.status) {
+          unread++;
+        }
+      });
+      setUnreadCount(unread);
+    } catch (err) {
+      console.error("Failed to load submitted LOIs:", err);
     } finally {
       setLoadingProposals(false);
     }
@@ -74,10 +121,54 @@ export default function Dashboard() {
           ratingsCount: 0 
         });
 
+        if (user?.role === 'TESTER' || user?.role === 'ADMIN') {
+          // Tester Pending Approvals
+          const seenApprovals = JSON.parse(localStorage.getItem('tester_seen_pending_approvals') || '[]');
+          let newApprovals = 0;
+          const pendingCrops = cropsList.data.filter(c => c.verification_status === 'PENDING');
+          const pIds = [];
+          pendingCrops.forEach(c => {
+            pIds.push(c.id);
+            if (!seenApprovals.includes(c.id)) newApprovals++;
+          });
+          setUnreadPendingApprovals(newApprovals);
+          setCurrentPendingApprovalIds(pIds);
+
+          // Tester Certify Batches (Approved crops but no product lot yet)
+          const seenCerts = JSON.parse(localStorage.getItem('tester_seen_pending_certs') || '[]');
+          let newCerts = 0;
+          const lotsFarmerIds = lotsList.data.map(l => l.farmer_id);
+          const pendingCertsList = cropsList.data.filter(c => c.is_approved === true && !lotsFarmerIds.includes(c.id));
+          const cIds = [];
+          pendingCertsList.forEach(c => {
+            cIds.push(c.id);
+            if (!seenCerts.includes(c.id)) newCerts++;
+          });
+          setUnreadPendingCerts(newCerts);
+          setCurrentPendingCertIds(cIds);
+        }
+
         if (user?.role === 'FARMER') {
           const myCropsRes = await axios.get('/api/farmer/my-crops');
           setMyCrops(myCropsRes.data);
+          
+          // Farmer My Crop Updates
+          const seenCropStatuses = JSON.parse(localStorage.getItem('farmer_seen_crop_statuses') || '{}');
+          let unreadMyCrops = 0;
+          const currentStatusMap = {};
+          myCropsRes.data.forEach(c => {
+            const currentStatusSig = `${c.verification_status}_${c.timeline_status}`;
+            currentStatusMap[c.id] = currentStatusSig;
+            if (seenCropStatuses[c.id] !== currentStatusSig) {
+              unreadMyCrops++;
+            }
+          });
+          setUnreadMyCropUpdates(unreadMyCrops);
+          setCurrentFarmerCropStatuses(currentStatusMap);
+
           fetchProposals();
+        } else if (user?.role === 'INVESTOR') {
+          fetchSubmittedLOIs();
         }
       } catch (err) {
         console.error("Failed to load dashboard metrics:", err);
@@ -87,6 +178,21 @@ export default function Dashboard() {
     };
     fetchStats();
   }, [user]);
+
+  const handleClearTesterApprovals = () => {
+    localStorage.setItem('tester_seen_pending_approvals', JSON.stringify(currentPendingApprovalIds));
+    setUnreadPendingApprovals(0);
+  };
+
+  const handleClearTesterCerts = () => {
+    localStorage.setItem('tester_seen_pending_certs', JSON.stringify(currentPendingCertIds));
+    setUnreadPendingCerts(0);
+  };
+
+  const handleClearFarmerCrops = () => {
+    localStorage.setItem('farmer_seen_crop_statuses', JSON.stringify(currentFarmerCropStatuses));
+    setUnreadMyCropUpdates(0);
+  };
 
   const getRoleBadge = (role) => {
     switch (role) {
@@ -254,6 +360,27 @@ export default function Dashboard() {
             </div>
           </Link>
 
+          {/* Investor Specific Action: Submitted LOIs */}
+          {(user?.role === 'INVESTOR' || user?.role === 'ADMIN') && (
+            <Link 
+              to="/investor/lois"
+              className="relative group text-left rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4 w-full"
+            >
+              {unreadCount > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-slate-900 animate-pulse z-10">
+                  {unreadCount}
+                </span>
+              )}
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl text-amber-600 group-hover:scale-105 transition-transform shrink-0">
+                <Coins className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Submitted Letters of Intent (LOI)</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Track status of your letters of intent and proposals sent to farmers.</p>
+              </div>
+            </Link>
+          )}
+
           {/* Farmer Specific Action: Register Crops */}
           {(user?.role === 'FARMER' || user?.role === 'ADMIN') && (
             <Link to="/farmer/register" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
@@ -269,7 +396,16 @@ export default function Dashboard() {
 
           {/* Farmer Specific Action: My Crop */}
           {(user?.role === 'FARMER' || user?.role === 'ADMIN') && (
-            <Link to="/farmer/crops" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
+            <Link 
+              to="/farmer/crops" 
+              onClick={handleClearFarmerCrops}
+              className="relative group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4 w-full"
+            >
+              {unreadMyCropUpdates > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-slate-900 animate-pulse z-10">
+                  {unreadMyCropUpdates}
+                </span>
+              )}
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl text-emerald-600 group-hover:scale-105 transition-transform shrink-0">
                 <Layers className="h-6 w-6" />
               </div>
@@ -283,7 +419,16 @@ export default function Dashboard() {
           {/* Tester Specific Actions */}
           {(user?.role === 'TESTER' || user?.role === 'ADMIN') && (
             <>
-              <Link to="/tester/approve" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
+              <Link 
+                to="/tester/approve" 
+                onClick={handleClearTesterApprovals}
+                className="relative group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4 w-full"
+              >
+                {unreadPendingApprovals > 0 && (
+                  <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-slate-900 animate-pulse z-10">
+                    {unreadPendingApprovals}
+                  </span>
+                )}
                 <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-xl text-blue-600 group-hover:scale-105 transition-transform shrink-0">
                   <UserCheck className="h-6 w-6" />
                 </div>
@@ -293,7 +438,16 @@ export default function Dashboard() {
                 </div>
               </Link>
 
-              <Link to="/tester/product" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
+              <Link 
+                to="/tester/product" 
+                onClick={handleClearTesterCerts}
+                className="relative group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4 w-full"
+              >
+                {unreadPendingCerts > 0 && (
+                  <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-slate-900 animate-pulse z-10">
+                    {unreadPendingCerts}
+                  </span>
+                )}
                 <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-xl text-blue-600 group-hover:scale-105 transition-transform shrink-0">
                   <FileCheck className="h-6 w-6" />
                 </div>
@@ -326,6 +480,11 @@ export default function Dashboard() {
           <div className="border-t border-slate-200 dark:border-slate-800 pt-6">
             <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Coins className="h-5 w-5 text-emerald-650" /> Received Letters of Intent (LOI)
+              {unreadProposals > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-extrabold text-white shadow-sm ring-1 ring-rose-500/50 animate-pulse ml-2">
+                  {unreadProposals}
+                </span>
+              )}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Review Letters of Intent (LOI) and partnership proposals submitted by verified investors for your certified crop lots.</p>
           </div>
@@ -351,8 +510,8 @@ export default function Dashboard() {
                   key={prop.id} 
                   className={`rounded-2xl border bg-white p-6 shadow-sm dark:bg-slate-900 flex flex-col justify-between transition-all duration-300 ${
                     prop.status === 'ACCEPTED' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 
-                    prop.status === 'DECLINED' ? 'border-slate-200 opacity-60 dark:border-slate-850' : 
-                    'border-slate-200 dark:border-slate-800'
+                    prop.status === 'DECLINED' ? 'border-rose-500 ring-2 ring-rose-500/10 dark:border-rose-900/40' : 
+                    'border-amber-500 ring-2 ring-amber-500/10 dark:border-amber-900/40'
                   }`}
                 >
                   <div className="space-y-4 text-xs">
@@ -422,6 +581,8 @@ export default function Dashboard() {
           )}
         </div>
       )}
+
+
 
     </div>
   );
