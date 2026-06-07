@@ -41,6 +41,8 @@ def add_rating(current_user):
     if not product:
         return jsonify({'message': 'Product lot not found'}), 404
 
+    blockchain_status = 'VERIFIED' if tx_hash else 'DB_ONLY'
+
     # Create Rating
     new_rating = Rating(
         consumer_id=current_user.id,
@@ -51,7 +53,8 @@ def add_rating(current_user):
         delivery_satisfaction=delivery_satisfaction,
         comment=comment,
         tx_hash=tx_hash,
-        block_number=block_number
+        block_number=block_number,
+        blockchain_status=blockchain_status
     )
     
     db.session.add(new_rating)

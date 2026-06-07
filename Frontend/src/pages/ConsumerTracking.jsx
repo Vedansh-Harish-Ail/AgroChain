@@ -193,43 +193,41 @@ export default function ConsumerTracking() {
     setError('');
     setLoadingRating(true);
 
-    if (!isConnected) {
-      const address = await connectWallet();
-      if (!address) {
-        setError('Please connect your MetaMask wallet to sign blockchain review.');
-        setLoadingRating(false);
-        return;
-      }
-    }
-
     try {
-      const tx = await contracts.ratingSystem.addRating(
-        selectedCrop.id,
-        product.lot_number,
-        parseInt(reliability),
-        parseInt(quality),
-        parseInt(satisfaction),
-        comment
-      );
+      let txHash = null;
+      let blockNumber = null;
 
-      const receipt = await tx.wait();
-      const blockNumber = receipt.blockNumber;
+      // Only attempt blockchain transaction if wallet is connected
+      if (isConnected) {
+        const tx = await contracts.ratingSystem.addRating(
+          selectedCrop.id,
+          product.lot_number,
+          parseInt(reliability),
+          parseInt(quality),
+          parseInt(satisfaction),
+          comment
+        );
 
-      await axios.post('/api/explorer/log-tx', {
-        tx_hash: tx.hash,
-        block_number: blockNumber,
-        from_address: tx.from,
-        to_address: tx.to,
-        amount: 0,
-        method_name: 'addRating',
-        event_data: JSON.stringify({
-          farmerId: selectedCrop.id,
-          lotNumber: product.lot_number,
-          reliability,
-          quality,
-          satisfaction
-        })
-      });
+        const receipt = await tx.wait();
+        blockNumber = receipt.blockNumber;
+        txHash = tx.hash;
+
+        await axios.post('/api/explorer/log-tx', {
+          tx_hash: txHash,
+          block_number: blockNumber,
+          from_address: tx.from,
+          to_address: tx.to,
+          amount: 0,
+          method_name: 'addRating',
+          event_data: JSON.stringify({
+            farmerId: selectedCrop.id,
+            lotNumber: product.lot_number,
+            reliability,
+            quality,
+            satisfaction
+          })
+        });
+      }
 
       await axios.post('/api/rating/add', {
         farmer_id: selectedCrop.id,
@@ -238,12 +236,16 @@ export default function ConsumerTracking() {
         product_quality: parseInt(quality),
         delivery_satisfaction: parseInt(satisfaction),
         comment,
-        tx_hash: tx.hash,
+        tx_hash: txHash,
         block_number: blockNumber
       });
 
       setLoadingRating(false);
-      alert('Review recorded successfully on blockchain!');
+      if (txHash) {
+        alert('Review recorded successfully on blockchain!');
+      } else {
+        alert('Review recorded successfully in database!');
+      }
       setShowRatingForm(false);
       
       const credRes = await axios.get(`/api/rating/farmer/${selectedCrop.id}`);
@@ -1036,7 +1038,7 @@ export default function ConsumerTracking() {
                 </div>
               )}
 
-              {/* Rating Submit Panel (MetaMask required here only) */}
+              {/* Rating Submit Panel (Web2 + Web3 Hybrid) */}
               {user && user.role === 'CONSUMER' && product && (
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-850 dark:bg-slate-900 space-y-4">
                   {error && (
@@ -1103,7 +1105,7 @@ export default function ConsumerTracking() {
                         disabled={loadingRating}
                         className="w-full flex justify-center items-center gap-1.5 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-500 disabled:opacity-50 transition"
                       >
-                        {loadingRating ? 'Signing Blockchain Review...' : 'Submit Rating'}
+                        {loadingRating ? 'Submitting Review...' : (isConnected ? 'Submit On-Chain Rating' : 'Submit Rating (Web2)')}
                       </button>
                     </form>
                   )}

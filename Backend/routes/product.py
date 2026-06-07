@@ -33,7 +33,10 @@ def register_product(current_user):
     if not farmer_project:
         return jsonify({'message': 'Farmer crop project not found'}), 404
     if not farmer_project.is_approved:
-        return jsonify({'message': 'Farmer cultivation must be approved by tester first'}), 400
+        return jsonify({'message': 'Farmer cultivation must be approved by Agricultural Inspector first'}), 400
+        
+    if current_user.role != 'ADMIN' and farmer_project.assigned_tester_id != current_user.id:
+        return jsonify({'message': 'Unauthorized. You are not assigned to test this crop batch.'}), 403
         
     try:
         test_date = datetime.fromisoformat(test_date_str.replace('Z', ''))
@@ -66,7 +69,7 @@ def register_product(current_user):
     audit = AuditLog(
         user_id=current_user.id,
         action='PRODUCT_LOT_CREATED',
-        details=f"Quality Authority {current_user.name} certified product Lot {lot_number} for farmer ID {farmer_id}."
+        details=f"Quality Lab Tester {current_user.name} certified product Lot {lot_number} for farmer ID {farmer_id}."
     )
     db.session.add(audit)
     db.session.commit()

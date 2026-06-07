@@ -36,19 +36,37 @@ def seed_database(reset=False):
             onboarding_complete=True,
             government_id="GOV1234567",
             ownership_proof_url="https://agrochain-docs.s3.amazonaws.com/proofs/rajesh_land.pdf",
-            is_verified_farmer=True
+            is_verified_farmer=True,
+            district="Pune",
+            pin_code="411001"
         )
         farmer.set_password("test@123")
         db.session.add(farmer)
         
+        # Inspector
+        inspector = User(
+            name="Rajiv Kumar (Agricultural Inspector)", 
+            email="inspector@gmail.com", 
+            phone_number="+10000000010",
+            role="INSPECTOR", 
+            is_approved=True,
+            wallet_address="0x1111111111111111111111111111111111111111",
+            district="Pune",
+            pin_code="411001"
+        )
+        inspector.set_password("test@123")
+        db.session.add(inspector)
+
         # Tester
         tester = User(
-            name="Dr. Anita Sharma (Quality Inspector)", 
+            name="Dr. Anita Sharma (Quality Tester)", 
             email="tester@gmail.com", 
             phone_number="+10000000003",
             role="TESTER", 
             is_approved=True,
-            wallet_address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266" # Hardhat Account #0 (Deployer)
+            wallet_address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", # Hardhat Account #0 (Deployer)
+            district="Pune",
+            pin_code="411001"
         )
         tester.set_password("test@123")
         db.session.add(tester)
@@ -122,7 +140,11 @@ def seed_database(reset=False):
             evidence_photos="[\"https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=600&q=80\"]",
             verification_status="VERIFIED",
             tester_remarks="All organic parameters verified. Soil nitrogen levels are excellent. Land survey deed validated.",
-            tester_id=3,
+            assigned_inspector_id=3,
+            assigned_tester_id=4,
+            tester_id=4,
+            district="Pune",
+            pin_code="411001",
             verification_date=datetime.now(timezone.utc) - timedelta(days=40)
         )
         db.session.add(crop1)
@@ -146,7 +168,11 @@ def seed_database(reset=False):
             evidence_photos="[\"https://images.unsplash.com/photo-1553137148-ebb587be616c?auto=format&fit=crop&w=600&q=80\"]",
             verification_status="VERIFIED",
             tester_remarks="Orchard meets organic standards. Biological control methods for pests are verified. Recommended Grade A.",
-            tester_id=3,
+            assigned_inspector_id=3,
+            assigned_tester_id=4,
+            tester_id=4,
+            district="Nashik",
+            pin_code="422001",
             verification_date=datetime.now(timezone.utc) - timedelta(days=55)
         )
         db.session.add(crop2)
@@ -169,6 +195,10 @@ def seed_database(reset=False):
             gps_latitude=21.1458,
             gps_longitude=79.0882,
             evidence_photos="[\"https://images.unsplash.com/photo-1594751543129-6701ad44e95b?auto=format&fit=crop&w=600&q=80\"]",
+            assigned_inspector_id=3,
+            assigned_tester_id=4,
+            district="Nagpur",
+            pin_code="440001",
             verification_status="PENDING"
         )
         db.session.add(crop3)

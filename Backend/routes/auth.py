@@ -117,10 +117,15 @@ def register():
     phone_number = data.get('phone_number')
     otp_code = data.get('otp_code')
     
+    # Optional location fields
+    district = data.get('district')
+    pin_code = data.get('pin_code')
+    coverage_pins = data.get('coverage_pins')
+    
     if not name or not email or not password or not role or not phone_number or not otp_code:
         return jsonify({'message': 'Missing required fields, including phone number and OTP'}), 400
         
-    if role not in ['FARMER', 'TESTER', 'CONSUMER', 'INVESTOR', 'ADMIN']:
+    if role not in ['FARMER', 'TESTER', 'CONSUMER', 'INVESTOR', 'ADMIN', 'INSPECTOR']:
         return jsonify({'message': 'Invalid role specified'}), 400
         
     if User.query.filter_by(email=email).first():
@@ -151,6 +156,9 @@ def register():
         phone_number=phone_number,
         role=role,
         wallet_address=wallet_address.lower() if wallet_address else None,
+        district=district,
+        pin_code=pin_code,
+        coverage_pins=coverage_pins,
         # Admin is auto-approved, others approved by default or admin
         is_approved=(role in ['CONSUMER', 'INVESTOR', 'ADMIN'])
     )

@@ -121,9 +121,9 @@ export default function Dashboard() {
           ratingsCount: 0 
         });
 
-        if (user?.role === 'TESTER' || user?.role === 'ADMIN') {
-          // Tester Pending Approvals
-          const seenApprovals = JSON.parse(localStorage.getItem('tester_seen_pending_approvals') || '[]');
+        if (user?.role === 'INSPECTOR' || user?.role === 'ADMIN') {
+          // Inspector Pending Approvals
+          const seenApprovals = JSON.parse(localStorage.getItem('inspector_seen_pending_approvals') || '[]');
           let newApprovals = 0;
           const pendingCrops = cropsList.data.filter(c => c.verification_status === 'PENDING');
           const pIds = [];
@@ -133,7 +133,9 @@ export default function Dashboard() {
           });
           setUnreadPendingApprovals(newApprovals);
           setCurrentPendingApprovalIds(pIds);
+        }
 
+        if (user?.role === 'TESTER' || user?.role === 'ADMIN') {
           // Tester Certify Batches (Approved crops but no product lot yet)
           const seenCerts = JSON.parse(localStorage.getItem('tester_seen_pending_certs') || '[]');
           let newCerts = 0;
@@ -180,7 +182,7 @@ export default function Dashboard() {
   }, [user]);
 
   const handleClearTesterApprovals = () => {
-    localStorage.setItem('tester_seen_pending_approvals', JSON.stringify(currentPendingApprovalIds));
+    localStorage.setItem('inspector_seen_pending_approvals', JSON.stringify(currentPendingApprovalIds));
     setUnreadPendingApprovals(0);
   };
 
@@ -199,6 +201,7 @@ export default function Dashboard() {
       case 'ADMIN': return 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400';
       case 'FARMER': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400';
       case 'TESTER': return 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400';
+      case 'INSPECTOR': return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400';
       case 'INVESTOR': return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-400';
       default: return 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400';
     }
@@ -416,47 +419,48 @@ export default function Dashboard() {
             </Link>
           )}
 
+          {/* Inspector Specific Actions */}
+          {(user?.role === 'INSPECTOR' || user?.role === 'ADMIN') && (
+            <Link 
+              to="/tester/approve" 
+              onClick={handleClearTesterApprovals}
+              className="relative group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4 w-full"
+            >
+              {unreadPendingApprovals > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-slate-900 animate-pulse z-10">
+                  {unreadPendingApprovals}
+                </span>
+              )}
+              <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl text-indigo-600 group-hover:scale-105 transition-transform shrink-0">
+                <UserCheck className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Pending Approvals</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">INSPECTOR: View registered farmer crops and verify farm properties.</p>
+              </div>
+            </Link>
+          )}
+
           {/* Tester Specific Actions */}
           {(user?.role === 'TESTER' || user?.role === 'ADMIN') && (
-            <>
-              <Link 
-                to="/tester/approve" 
-                onClick={handleClearTesterApprovals}
-                className="relative group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4 w-full"
-              >
-                {unreadPendingApprovals > 0 && (
-                  <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-slate-900 animate-pulse z-10">
-                    {unreadPendingApprovals}
-                  </span>
-                )}
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-xl text-blue-600 group-hover:scale-105 transition-transform shrink-0">
-                  <UserCheck className="h-6 w-6" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Pending Approvals</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">TESTER: View registered farmer crops and approve/reject profiles.</p>
-                </div>
-              </Link>
-
-              <Link 
-                to="/tester/product" 
-                onClick={handleClearTesterCerts}
-                className="relative group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4 w-full"
-              >
-                {unreadPendingCerts > 0 && (
-                  <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-slate-900 animate-pulse z-10">
-                    {unreadPendingCerts}
-                  </span>
-                )}
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-xl text-blue-600 group-hover:scale-105 transition-transform shrink-0">
-                  <FileCheck className="h-6 w-6" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Certify Batches</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">TESTER: Record test logs and create certified product lots.</p>
-                </div>
-              </Link>
-            </>
+            <Link 
+              to="/tester/product" 
+              onClick={handleClearTesterCerts}
+              className="relative group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4 w-full"
+            >
+              {unreadPendingCerts > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-slate-900 animate-pulse z-10">
+                  {unreadPendingCerts}
+                </span>
+              )}
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-xl text-blue-600 group-hover:scale-105 transition-transform shrink-0">
+                <FileCheck className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Certify Batches</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">TESTER: Record lab test logs and create certified product lots.</p>
+              </div>
+            </Link>
           )}
 
           {/* Admin Specific Action */}

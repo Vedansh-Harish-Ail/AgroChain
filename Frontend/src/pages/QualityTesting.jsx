@@ -127,9 +127,6 @@ export default function QualityTesting() {
       setRemarks('');
       fetchPendingCrops();
 
-      // Proceed directly to certify product lot
-      navigate('/tester/product', { state: { cropId: crop.id, cropName: crop.crop_type } });
-
     } catch (err) {
       console.error(err);
       setError(err.reason || err.message || 'Transaction failed. Check MetaMask logs.');
@@ -351,7 +348,7 @@ export default function QualityTesting() {
                 {/* Remarks Input */}
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
-                    Tester remarks / verification details
+                    Inspector remarks / verification details
                   </label>
                   <textarea
                     rows={3}

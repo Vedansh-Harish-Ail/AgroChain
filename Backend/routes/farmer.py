@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-from models import db, Farmer, AuditLog
+from models import db, Farmer, AuditLog, User
 from utils.auth import roles_allowed
 
 farmer_bp = Blueprint('farmer', __name__)
@@ -25,12 +25,12 @@ def register_crop(current_user):
     gps_latitude = data.get('gps_latitude')
     gps_longitude = data.get('gps_longitude')
     evidence_photos_raw = data.get('evidence_photos')
+
+    district = data.get('district')
+    pin_code = data.get('pin_code')
     
     if not farm_location or not farm_size or not farming_type or not crop_type or not expected_yield or not cultivation_date_str or not land_survey_no:
         return jsonify({'message': 'Missing required fields, including land survey number'}), 400
-        
-    if gps_latitude is None or gps_longitude is None:
-        return jsonify({'message': 'GPS coordinates are required'}), 400
         
     try:
         cultivation_date = datetime.fromisoformat(cultivation_date_str.replace('Z', ''))
@@ -42,11 +42,15 @@ def register_crop(current_user):
     except ValueError:
         return jsonify({'message': 'expected_yield must be an integer'}), 400
 
-    try:
-        gps_latitude = float(gps_latitude)
-        gps_longitude = float(gps_longitude)
-    except (ValueError, TypeError):
-        return jsonify({'message': 'Invalid GPS coordinates format'}), 400
+    if gps_latitude and gps_longitude:
+        try:
+            gps_latitude = float(gps_latitude)
+            gps_longitude = float(gps_longitude)
+        except (ValueError, TypeError):
+            return jsonify({'message': 'Invalid GPS coordinates format'}), 400
+    else:
+        gps_latitude = None
+        gps_longitude = None
 
     # Serialize evidence photos
     evidence_photos = None
@@ -57,13 +61,31 @@ def register_crop(current_user):
             evidence_photos = str(evidence_photos_raw)
 
     # Determine blockchain status
-    # If tx_hash is provided, it's VERIFIED (or PENDING confirmation, but let's say VERIFIED for simplicity)
-    # If not, it's DB_ONLY (Lazy Wallet)
     blockchain_status = 'VERIFIED' if tx_hash else 'DB_ONLY'
+
+    # Simple Location-Based Matching Algorithm
+    inspector = None
+    tester = None
+    if pin_code:
+        inspector = User.query.filter_by(role='INSPECTOR', pin_code=pin_code).first()
+        tester = User.query.filter_by(role='TESTER', pin_code=pin_code).first()
+    
+    if not inspector and district:
+        inspector = User.query.filter_by(role='INSPECTOR', district=district).first()
+    if not tester and district:
+        tester = User.query.filter_by(role='TESTER', district=district).first()
+        
+    # Fallback to any available if no match found
+    if not inspector:
+        inspector = User.query.filter_by(role='INSPECTOR').first()
+    if not tester:
+        tester = User.query.filter_by(role='TESTER').first()
 
     new_farmer_project = Farmer(
         user_id=current_user.id,
         farm_location=farm_location,
+        district=district,
+        pin_code=pin_code,
         farm_size=farm_size,
         farming_type=farming_type,
         crop_type=crop_type,
@@ -77,7 +99,9 @@ def register_crop(current_user):
         gps_latitude=gps_latitude,
         gps_longitude=gps_longitude,
         evidence_photos=evidence_photos,
-        verification_status='PENDING'
+        verification_status='PENDING',
+        assigned_inspector_id=inspector.id if inspector else None,
+        assigned_tester_id=tester.id if tester else None
     )
     
     db.session.add(new_farmer_project)

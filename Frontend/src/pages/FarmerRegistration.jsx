@@ -8,6 +8,8 @@ export default function FarmerRegistration() {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     farm_location: '',
+    district: '',
+    pin_code: '',
     farm_size: '',
     farming_type: 'Organic',
     crop_type: '',
@@ -91,12 +93,6 @@ export default function FarmerRegistration() {
 
     if (!formData.land_survey_no) {
       setError('Land Survey Number is required for verification.');
-      setLoading(false);
-      return;
-    }
-
-    if (!formData.gps_latitude || !formData.gps_longitude) {
-      setError('GPS Coordinates are required for fraud prevention verification.');
       setLoading(false);
       return;
     }
@@ -288,8 +284,40 @@ export default function FarmerRegistration() {
               value={formData.farm_location}
               onChange={handleInputChange}
               className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-              placeholder="e.g. Pune District, Maharashtra, India"
+              placeholder="e.g. Survey No. 45, Near Riverside"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                District
+              </label>
+              <input
+                type="text"
+                name="district"
+                required
+                value={formData.district}
+                onChange={handleInputChange}
+                className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                placeholder="e.g. Pune"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                PIN Code
+              </label>
+              <input
+                type="text"
+                name="pin_code"
+                required
+                value={formData.pin_code}
+                onChange={handleInputChange}
+                className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                placeholder="e.g. 411001"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
@@ -301,7 +329,6 @@ export default function FarmerRegistration() {
                 <input
                   type="text"
                   name="gps_latitude"
-                  required
                   readOnly
                   placeholder="18.5204"
                   value={formData.gps_latitude}
@@ -315,7 +342,6 @@ export default function FarmerRegistration() {
                 <input
                   type="text"
                   name="gps_longitude"
-                  required
                   readOnly
                   placeholder="73.8567"
                   value={formData.gps_longitude}

@@ -5,12 +5,15 @@ from utils.auth import roles_allowed
 quality_bp = Blueprint('quality', __name__)
 
 @quality_bp.route('/approve/<int:crop_id>', methods=['POST'])
-@roles_allowed('TESTER', 'ADMIN')
+@roles_allowed('INSPECTOR', 'ADMIN')
 def approve_crop(current_user, crop_id):
     from datetime import datetime, timezone
     crop = Farmer.query.get(crop_id)
     if not crop:
         return jsonify({'message': 'Crop registration not found'}), 404
+        
+    if current_user.role != 'ADMIN' and crop.assigned_inspector_id != current_user.id:
+        return jsonify({'message': 'Unauthorized. Crop is not assigned to you.'}), 403
         
     data = request.get_json() or {}
     tx_hash = data.get('tx_hash')
@@ -36,7 +39,7 @@ def approve_crop(current_user, crop_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='FARMER_CROP_APPROVED',
-        details=f"Quality Authority {current_user.name} approved crop ID {crop_id} with remarks: {tester_remarks}."
+        details=f"Agricultural Inspector {current_user.name} verified and approved crop ID {crop_id} with remarks: {tester_remarks}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -48,12 +51,15 @@ def approve_crop(current_user, crop_id):
 
 
 @quality_bp.route('/reject/<int:crop_id>', methods=['POST'])
-@roles_allowed('TESTER', 'ADMIN')
+@roles_allowed('INSPECTOR', 'ADMIN')
 def reject_crop(current_user, crop_id):
     from datetime import datetime, timezone
     crop = Farmer.query.get(crop_id)
     if not crop:
         return jsonify({'message': 'Crop registration not found'}), 404
+        
+    if current_user.role != 'ADMIN' and crop.assigned_inspector_id != current_user.id:
+        return jsonify({'message': 'Unauthorized. Crop is not assigned to you.'}), 403
         
     data = request.get_json() or {}
     tester_remarks = data.get('tester_remarks')
@@ -70,7 +76,7 @@ def reject_crop(current_user, crop_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='FARMER_CROP_REJECTED',
-        details=f"Quality Authority {current_user.name} rejected crop ID {crop_id} with remarks: {tester_remarks}."
+        details=f"Agricultural Inspector {current_user.name} rejected crop ID {crop_id} with remarks: {tester_remarks}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -82,7 +88,10 @@ def reject_crop(current_user, crop_id):
 
 
 @quality_bp.route('/pending', methods=['GET'])
-@roles_allowed('TESTER', 'ADMIN')
+@roles_allowed('INSPECTOR', 'ADMIN')
 def get_pending_crops(current_user):
-    crops = Farmer.query.filter_by(is_approved=False).all()
+    if current_user.role == 'ADMIN':
+        crops = Farmer.query.filter_by(is_approved=False).all()
+    else:
+        crops = Farmer.query.filter_by(is_approved=False, assigned_inspector_id=current_user.id).all()
     return jsonify([crop.to_dict() for crop in crops]), 200

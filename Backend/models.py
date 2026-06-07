@@ -23,6 +23,11 @@ class User(db.Model):
     ownership_proof_url = db.Column(db.String(255), nullable=True)
     is_verified_farmer = db.Column(db.Boolean, default=False)
     
+    # New location fields for Inspector and Tester assignment
+    district = db.Column(db.String(100), nullable=True)
+    pin_code = db.Column(db.String(20), nullable=True)
+    coverage_pins = db.Column(db.Text, nullable=True)
+    
     # Relationships
     farmer_profile = db.relationship('Farmer', backref=db.backref('user', foreign_keys='Farmer.user_id'), uselist=False, cascade="all, delete-orphan", foreign_keys='Farmer.user_id')
     audit_logs = db.relationship('AuditLog', backref='user', lazy=True)
@@ -49,6 +54,9 @@ class User(db.Model):
             'government_id': self.government_id,
             'ownership_proof_url': self.ownership_proof_url,
             'is_verified_farmer': self.is_verified_farmer,
+            'district': self.district,
+            'pin_code': self.pin_code,
+            'coverage_pins': self.coverage_pins,
             'created_at': self.created_at.isoformat()
         }
 
@@ -101,8 +109,16 @@ class Farmer(db.Model):
     tester_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     verification_date = db.Column(db.DateTime, nullable=True)
 
+    farm_address = db.Column(db.Text, nullable=True)
+    district = db.Column(db.String(100), nullable=True)
+    pin_code = db.Column(db.String(20), nullable=True)
+    assigned_inspector_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    assigned_tester_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+
     # Relationships
     tester = db.relationship('User', foreign_keys=[tester_id])
+    assigned_inspector = db.relationship('User', foreign_keys=[assigned_inspector_id])
+    assigned_tester = db.relationship('User', foreign_keys=[assigned_tester_id])
     products = db.relationship('Product', backref='farmer', lazy=True, cascade="all, delete-orphan")
     investments = db.relationship('Investment', backref='farmer', lazy=True)
     ratings = db.relationship('Rating', backref='farmer', lazy=True)
@@ -148,7 +164,14 @@ class Farmer(db.Model):
             'tester_remarks': self.tester_remarks,
             'tester_id': self.tester_id,
             'tester_name': self.tester.name if self.tester else None,
-            'verification_date': self.verification_date.isoformat() if self.verification_date else None
+            'verification_date': self.verification_date.isoformat() if self.verification_date else None,
+            'farm_address': self.farm_address,
+            'district': self.district,
+            'pin_code': self.pin_code,
+            'assigned_inspector_id': self.assigned_inspector_id,
+            'assigned_inspector_name': self.assigned_inspector.name if self.assigned_inspector else None,
+            'assigned_tester_id': self.assigned_tester_id,
+            'assigned_tester_name': self.assigned_tester.name if self.assigned_tester else None
         }
 
 
@@ -258,6 +281,7 @@ class Rating(db.Model):
     comment = db.Column(db.Text, nullable=True)
     tx_hash = db.Column(db.String(66), nullable=True)
     block_number = db.Column(db.Integer, nullable=True)
+    blockchain_status = db.Column(db.String(50), default='DB_ONLY') # VERIFIED, DB_ONLY
     timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -275,6 +299,7 @@ class Rating(db.Model):
             'comment': self.comment,
             'tx_hash': self.tx_hash,
             'block_number': self.block_number,
+            'blockchain_status': self.blockchain_status,
             'timestamp': self.timestamp.isoformat()
         }
 

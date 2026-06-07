@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, role, walletAddress, phoneNumber, otpCode) => {
+  const register = async (name, email, password, role, walletAddress, phoneNumber, otpCode, locationData = {}) => {
     try {
       const res = await axios.post('/api/auth/register', {
         name,
@@ -65,7 +65,8 @@ export const AuthProvider = ({ children }) => {
         role,
         wallet_address: walletAddress || null,
         phone_number: phoneNumber,
-        otp_code: otpCode
+        otp_code: otpCode,
+        ...locationData
       });
       return { success: true, user: res.data.user };
     } catch (err) {

@@ -17,6 +17,9 @@ export default function RegisterPage() {
   const [role, setRole] = useState('CONSUMER');
   const [customWallet, setCustomWallet] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [district, setDistrict] = useState('');
+  const [pinCode, setPinCode] = useState('');
+  const [coveragePins, setCoveragePins] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
@@ -86,7 +89,11 @@ export default function RegisterPage() {
 
     const activeWallet = customWallet || (isConnected ? walletAddress : '');
 
-    const result = await register(name, email, password, role, activeWallet, phoneNumber, otpCode);
+    const locationData = ['INSPECTOR', 'TESTER'].includes(role) 
+      ? { district, pin_code: pinCode, coverage_pins: coveragePins } 
+      : {};
+
+    const result = await register(name, email, password, role, activeWallet, phoneNumber, otpCode, locationData);
     setLoading(false);
 
     if (result.success) {
@@ -263,12 +270,34 @@ export default function RegisterPage() {
                     <option value="CONSUMER">Consumer / Investor (Legacy)</option>
                     <option value="INVESTOR">Investor</option>
                     <option value="FARMER">Farmer</option>
-                    <option value="TESTER">Quality Authority</option>
+                    <option value="INSPECTOR">Agricultural Inspector</option>
+                    <option value="TESTER">Quality Lab</option>
                     <option value="ADMIN">System Admin</option>
                   </select>
                 </div>
               </div>
             </div>
+
+            {/* Location Fields for Verifiers */}
+            {['INSPECTOR', 'TESTER'].includes(role) && (
+              <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-3 dark:border-blue-950/20 dark:bg-blue-950/10 mb-1">
+                <p className="text-[11px] font-semibold text-blue-800 dark:text-blue-300 mb-2">Location Assignment Details</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">District</label>
+                    <input type="text" value={district} onChange={(e) => setDistrict(e.target.value)} required={['INSPECTOR', 'TESTER'].includes(role)} placeholder="E.g. Pune" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Base PIN Code</label>
+                    <input type="text" value={pinCode} onChange={(e) => setPinCode(e.target.value)} required={['INSPECTOR', 'TESTER'].includes(role)} placeholder="E.g. 411001" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Coverage PINs (Comma sep)</label>
+                    <input type="text" value={coveragePins} onChange={(e) => setCoveragePins(e.target.value)} placeholder="411001, 411002" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Phone Number & OTP Verification Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -344,7 +373,7 @@ export default function RegisterPage() {
             )}
 
             {/* Compact Conditional Wallet Section */}
-            {role === 'FARMER' ? (
+            {['FARMER', 'CONSUMER'].includes(role) ? (
               <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 p-3 dark:border-emerald-950/20 dark:bg-emerald-950/10">
                 <div className="flex gap-2.5">
                   <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 mt-0.5 flex-shrink-0" />
@@ -376,7 +405,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {(showWallet || role !== 'FARMER') && (
+            {(showWallet || !['FARMER', 'CONSUMER'].includes(role)) && (
               <div className="animate-in fade-in slide-in-from-top-1 duration-200">
                 <label htmlFor="wallet" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Wallet Address (Optional)

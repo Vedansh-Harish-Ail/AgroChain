@@ -35,20 +35,24 @@ The platform implements strict Role-Based Access Control (RBAC) across five sepa
    - Reviews Letters of Intent (proposals) submitted by investors and accepts/declines them.
    - Accesses the **Farmer Document Center** to view and print official crop approval letters and certified batch certificates containing dynamic QR codes.
 
-3. **Quality Tester / Inspector (`TESTER`)**:
-   - Accesses the Pending Inspection Queue showing crop registrations that need checking.
-   - Inspects the farmer's land deeds, coordinates, and soil metrics. Approves or rejects crop registrations, recording audit dates, signatures, and verifier remarks.
-   - Issues **Product Quality Certificates** for harvested crops, specifying quality grades (e.g., `Grade A+`, `Grade A`) and setting the listing price and expiry dates.
+3. **Agricultural Inspector (`INSPECTOR`)**:
+   - Assigned to specific crops based on their geographic location (district and pin code).
+   - Accesses the Pending Inspection Queue showing crop registrations in their assigned region that need checking.
+   - Inspects the farmer's land deeds, coordinates, and soil metrics. Approves or rejects crop registrations, recording audit dates, signatures, and verifier remarks. Requires MetaMask for signing verifications.
 
-4. **Dedicated Investor (`INVESTOR`)**:
+4. **Quality Tester / Lab (`TESTER`)**:
+   - Assigned to specific verified crops based on their geographic location (district and pin code).
+   - Issues **Product Quality Certificates** for harvested crops after conducting scientific tests, specifying quality grades (e.g., `Grade A+`, `Grade A`) and setting the listing price and expiry dates. Requires MetaMask for signing certificates.
+
+5. **Dedicated Investor (`INVESTOR`)**:
    - Logs in to explore verified, active crop listings seeking funding.
    - Submits formal micro-finance proposals (proposing funding amounts in Rupees, return yield margins, and terms).
    - Locks and transfers funds (test ETH) directly to the farmer's MetaMask wallet using the `MicroFinance.sol` smart contract escrow mechanism.
 
-5. **Consumer / Retail Buyer (`CONSUMER` / Legacy Role)**:
+6. **Consumer / Retail Buyer (`CONSUMER` / Legacy Role)**:
    - Explores the public agricultural supply chain directory without needing to log in.
    - Traces crop provenance (GPS coordinates, map links, testing dates, and timeline steps).
-   - Logs in to submit reviews and trust ratings (evaluating reliability, quality, and delivery satisfaction) which are locked on the blockchain.
+   - Logs in to submit reviews and trust ratings (evaluating reliability, quality, and delivery satisfaction). Supports walletless Web2 interactions, where ratings are logged in the database if a MetaMask wallet is not connected, but verified on-chain if connected.
 
 ### B. High-Fidelity Lookup Portal & QR Link
 * **Explorer Redesign (`/explorer`)**: Replaced raw, tech-heavy blockchain transaction indexes with a dual-tab lookup interface (Crop Cultivation ID vs. Product Lot Number) displaying clean certificates.
@@ -161,9 +165,9 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 ### A. SQLite Table Schemas (`models.py`)
 
 1. **`users`**:
-   - `id` (PK), `name`, `email` (Unique), `phone_number` (Unique), `password_hash`, `role` (`ADMIN`, `FARMER`, `TESTER`, `CONSUMER`, `INVESTOR`), `wallet_address`, `is_approved`, `is_verified_farmer`, `government_id`, `ownership_proof_url`.
+   - `id` (PK), `name`, `email` (Unique), `phone_number` (Unique), `password_hash`, `role` (`ADMIN`, `FARMER`, `INSPECTOR`, `TESTER`, `CONSUMER`, `INVESTOR`), `wallet_address`, `is_approved`, `is_verified_farmer`, `government_id`, `ownership_proof_url`, `district`, `pin_code`.
 2. **`farmers`**:
-   - `id` (PK), `user_id` (FK $\rightarrow$ `users`), `farm_location`, `farm_size`, `farming_type`, `crop_type`, `expected_yield`, `cultivation_date`, `tx_hash`, `block_number`, `blockchain_status` (`DB_ONLY`, `VERIFIED`), `is_approved`, `timeline_status`, `land_survey_no`, `gps_latitude`, `gps_longitude`, `evidence_photos` (JSON list), `verification_status` (`PENDING`, `VERIFIED`, `REJECTED`), `tester_remarks`, `tester_id` (FK), `verification_date`.
+   - `id` (PK), `user_id` (FK $\rightarrow$ `users`), `farm_location`, `farm_size`, `farming_type`, `crop_type`, `expected_yield`, `cultivation_date`, `tx_hash`, `block_number`, `blockchain_status` (`DB_ONLY`, `VERIFIED`), `is_approved`, `timeline_status`, `land_survey_no`, `gps_latitude`, `gps_longitude`, `evidence_photos` (JSON list), `verification_status` (`PENDING`, `VERIFIED`, `REJECTED`), `tester_remarks`, `assigned_inspector_id` (FK), `assigned_tester_id` (FK), `tester_id` (FK), `verification_date`, `farm_address`, `district`, `pin_code`.
 3. **`products`**:
    - `lot_number` (PK), `farmer_id` (FK $\rightarrow$ `farmers`), `crop_name`, `quality_grade`, `price` (BigInt Wei), `test_date`, `expiry_date`, `certification_status` (`APPROVED`, `REJECTED`), `tx_hash`, `block_number`, `timestamp`.
 4. **`investments`**:
@@ -292,3 +296,14 @@ Managed via React Router inside `Frontend/src/App.jsx`.
    - Account #1 $\rightarrow$ Rajesh Patel (Farmer)
    - Account #2 $\rightarrow$ Amit Kumar (Consumer)
    - Account #3 $\rightarrow$ Suresh Mehta (Investor)
+
+---
+
+## 7. Security & Credential Management Guidelines
+
+To ensure the safety and integrity of the AgroChain project, all developers and AI agents must adhere to the following credential management rules:
+1. **No Hardcoded Secrets**: Never hardcode secret keys, API tokens, database passwords, or private keys directly into the source code (`.py`, `.js`, `.jsx`, etc.).
+2. **Environment Variables**: Always use `.env` files for storing sensitive credentials. Ensure that `python-dotenv` or Vite's `import.meta.env` mechanisms are used to load them.
+3. **Never Commit Secrets**: Ensure that `.env` is always included in the `.gitignore` file. Only `.env.example` should be committed to the repository, containing dummy or placeholder values.
+4. **Secure Defaults**: If a new service requires a credential, fall back to secure default handling (e.g., throwing an error if the secret is missing, rather than defaulting to a publicly known "test" secret in production).
+5. **Private Key Handling**: Ethereum private keys used for deployment or testing must only reside in secure environment variables or local node memory (like Hardhat's default test accounts), never pushed to version control.
