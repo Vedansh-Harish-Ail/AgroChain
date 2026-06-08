@@ -26,7 +26,7 @@ The Farmer is the initiator of the agricultural supply chain. Their workflow spa
 
 ```mermaid
 graph TD
-    A[Register Account & Verify OTP] --> B[Link Wallet Address (No Gas/MetaMask Required)]
+    A[Register Account & Verify OTP] --> B["Link Wallet Address - No Gas or MetaMask Required"]
     B --> C[Register Cultivation Crop Details]
     C -->|verification_status: PENDING| D[Inspector Audits & Approves]
     D -->|verification_status: VERIFIED| E[Farmer Downloads Approval Letter]

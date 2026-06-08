@@ -263,34 +263,41 @@ The system structure consists of a three-tier Web3 hybrid architecture:
 
 #### Use Case Diagram
 ```mermaid
-leftToRightDirection
-actor Farmer
-actor Inspector
-actor Tester as "Quality Lab Tester"
-actor Investor
-actor Consumer
-actor Admin
-
-rectangle AgroChain {
-    Farmer --> (Register Crop)
-    Farmer --> (Accept Proposal)
-    Farmer --> (Update Harvest Timeline)
+graph LR
+    Farmer[Farmer] --- RegisterCrop(Register Crop)
+    Farmer --- AcceptProposal(Accept Proposal)
+    Farmer --- UpdateTimeline(Update Harvest Timeline)
     
-    Inspector --> (Verify Land Registry)
-    Inspector --> (Approve Crop on Ledger)
+    Inspector[Inspector] --- VerifyLand(Verify Land Registry)
+    Inspector --- ApproveCrop(Approve Crop on Ledger)
     
-    Tester --> (Conduct Quality Test)
-    Tester --> (Certify Product Lot)
+    Tester["Quality Lab Tester"] --- ConductTest(Conduct Quality Test)
+    Tester --- CertifyLot(Certify Product Lot)
     
-    Investor --> (Browse Certified Marketplace)
-    Investor --> (Submit Proposal LOI)
+    Investor[Investor] --- BrowseMarket(Browse Certified Marketplace)
+    Investor --- SubmitLOI(Submit Proposal LOI)
     
-    Consumer --> (Trace Crop Provenance)
-    Consumer --> (Submit Reviews & Ratings)
+    Consumer[Consumer] --- TraceProvenance(Trace Crop Provenance)
+    Consumer --- SubmitRatings(Submit Reviews & Ratings)
     
-    Admin --> (Approve Verifiers)
-    Admin --> (Inspect Audit Logs)
-}
+    Admin[Admin] --- ApproveVerifiers(Approve Verifiers)
+    Admin --- InspectLogs(Inspect Audit Logs)
+    
+    subgraph AgroChain["AgroChain Platform Boundary"]
+        RegisterCrop
+        AcceptProposal
+        UpdateTimeline
+        VerifyLand
+        ApproveCrop
+        ConductTest
+        CertifyLot
+        BrowseMarket
+        SubmitLOI
+        TraceProvenance
+        SubmitRatings
+        ApproveVerifiers
+        InspectLogs
+    end
 ```
 
 #### Activity Diagram
