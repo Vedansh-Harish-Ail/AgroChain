@@ -26,7 +26,7 @@ The Farmer is the initiator of the agricultural supply chain. Their workflow spa
 
 ```mermaid
 graph TD
-    A[Register Account & Verify OTP] --> B[Link MetaMask Wallet]
+    A[Register Account & Verify OTP] --> B[Link Wallet Address (No Gas/MetaMask Required)]
     B --> C[Register Cultivation Crop Details]
     C -->|verification_status: PENDING| D[Inspector Audits & Approves]
     D -->|verification_status: VERIFIED| E[Farmer Downloads Approval Letter]
@@ -43,9 +43,10 @@ graph TD
    * Navigate to `/register` and fill in the profile form: Name, Email, Phone Number, Government ID (Aadhaar/PAN), Farm Land Title Ownership Proof URL, District, Pin Code, and Password.
    * Click **"Send OTP"** to trigger a mock/real SMS code.
    * Enter the 6-digit code to verify the phone number. Click **"Sign Up"** to create the user database entry with the role `FARMER`.
-2. **Web3 Authentication (MetaMask)**:
+2. **Wallet Address Association (No MetaMask/Gas required)**:
    * Log into the Dashboard (`/dashboard`).
-   * Click the **"Link Wallet"** button to prompt MetaMask, connecting the Farmer's active Ethereum wallet address (`wallet_address` in the database).
+   * Click the **"Link Wallet"** button to associate the Farmer's active Ethereum wallet address (`wallet_address` in the database) to their profile.
+   * *Note: This is a standard Web2 database association so that investors know where to transfer funding escrow. The Farmer does not need MetaMask, transactions, or gas fees to perform any tasks on the portal.*
 
 ### Phase 2: Cultivation Registration
 1. **Crop Listing Entry**:

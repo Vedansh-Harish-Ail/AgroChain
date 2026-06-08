@@ -169,3 +169,20 @@ To maintain the system's high-fidelity design language:
 1.  **No Hardcoded Secrets**: Do not store private keys, API credentials, database strings, or JWT keys inside code repositories.
 2.  **Environment Variables**: Save all configuration options in a local `.env` file (which is automatically ignored by `.gitignore`).
 3.  **Secure Fallbacks**: Provide strict config checks in code to prevent starting operations if vital credentials are empty.
+
+---
+
+## 🔮 Future Roadmap & Scope
+
+For future scale-up and enhancement of the platform's user experience (particularly to reduce the barrier to entry for rural farmers), the following architecture is proposed:
+
+### 1. Unified Web2 Social Authentication for Farmers
+*   **Google Connect**: Instead of linking MetaMask wallets, Farmers onboarding onto the platform register or log in with one-click **Google OAuth2** or SMS-based social authentication.
+*   **Familiar UX**: Eliminates the requirement for non-technical users to install browser extensions, manage recovery phrases, or understand Web3 wallet jargon.
+
+### 2. Auto-Generating Wallets (Embedded Invisible Web3)
+*   **Embedded Wallet SDK Integration**: Implement services like **Privy**, **Web3Auth**, or **Magic Link** to securely derive an Ethereum wallet address in the background upon social login.
+*   **Invisible Custody**: The generated address is linked directly to their profile (`wallet_address` column). Farmers never see a private key, signature pop-up, or gas error, yet are fully equipped to receive escrow investments directly on-chain.
+
+### 3. Automatic Fiat Cash-Out (Fiat Off-Ramp)
+*   **Stripe / Transak Off-Ramps**: Add a `"Withdraw to Bank"` workflow in the Farmer's dashboard that automatically triggers an exchange (converting on-chain ETH funding back into local fiat currency, e.g., INR) and routes it directly to their bank account using local banking networks.
