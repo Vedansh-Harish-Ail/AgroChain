@@ -9,22 +9,20 @@ Here is the high-level layout of the complete AgroChain verification, certificat
 ```mermaid
 flowchart LR
     User([User]) --> Register[Register Crop]
-    Register --> CheckDetails[Check Details / Inspector Audit]
-    CheckDetails --> FundFarmer[Fund Farmer / Investor Proposal]
-    
-    Register --> QualityControl[Quality Control / Lab Queue]
-    QualityControl --> Testing[Scientific Quality Testing]
-    Testing --> AssignLot[Assign Certified Lot Number]
-    AssignLot --> ApproveLot[Approve Lot & Mint Certificate]
-    
-    ApproveLot --> CheckDetails
+    Register --> InspectorAudit[Inspector Audit]
+    InspectorAudit --> Harvest[Harvest Completed]
+    Harvest --> LabCert[Lab Testing & Certification]
+    LabCert --> FundingMarket[Funding Marketplace]
+    FundingMarket --> InvestorProposal[Investor Proposal LOI]
+    InvestorProposal --> AcceptProposal[Farmer Accepts LOI]
+    AcceptProposal --> EscrowFund[Lock & Send Escrow ETH]
 ```
 
 ---
 
 ## 1. FARMER WORKFLOW (Master Lifecycle)
 
-The Farmer is the initiator of the agricultural supply chain. Their workflow spans from registering their account to listing crops, securing micro-finance, updating harvest timelines, and printing blockchain certificates.
+The Farmer is the initiator of the agricultural supply chain. Their workflow spans from registering their account to listing crops, updating harvest timelines, printing certificates, and securing micro-finance.
 
 ```mermaid
 graph TD
@@ -32,12 +30,12 @@ graph TD
     B --> C[Register Cultivation Crop Details]
     C -->|verification_status: PENDING| D[Inspector Audits & Approves]
     D -->|verification_status: VERIFIED| E[Farmer Downloads Approval Letter]
-    E --> F[Receive & Review Investor Proposals / LOIs]
-    F -->|Accept Proposal| G[Funding Completed & ETH Escrow Received]
-    G --> H[Update Timeline: READY_TO_HARVEST]
+    E --> H[Update Timeline: READY_TO_HARVEST]
     H --> I[Update Timeline: HARVEST_COMPLETED]
     I --> J[Quality Lab Tester Scientific Certification]
     J -->|timeline_status: PRODUCT_AVAILABLE| K[Farmer Prints Batch Certificate & QR Code]
+    K --> F[Receive & Review Investor Proposals / LOIs]
+    F -->|Accept Proposal| G[Funding Completed & ETH Escrow Received]
 ```
 
 ### Phase 1: Onboarding & Account setup
@@ -67,17 +65,7 @@ graph TD
    * Once the Inspector completes the verification and signs the contract on-chain, the crop's `verification_status` becomes `'VERIFIED'` and the timeline status advances to `TESTER_APPROVED`.
    * **Document Unlocked**: The Farmer's **Crop History** portal (`/farmer/crops`) displays the **"View Approval Letter"** button. The Farmer can click it to open and download/print a compliance certificate detailing the land deeds, GPS coordinates, and inspector details.
 
-### Phase 4: Funding & Investor Relations
-1. **Browsing Proposals**:
-   * Micro-finance investors view the verified crop listing and send proposals (Letters of Intent - LOIs) proposing funding amounts (INR), yield profit return margins, and conditions.
-   * The Farmer receives a real-time notification badge on their Dashboard indicating new incoming proposals.
-2. **Accepting Escrow**:
-   * The Farmer clicks **"Accept"** on a chosen investor proposal.
-   * The proposal status changes to `ACCEPTED`.
-   * The crop timeline status automatically transitions to `FUNDING_COMPLETED`.
-   * The Investor initiates the smart contract transaction on `MicroFinance.sol`, transferring the corresponding test ETH directly to the Farmer's linked MetaMask wallet.
-
-### Phase 5: Harvesting & Timeline Milestones
+### Phase 4: Harvesting & Timeline Milestones
 As the cultivation cycle progresses, the Farmer manually updates crop progress in **Crop History** to coordinate with the Quality Lab:
 1. **Ready to Harvest**:
    * The Farmer moves the crop timeline to `READY_TO_HARVEST`.
@@ -85,7 +73,7 @@ As the cultivation cycle progresses, the Farmer manually updates crop progress i
    * Once the yield is harvested, the Farmer updates the timeline to `HARVEST_COMPLETED`.
    * This status change pushes the crop into the regional Quality Lab Tester’s pending queue for lab audits.
 
-### Phase 6: Batch Certification & Sale
+### Phase 5: Batch Certification & Sale
 1. **Scientific Validation**:
    * The Quality Lab Tester verifies the harvested crop, assigns a quality grade (e.g., `Grade A+`), sets listing prices in Wei, and signs the certificate on-chain.
    * The crop timeline updates to `PRODUCT_AVAILABLE`.
@@ -95,6 +83,16 @@ As the cultivation cycle progresses, the Farmer manually updates crop progress i
    * The Farmer attaches the printed QR codes to physical packaging bags.
 3. **Public Explorer Listing**:
    * The crop lot is listed publicly in the consumer marketplace directory.
+
+### Phase 6: Funding & Investor Relations
+1. **Browsing Proposals**:
+   * Once the crop batch is certified, micro-finance investors view the active lot listing in the marketplace and send proposals (Letters of Intent - LOIs) proposing funding amounts (INR), yield profit return margins, and conditions.
+   * The Farmer receives a real-time notification badge on their Dashboard indicating new incoming proposals.
+2. **Accepting Escrow**:
+   * The Farmer clicks **"Accept"** on a chosen investor proposal.
+   * The proposal status changes to `ACCEPTED`.
+   * The crop timeline status automatically transitions to `FUNDING_COMPLETED`.
+   * The Investor initiates the smart contract transaction on `MicroFinance.sol`, transferring the corresponding test ETH directly to the Farmer's linked MetaMask wallet.
 
 ---
 
@@ -169,8 +167,8 @@ The Investor backs trusted farmers, providing low-interest micro-loans in exchan
 ```mermaid
 graph TD
     A[Register Investor Account] --> B[Connect MetaMask Wallet]
-    B --> C[Browse Inspector-Verified Crops in Funding Marketplace]
-    C --> D[Select Crop & Submit Micro-Finance Proposal LOI]
+    B --> C[Browse Certified Product Lots in Funding Marketplace]
+    C --> D[Select Lot & Submit Micro-Finance Proposal LOI]
     D --> E[Monitor Status of Proposal in Submitted LOIs Hub]
     E -->|LOI Accepted by Farmer| F[Click Send Escrow Funds]
     F --> G[On-Chain Transfer of ETH Escrow to Farmer Wallet]
