@@ -133,6 +133,18 @@ export default function Dashboard() {
           });
           setUnreadPendingApprovals(newApprovals);
           setCurrentPendingApprovalIds(pIds);
+        } else if (user?.role === 'TESTER') {
+          // Tester Pending Certifications (Approved, READY_TO_HARVEST/HARVEST_COMPLETED/PRODUCT_AVAILABLE, assigned to this tester)
+          const seenApprovals = JSON.parse(localStorage.getItem('tester_seen_pending_approvals') || '[]');
+          let newApprovals = 0;
+          const pendingCrops = cropsList.data.filter(c => c.is_approved === true && c.assigned_tester_id === user.id && ['READY_TO_HARVEST', 'HARVEST_COMPLETED', 'PRODUCT_AVAILABLE'].includes(c.timeline_status));
+          const pIds = [];
+          pendingCrops.forEach(c => {
+            pIds.push(c.id);
+            if (!seenApprovals.includes(c.id)) newApprovals++;
+          });
+          setUnreadPendingApprovals(newApprovals);
+          setCurrentPendingApprovalIds(pIds);
         }
 
         if (user?.role === 'TESTER' || user?.role === 'ADMIN') {
@@ -182,7 +194,8 @@ export default function Dashboard() {
   }, [user]);
 
   const handleClearTesterApprovals = () => {
-    localStorage.setItem('inspector_seen_pending_approvals', JSON.stringify(currentPendingApprovalIds));
+    const storageKey = user?.role === 'TESTER' ? 'tester_seen_pending_approvals' : 'inspector_seen_pending_approvals';
+    localStorage.setItem(storageKey, JSON.stringify(currentPendingApprovalIds));
     setUnreadPendingApprovals(0);
   };
 
@@ -419,8 +432,8 @@ export default function Dashboard() {
             </Link>
           )}
 
-          {/* Inspector Specific Actions */}
-          {(user?.role === 'INSPECTOR' || user?.role === 'ADMIN') && (
+          {/* Inspector & Tester Specific Actions: Pending Approvals */}
+          {(user?.role === 'INSPECTOR' || user?.role === 'TESTER' || user?.role === 'ADMIN') && (
             <Link 
               to="/tester/approve" 
               onClick={handleClearTesterApprovals}
@@ -436,7 +449,11 @@ export default function Dashboard() {
               </div>
               <div className="space-y-1">
                 <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Pending Approvals</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">INSPECTOR: View registered farmer crops and verify farm properties.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {user?.role === 'TESTER' 
+                    ? 'TESTER: View ready to harvest crops and perform quality certification.' 
+                    : 'INSPECTOR: View registered farmer crops and verify farm properties.'}
+                </p>
               </div>
             </Link>
           )}

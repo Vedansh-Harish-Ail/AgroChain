@@ -88,10 +88,18 @@ def reject_crop(current_user, crop_id):
 
 
 @quality_bp.route('/pending', methods=['GET'])
-@roles_allowed('INSPECTOR', 'ADMIN')
+@roles_allowed('INSPECTOR', 'TESTER', 'ADMIN')
 def get_pending_crops(current_user):
     if current_user.role == 'ADMIN':
-        crops = Farmer.query.filter_by(is_approved=False).all()
-    else:
+        crops = Farmer.query.all()
+    elif current_user.role == 'INSPECTOR':
         crops = Farmer.query.filter_by(is_approved=False, assigned_inspector_id=current_user.id).all()
+    elif current_user.role == 'TESTER':
+        crops = Farmer.query.filter(
+            Farmer.is_approved == True,
+            Farmer.assigned_tester_id == current_user.id,
+            Farmer.timeline_status.in_(['READY_TO_HARVEST', 'HARVEST_COMPLETED', 'PRODUCT_AVAILABLE'])
+        ).all()
+    else:
+        crops = []
     return jsonify([crop.to_dict() for crop in crops]), 200

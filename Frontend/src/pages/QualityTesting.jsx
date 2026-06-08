@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
-import { Search, CheckCircle, XCircle, ShieldAlert, Cpu, UserCheck, ArrowLeft, MapPin, ExternalLink, Image } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { 
+  Search, CheckCircle, XCircle, ShieldAlert, Cpu, UserCheck, ArrowLeft, 
+  MapPin, ExternalLink, Image, FileText, Award, Download, Clock, ShieldCheck 
+} from 'lucide-react';
 import axios from 'axios';
+import html2pdf from 'html2pdf.js';
+import { ethers } from 'ethers';
 
 export default function QualityTesting() {
   const { isConnected, connectWallet, contracts } = useWallet();
+  const { user } = useAuth();
   const [crops, setCrops] = useState([]);
+  const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [remarks, setRemarks] = useState('');
@@ -14,6 +22,8 @@ export default function QualityTesting() {
   const [loadingList, setLoadingList] = useState(true);
   const [txDetails, setTxDetails] = useState(null);
   const [error, setError] = useState('');
+  const [selectedCropForLetter, setSelectedCropForLetter] = useState(null);
+  const [selectedCropForCertificate, setSelectedCropForCertificate] = useState(null);
   const navigate = useNavigate();
 
   const fetchPendingCrops = async () => {
@@ -28,8 +38,18 @@ export default function QualityTesting() {
     }
   };
 
+  const fetchProducts = async () => {
+    try {
+      const res = await axios.get('/api/product/all');
+      setProducts(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchPendingCrops();
+    fetchProducts();
   }, []);
 
   const handleSearch = async (e) => {
@@ -157,6 +177,98 @@ export default function QualityTesting() {
     }
   };
 
+  const handleCertifyAuto = async (crop) => {
+    setError('');
+    setTxDetails(null);
+    setLoading(true);
+
+    if (!isConnected) {
+      const address = await connectWallet();
+      if (!address) {
+        setError('Please connect your MetaMask wallet to execute approvals and certification.');
+        setLoading(false);
+        return;
+      }
+    }
+
+    try {
+      const lotNumber = Math.floor(1000 + Math.random() * 9000);
+      const cropId = crop.id;
+      const cropName = crop.crop_type;
+      const qualityGrade = 'Grade A+';
+      const priceEth = '1.0';
+      const priceWei = ethers.parseEther(priceEth);
+      
+      const today = new Date().toISOString().split('T')[0];
+      const expiry = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const testTimestamp = Math.floor(new Date(today).getTime() / 1000);
+      const expiryTimestamp = Math.floor(new Date(expiry).getTime() / 1000);
+
+      // 1. Call Smart Contract `registerProduct`
+      const tx = await contracts.productRegistry.registerProduct(
+        lotNumber,
+        cropId,
+        cropName,
+        qualityGrade,
+        priceWei,
+        testTimestamp,
+        expiryTimestamp,
+        'APPROVED'
+      );
+
+      setTxDetails({ step: 'broadcasting', hash: tx.hash });
+
+      const receipt = await tx.wait();
+      const blockNumber = receipt.blockNumber;
+
+      setTxDetails({ step: 'confirmed', hash: tx.hash, block: blockNumber });
+
+      // 2. Log transaction to Explorer Index
+      await axios.post('/api/explorer/log-tx', {
+        tx_hash: tx.hash,
+        block_number: blockNumber,
+        from_address: tx.from,
+        to_address: tx.to,
+        amount: 0,
+        method_name: 'registerProduct',
+        event_data: JSON.stringify({
+          lotNumber,
+          farmerId: cropId,
+          cropName,
+          qualityGrade,
+          price: priceWei.toString()
+        })
+      });
+
+      // 3. Save to database
+      await axios.post('/api/product/register', {
+        lot_number: lotNumber,
+        farmer_id: cropId,
+        crop_name: cropName,
+        quality_grade: qualityGrade,
+        price: priceWei.toString(),
+        test_date: today,
+        expiry_date: expiry,
+        certification_status: 'APPROVED',
+        tx_hash: tx.hash,
+        block_number: blockNumber
+      });
+
+      setLoading(false);
+      alert(`Product Lot ${lotNumber} certified and registered on the blockchain successfully!`);
+      
+      // Refresh list
+      await fetchPendingCrops();
+      await fetchProducts();
+
+    } catch (err) {
+      console.error(err);
+      setError(err.reason || err.message || 'Transaction failed. Check MetaMask logs.');
+      setLoading(false);
+    }
+  };
+
   // Helper to parse evidence photos
   const getPhotosList = (evidencePhotos) => {
     if (!evidencePhotos) return [];
@@ -183,9 +295,14 @@ export default function QualityTesting() {
           </button>
           <div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <UserCheck className="h-6 w-6 text-emerald-600" /> Cultivation Quality Approvals
+              <UserCheck className="h-6 w-6 text-emerald-600" />
+              {user?.role === 'TESTER' ? 'Quality Testing & Certification' : 'Cultivation Quality Approvals'}
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Verify crop locations, survey details, and log them securely on-chain</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+              {user?.role === 'TESTER' 
+                ? 'Verify harvested crops, review inspector approvals, and certify batch quality lots on-chain'
+                : 'Verify crop locations, survey details, and log them securely on-chain'}
+            </p>
           </div>
         </div>
 
@@ -246,7 +363,7 @@ export default function QualityTesting() {
                     <th className="py-3 px-4">Crop ID</th>
                     <th className="py-3 px-4">Farmer</th>
                     <th className="py-3 px-4">Crop Type</th>
-                    <th className="py-3 px-4">Survey Number</th>
+                    <th className="py-3 px-4">{user?.role === 'TESTER' ? 'Timeline Status' : 'Survey Number'}</th>
                     <th className="py-3 px-4">Date</th>
                   </tr>
                 </thead>
@@ -266,7 +383,19 @@ export default function QualityTesting() {
                       <td className="py-3 px-4 font-semibold text-emerald-600 dark:text-emerald-400 font-mono">{crop.id}</td>
                       <td className="py-3 px-4">{crop.farmer_name}</td>
                       <td className="py-3 px-4 font-semibold">{crop.crop_type}</td>
-                      <td className="py-3 px-4 font-mono text-xs">{crop.land_survey_no || 'N/A'}</td>
+                      <td className="py-3 px-4 font-mono text-xs">
+                        {user?.role === 'TESTER' ? (
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            crop.timeline_status === 'PRODUCT_AVAILABLE' 
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400'
+                          }`}>
+                            {crop.timeline_status === 'PRODUCT_AVAILABLE' ? 'Certified' : crop.timeline_status.replace(/_/g, ' ')}
+                          </span>
+                        ) : (
+                          crop.land_survey_no || 'N/A'
+                        )}
+                      </td>
                       <td className="py-3 px-4">{new Date(crop.cultivation_date).toLocaleDateString()}</td>
                     </tr>
                   ))}
@@ -346,42 +475,102 @@ export default function QualityTesting() {
                 </div>
 
                 {/* Remarks Input */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
-                    Inspector remarks / verification details
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Enter details on soil test, survey matching, pesticide levels, and verification status..."
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none"
-                  ></textarea>
-                </div>
+                {user?.role !== 'TESTER' ? (
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
+                      Inspector remarks / verification details
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Enter details on soil test, survey matching, pesticide levels, and verification status..."
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none"
+                    ></textarea>
+                  </div>
+                ) : (
+                  selectedCrop.tester_remarks && (
+                    <div className="space-y-1.5 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Inspector Remarks</span>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 italic">"{selectedCrop.tester_remarks}"</p>
+                    </div>
+                  )
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button
-                  onClick={() => handleReject(selectedCrop)}
-                  disabled={loading}
-                  className="flex justify-center items-center gap-1 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-950/30 dark:hover:bg-rose-950/20 text-xs font-bold transition disabled:opacity-50"
-                >
-                  <XCircle className="h-4 w-4" /> Reject Crop
-                </button>
-                <button
-                  onClick={() => handleApprove(selectedCrop)}
-                  disabled={loading}
-                  className="flex justify-center items-center gap-1 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold transition disabled:opacity-50"
-                >
-                  {loading ? (
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4" /> Approve Crop
-                    </>
-                  )}
-                </button>
-              </div>
+               {user?.role === 'TESTER' ? (
+                <div className="space-y-4 pt-2">
+                  {(() => {
+                    const matchedProduct = products.find(p => p.farmer_id === selectedCrop.id);
+                    return (
+                      <div className="space-y-3">
+                        {matchedProduct ? (
+                          <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-950">
+                            <ShieldCheck className="h-4 w-4" /> Certified Lot: #{matchedProduct.lot_number}
+                          </div>
+                        ) : (
+                          <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2.5 rounded-xl border border-amber-100 dark:border-amber-950">
+                            <Clock className="h-4 w-4 animate-pulse" /> Awaiting Certification
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => setSelectedCropForLetter(selectedCrop)}
+                          className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 py-2.5 rounded-xl transition"
+                        >
+                          <FileText className="h-4 w-4" /> View Approval Letter
+                        </button>
+
+                        {matchedProduct ? (
+                          <button
+                            onClick={() => setSelectedCropForCertificate({ crop: selectedCrop, product: matchedProduct })}
+                            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 py-2.5 rounded-xl transition"
+                          >
+                            <Award className="h-4 w-4" /> Print Certificate & QR
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleCertifyAuto(selectedCrop)}
+                            disabled={loading}
+                            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 py-2.5 rounded-xl transition disabled:opacity-50"
+                          >
+                            {loading ? (
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4" /> Approve & Certify Crop
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <button
+                    onClick={() => handleReject(selectedCrop)}
+                    disabled={loading}
+                    className="flex justify-center items-center gap-1 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-950/30 dark:hover:bg-rose-950/20 text-xs font-bold transition disabled:opacity-50"
+                  >
+                    <XCircle className="h-4 w-4" /> Reject Crop
+                  </button>
+                  <button
+                    onClick={() => handleApprove(selectedCrop)}
+                    disabled={loading}
+                    className="flex justify-center items-center gap-1 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold transition disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4" /> Approve Crop
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-350 p-8 text-center text-slate-400 dark:border-slate-850 dark:text-slate-500">
@@ -390,6 +579,275 @@ export default function QualityTesting() {
           )}
         </div>
       </div>
+
+      {/* Printer styles */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          ${selectedCropForLetter ? `
+            #approval-letter-print-area, #approval-letter-print-area * {
+              visibility: visible;
+            }
+            #approval-letter-print-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              border: none !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              background: transparent !important;
+              color: black !important;
+            }
+          ` : ''}
+          ${selectedCropForCertificate ? `
+            #batch-certificate-print-area, #batch-certificate-print-area * {
+              visibility: visible;
+            }
+            #batch-certificate-print-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              border: 4px double #10b981 !important;
+              padding: 24px !important;
+              margin: 0 !important;
+              background: transparent !important;
+              color: black !important;
+            }
+          ` : ''}
+        }
+      `}</style>
+
+      {/* Modal 1: Approval Letter */}
+      {selectedCropForLetter && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto no-scrollbar print:p-0 print:bg-transparent print:relative">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 print:border-none print:shadow-none print:p-0 print:m-0">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4 print:hidden">
+              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="h-5 w-5 text-emerald-600" /> Crop Verification Approval Letter
+              </h3>
+              <button
+                onClick={() => setSelectedCropForLetter(null)}
+                className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 text-sm font-semibold transition"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Letter Content (Print Target) */}
+            <div id="approval-letter-print-area" className="space-y-6 font-serif text-slate-800 dark:text-slate-200 p-6 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl print:border-none print:p-0 print:text-black">
+              <div className="text-center space-y-2 border-b border-slate-250 pb-4 print:border-slate-300">
+                <div className="flex justify-center items-center gap-2">
+                  <Sprout className="h-8 w-8 text-emerald-600" />
+                  <span className="font-sans font-extrabold text-xl tracking-wider text-slate-900 dark:text-white print:text-black">AGROCHAIN TRANSPARENCY LABS</span>
+                </div>
+                <p className="font-sans text-[10px] text-slate-400 uppercase tracking-widest">Quality Assurance & Organic Verification Department</p>
+              </div>
+
+              <div className="flex justify-between text-xs font-sans text-slate-400">
+                <span>Ref ID: #AC-CROP-{selectedCropForLetter.id}</span>
+                <span>Date: {selectedCropForLetter.verification_date ? new Date(selectedCropForLetter.verification_date).toLocaleDateString() : new Date().toLocaleDateString()}</span>
+              </div>
+
+              <div className="space-y-4 text-sm leading-relaxed">
+                <p className="font-bold font-sans text-slate-900 dark:text-white print:text-black">TO WHOMSOEVER IT MAY CONCERN</p>
+                <p>
+                  This official document serves as a certificate of compliance confirming that the crop cultivation lot registered by
+                  <strong> {selectedCropForLetter.farmer_name}</strong> under ID <strong>#{selectedCropForLetter.id}</strong> has passed all rigorous chemical-free farming standards, soil health toxicity tests, and ownership deed verifications conducted on-site by our authorized verifiers.
+                </p>
+
+                <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl font-sans text-xs my-4 print:bg-slate-100 print:text-black">
+                  <div>
+                    <span className="text-slate-450 block mb-0.5">Crop Cultivation Type</span>
+                    <span className="font-bold text-slate-900 dark:text-white print:text-black">{selectedCropForLetter.crop_type}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-455 block mb-0.5">Farming Methodology</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 uppercase">{selectedCropForLetter.farming_type}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-455 block mb-0.5">Verified Area Size</span>
+                    <span className="font-bold text-slate-900 dark:text-white print:text-black">{selectedCropForLetter.farm_size}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-455 block mb-0.5">Land Survey Deed No</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white print:text-black">{selectedCropForLetter.land_survey_no || 'N/A'}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-slate-455 block mb-0.5">GPS Verification Coordinates</span>
+                    <span className="font-mono text-slate-900 dark:text-white print:text-black">
+                      Latitude: {selectedCropForLetter.gps_latitude} • Longitude: {selectedCropForLetter.gps_longitude}
+                    </span>
+                  </div>
+                </div>
+
+                <p>
+                  The chemical checks and soil nitrogen audits align with organic parameters. The farm has been successfully logged on the immutable blockchain registry for trace-back safety.
+                </p>
+              </div>
+
+              <div className="flex justify-between items-end pt-6 border-t border-slate-100 dark:border-slate-800">
+                <div className="space-y-1 font-sans text-xs max-w-md">
+                  <span className="text-slate-400 block font-semibold uppercase tracking-wider text-[9px]">Tester Remarks</span>
+                  <p className="italic text-slate-650 dark:text-slate-400 print:text-black">"{selectedCropForLetter.tester_remarks || 'All chemical and organic indicators check out. Approved.'}"</p>
+                </div>
+                <div className="text-center shrink-0 w-36 font-sans">
+                  <div className="border-b border-slate-300 pb-1">
+                    <span className="font-mono text-xs text-slate-700 dark:text-slate-300 italic font-bold print:text-black"> {selectedCropForLetter.tester_name || 'Dr. Anita Sharma'} </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-1 uppercase tracking-wider">Authorized Tester</span>
+                </div>
+              </div>
+
+              {selectedCropForLetter.tx_hash && (
+                <div className="bg-slate-50 dark:bg-slate-950/40 p-3 rounded-xl font-mono text-[9px] text-slate-400 border border-slate-100 dark:border-slate-850 mt-4 flex justify-between items-center print:bg-slate-100 print:text-black">
+                  <span>Ledger Block Height: #{selectedCropForLetter.block_number || 'N/A'}</span>
+                  <span className="truncate max-w-[280px]">Tx: {selectedCropForLetter.tx_hash}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-2 print:hidden">
+              <button
+                onClick={() => setSelectedCropForLetter(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 transition"
+              >
+                Print Letter
+              </button>
+              <button
+                onClick={handleDownloadLetterPDF}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 text-xs font-bold transition flex items-center gap-1.5"
+              >
+                <Download className="h-4 w-4" /> Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2: Batch Quality Certificate */}
+      {selectedCropForCertificate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto no-scrollbar print:p-0 print:bg-transparent print:relative">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 print:border-none print:shadow-none print:p-0 print:m-0">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4 print:hidden">
+              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Award className="h-5 w-5 text-emerald-600" /> Certified Batch Quality Certificate
+              </h3>
+              <button
+                onClick={() => setSelectedCropForCertificate(null)}
+                className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 text-sm font-semibold transition"
+              >
+                Close
+              </button>
+            </div>
+
+            {/* Certificate Content */}
+            <div id="batch-certificate-print-area" className="border-4 border-double border-emerald-500 rounded-2xl p-6 space-y-6 bg-gradient-to-br from-emerald-50/10 to-teal-50/10 dark:from-slate-950 dark:to-slate-900 print:bg-transparent print:border-emerald-600 print:text-black">
+              <div className="text-center space-y-2">
+                <div className="flex justify-center">
+                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold uppercase tracking-wider text-[10px] print:bg-emerald-100 print:text-emerald-800">
+                    Blockchain Certified Lot
+                  </span>
+                </div>
+                <h2 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white print:text-black">
+                  QUALITY CERTIFICATE & TRUST SEAL
+                </h2>
+                <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest font-sans">Issued under Decentralized Product Registry</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 items-center border-y border-slate-200 dark:border-slate-850 py-6 print:border-slate-300">
+                {/* Left Details */}
+                <div className="space-y-4 text-xs font-sans">
+                  <div>
+                    <span className="text-slate-400 uppercase text-[9px] tracking-wider block font-bold font-sans">Product Lot Number</span>
+                    <span className="text-lg font-mono font-bold text-slate-950 dark:text-white print:text-black">#{selectedCropForCertificate.product.lot_number}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 uppercase text-[9px] tracking-wider block font-bold font-sans">Crop / Cultivation Name</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white print:text-black">{selectedCropForCertificate.product.crop_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 uppercase text-[9px] tracking-wider block font-bold font-sans">Certified Quality Grade</span>
+                    <span className="inline-block px-3 py-1 rounded bg-emerald-50 text-emerald-800 border border-emerald-100 dark:bg-emerald-950 dark:text-emerald-450 dark:border-emerald-900 font-bold text-xs mt-1">
+                      {selectedCropForCertificate.product.quality_grade}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 uppercase text-[9px] tracking-wider block font-bold font-sans">Inspection Test Date</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 print:text-black">{new Date(selectedCropForCertificate.product.test_date).toLocaleDateString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 uppercase text-[9px] tracking-wider block font-bold font-sans">Batch Expiry Date</span>
+                    <span className="font-semibold text-slate-805 dark:text-slate-200 print:text-black">{new Date(selectedCropForCertificate.product.expiry_date).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                {/* Right QR Code Link */}
+                <div className="flex flex-col items-center space-y-2 shrink-0">
+                  <div className="p-2 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white shadow-sm print:border-slate-300">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(
+                        window.location.origin + '/explorer?lot=' + selectedCropForCertificate.product.lot_number
+                      )}`}
+                      alt="Product Batch QR Code"
+                      className="w-32 h-32"
+                    />
+                  </div>
+                  <span className="text-[9px] text-slate-400 uppercase font-semibold text-center leading-tight tracking-wider font-sans max-w-[130px]">
+                    Scan QR to Trace Immutable Ledger Proof
+                  </span>
+                </div>
+              </div>
+
+              {selectedCropForCertificate.product.tx_hash && (
+                <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-850 p-3 rounded-xl font-mono text-[9px] text-slate-400 leading-relaxed space-y-1 print:bg-slate-100 print:text-black">
+                  <div className="flex justify-between">
+                    <span>MINT BLOCK HEIGHT</span>
+                    <span className="font-bold text-slate-950 dark:text-white print:text-black">#{selectedCropForCertificate.product.block_number}</span>
+                  </div>
+                  <div className="truncate text-left">
+                    <span>TX HASH: {selectedCropForCertificate.product.tx_hash}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-2 print:hidden">
+              <button
+                onClick={() => setSelectedCropForCertificate(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-350 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 transition"
+              >
+                Print Certificate
+              </button>
+              <button
+                onClick={handleDownloadCertificatePDF}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 text-xs font-bold transition flex items-center gap-1.5"
+              >
+                <Download className="h-4 w-4" /> Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
