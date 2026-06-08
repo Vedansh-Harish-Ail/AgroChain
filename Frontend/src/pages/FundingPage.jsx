@@ -176,6 +176,7 @@ export default function FundingPage() {
                   const ethPrice = ethers.formatEther(product.price.toString());
                   const rsPrice = Math.round(parseFloat(ethPrice) * 250000);
                   const isSelected = selectedProduct?.lot_number === product.lot_number;
+                  const existingLOI = myInvestments.find(inv => inv.lot_number === product.lot_number);
                   return (
                     <div
                       key={product.lot_number}
@@ -188,10 +189,23 @@ export default function FundingPage() {
                       <div className="space-y-4">
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 uppercase">
-                              {product.quality_grade}
-                            </span>
-                            <h4 className="font-bold text-slate-900 dark:text-white mt-1 text-lg">{product.crop_name}</h4>
+                            <div className="flex flex-wrap gap-2 items-center">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 uppercase">
+                                {product.quality_grade}
+                              </span>
+                              {existingLOI && (
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                                  existingLOI.status === 'ACCEPTED' 
+                                    ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400' 
+                                    : existingLOI.status === 'DECLINED'
+                                      ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400'
+                                      : 'bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400'
+                                }`}>
+                                  LOI Sent ({existingLOI.status})
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="font-bold text-slate-900 dark:text-white mt-1.5 text-lg">{product.crop_name}</h4>
                             
                             {/* Average Ratings */}
                             {product.average_rating > 0 ? (
@@ -214,7 +228,7 @@ export default function FundingPage() {
                           </div>
                           <span className="font-mono text-xs text-slate-450 dark:text-slate-500">Lot: {product.lot_number}</span>
                         </div>
-
+ 
                         <div className="space-y-2 text-xs">
                           <div className="flex justify-between">
                             <span className="text-slate-400">Farmer</span>
@@ -230,16 +244,22 @@ export default function FundingPage() {
                           </div>
                         </div>
                       </div>
-
+ 
                       <button
                         onClick={() => setSelectedProduct(product)}
                         className={`w-full mt-6 py-2.5 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
                           isSelected
-                            ? 'bg-emerald-650 text-white hover:bg-emerald-500'
-                            : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700'
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                            : existingLOI
+                              ? 'bg-amber-600 hover:bg-amber-500 text-white dark:bg-amber-700 dark:hover:bg-amber-600'
+                              : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700'
                         }`}
                       >
-                        {user?.role === 'FARMER' ? 'View Crop Details' : 'Send LOI / Propose Partnership'} <ChevronRight className="h-3.5 w-3.5" />
+                        {user?.role === 'INVESTOR' 
+                          ? existingLOI 
+                            ? 'Resend LOI / Propose New Terms' 
+                            : 'Send LOI / Propose Partnership' 
+                          : 'View Crop Details'} <ChevronRight className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   );
@@ -251,12 +271,12 @@ export default function FundingPage() {
           {/* Right Side: Partnership Wizard Panel */}
           <div ref={wizardRef} className="space-y-6 lg:sticky lg:top-24 lg:self-start">
             {selectedProduct ? (
-              user?.role === 'FARMER' ? (
-                /* Read-only crop details card for Farmer role */
+              user?.role !== 'INVESTOR' ? (
+                /* Read-only crop details card for non-investor roles */
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-5 relative overflow-hidden text-xs">
                   <button
                     onClick={() => setSelectedProduct(null)}
-                    className="absolute right-4 top-4 text-slate-400 hover:text-slate-605 dark:hover:text-slate-200"
+                    className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -281,7 +301,7 @@ export default function FundingPage() {
 
                   <div className="p-3.5 bg-amber-50 border border-amber-100 text-amber-850 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-400 rounded-xl leading-relaxed text-[11px] flex gap-2">
                     <AlertCircle className="h-4.5 w-4.5 shrink-0 text-amber-600 dark:text-amber-500 mt-0.5" />
-                    <span>You are currently signed in as a <strong>Farmer</strong>. Only investors can submit a **Letter of Intent (LOI)** to fund crop lots. Sign in as an <strong>Investor</strong> to use this feature.</span>
+                    <span>You are currently signed in as a <strong>{user?.role || 'Guest'}</strong>. Only registered investors can submit a **Letter of Intent (LOI)** to fund crop lots. Please log in with an <strong>Investor</strong> account to use this feature.</span>
                   </div>
                 </div>
               ) : (
@@ -297,8 +317,15 @@ export default function FundingPage() {
                   <div className="space-y-1.5">
                     <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Step {wizardStep} of 4</span>
                     <h3 className="font-bold text-slate-900 dark:text-white text-base">LOI Proposal Wizard</h3>
-                    <p className="text-xs font-semibold text-emerald-650 dark:text-emerald-450">Submit a Letter of Intent (LOI) for {selectedProduct.crop_name} (Lot #{selectedProduct.lot_number})</p>
+                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Submit a Letter of Intent (LOI) for {selectedProduct.crop_name} (Lot #{selectedProduct.lot_number})</p>
                   </div>
+
+                  {myInvestments.find(inv => inv.lot_number === selectedProduct.lot_number) && (
+                    <div className="p-3 bg-amber-50 border border-amber-100 text-amber-850 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-400 rounded-xl leading-relaxed text-[11px] flex gap-2 animate-in fade-in slide-in-from-top-1">
+                      <AlertCircle className="h-4.5 w-4.5 shrink-0 text-amber-600 dark:text-amber-500 mt-0.5" />
+                      <span>You have already submitted an LOI for this lot (Status: <strong>{myInvestments.find(inv => inv.lot_number === selectedProduct.lot_number).status}</strong>). Submitting this wizard will resend a new LOI proposal with updated terms.</span>
+                    </div>
+                  )}
 
                   {/* Step Indicators */}
                   <div className="flex justify-between items-center gap-1">
@@ -306,7 +333,7 @@ export default function FundingPage() {
                       <div 
                         key={step} 
                         className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                          step <= wizardStep ? 'bg-emerald-650' : 'bg-slate-100 dark:bg-slate-800'
+                          step <= wizardStep ? 'bg-emerald-600' : 'bg-slate-100 dark:bg-slate-800'
                         }`}
                       />
                     ))}
@@ -358,7 +385,7 @@ export default function FundingPage() {
                               <div className="mt-4 p-3 bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100/30 rounded-xl space-y-1.5 text-xs">
                                 <div className="flex justify-between">
                                   <span className="text-slate-400">Estimated Net Profit:</span>
-                                  <span className="font-semibold text-emerald-650 dark:text-emerald-450">
+                                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                                     Rs. {Math.round(parseFloat(proposedAmount) * (parseFloat(proposedProfitShare) / 100)).toLocaleString('en-IN')}
                                   </span>
                                 </div>
@@ -418,7 +445,7 @@ export default function FundingPage() {
                         <div className="rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-250 dark:border-slate-800 p-3.5 space-y-2.5">
                           <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
                             <span className="text-slate-400">Offer Amount</span>
-                            <span className="font-bold text-emerald-650 dark:text-emerald-450">Rs. {parseInt(proposedAmount).toLocaleString('en-IN')}</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">Rs. {parseInt(proposedAmount).toLocaleString('en-IN')}</span>
                           </div>
                           <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
                             <span className="text-slate-400">Returns Share</span>

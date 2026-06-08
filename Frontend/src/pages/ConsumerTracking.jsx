@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Search, ShieldCheck, Star, Award, CheckCircle2, 
-  ChevronRight, MessageSquare, Plus, Calendar, MapPin, 
-  Coins, Activity, FileText, UserCheck, History, Sparkles, 
+import {
+  Search, ShieldCheck, Star, Award, CheckCircle2,
+  ChevronRight, MessageSquare, Plus, Calendar, MapPin,
+  Coins, Activity, FileText, UserCheck, History, Sparkles,
   AlertCircle, Filter, ArrowLeft, Loader2, ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
@@ -22,7 +22,7 @@ export default function ConsumerTracking() {
   // Directory Data
   const [farmersList, setFarmersList] = useState([]);
   const [filteredFarmers, setFilteredFarmers] = useState([]);
-  
+
   // Selection states
   const [selectedFarmer, setSelectedFarmer] = useState(null); // { profile, crops }
   const [selectedCrop, setSelectedCrop] = useState(null); // Farmer crop entry
@@ -39,7 +39,7 @@ export default function ConsumerTracking() {
   const [filterFarmingType, setFilterFarmingType] = useState('');
   const [filterVerifiedOnly, setFilterVerifiedOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Rating form states
   const [showRatingForm, setShowRatingForm] = useState(false);
   const [reliability, setReliability] = useState('5');
@@ -89,27 +89,27 @@ export default function ConsumerTracking() {
   // 2. Client-side search and filters
   useEffect(() => {
     let result = farmersList;
-    
+
     if (searchQuery) {
-      result = result.filter(f => 
-        f.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      result = result.filter(f =>
+        f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         f.location.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     if (filterLocation) {
-      result = result.filter(f => 
+      result = result.filter(f =>
         f.location.toLowerCase().includes(filterLocation.toLowerCase())
       );
     }
     if (filterFarmingType) {
-      result = result.filter(f => 
+      result = result.filter(f =>
         f.farming_type.toLowerCase() === filterFarmingType.toLowerCase()
       );
     }
     if (filterVerifiedOnly) {
       result = result.filter(f => f.is_approved);
     }
-    
+
     setFilteredFarmers(result);
   }, [searchQuery, filterLocation, filterFarmingType, filterVerifiedOnly, farmersList]);
 
@@ -247,7 +247,7 @@ export default function ConsumerTracking() {
         alert('Review recorded successfully in database!');
       }
       setShowRatingForm(false);
-      
+
       const credRes = await axios.get(`/api/rating/farmer/${selectedCrop.id}`);
       setCredibility(credRes.data);
       const reviewRes = await axios.get(`/api/rating/farmer/${selectedCrop.id}/reviews`);
@@ -276,7 +276,7 @@ export default function ConsumerTracking() {
 
   return (
     <div className="space-y-8 py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      
+
       {/* ----------------- VIEW 1: FARM EXPLORER ----------------- */}
       {view === 'explorer' && (
         <div className="space-y-8">
@@ -361,8 +361,8 @@ export default function ConsumerTracking() {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredFarmers.map((f) => (
-                <div 
-                  key={f.id} 
+                <div
+                  key={f.id}
                   onClick={() => handleSelectFarmer(f.id)}
                   className="group cursor-pointer border border-slate-200 hover:border-emerald-350 bg-white rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 dark:border-slate-850 dark:bg-slate-900"
                 >
@@ -410,7 +410,7 @@ export default function ConsumerTracking() {
 
                   <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-slate-500">
                     <span>Farming: <strong className="text-slate-800 dark:text-slate-200">{f.farming_type}</strong></span>
-                    <span className="text-emerald-650 font-bold">{f.crop_count} Listed Crops &rarr;</span>
+                    <span className="text-emerald-600 font-bold">{f.crop_count} Listed Crops &rarr;</span>
                   </div>
                 </div>
               ))}
@@ -423,7 +423,7 @@ export default function ConsumerTracking() {
       {view === 'profile' && selectedFarmer && (
         <div className="space-y-8">
           {/* Back button */}
-          <button 
+          <button
             onClick={() => setView('explorer')}
             className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-650 hover:text-emerald-600 dark:text-slate-350 dark:hover:text-emerald-400 transition"
           >
@@ -479,7 +479,7 @@ export default function ConsumerTracking() {
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {selectedFarmer.crops.map((crop) => (
-                  <div 
+                  <div
                     key={crop.id}
                     onClick={() => handleSelectCrop(crop)}
                     className="border border-slate-200 hover:border-emerald-350 bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition cursor-pointer dark:border-slate-850 dark:bg-slate-900 space-y-4"
@@ -488,11 +488,10 @@ export default function ConsumerTracking() {
                       <h4 className="font-bold text-lg text-slate-950 dark:text-white">
                         {crop.crop_type}
                       </h4>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        crop.is_approved 
-                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-450' 
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${crop.is_approved
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-450'
                           : 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-450'
-                      }`}>
+                        }`}>
                         {crop.is_approved ? 'Verified Crop' : 'Inspection Pending'}
                       </span>
                     </div>
@@ -523,7 +522,7 @@ export default function ConsumerTracking() {
                       )}
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-emerald-650 font-bold">
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-emerald-600 font-bold">
                       <span>View Details &rarr;</span>
                     </div>
                   </div>
@@ -538,7 +537,7 @@ export default function ConsumerTracking() {
       {view === 'details' && selectedCrop && (
         <div className="space-y-8">
           {/* Back button */}
-          <button 
+          <button
             onClick={() => setView('profile')}
             className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-650 hover:text-emerald-600 dark:text-slate-350 dark:hover:text-emerald-400 transition"
           >
@@ -547,7 +546,7 @@ export default function ConsumerTracking() {
 
           {/* Main Grid */}
           <div className="grid lg:grid-cols-3 gap-8">
-            
+
             {/* Left Content (Span 2) */}
             <div className="lg:col-span-2 space-y-8">
 
@@ -572,7 +571,7 @@ export default function ConsumerTracking() {
                   </div>
                 </div>
               )}
-              
+
               {/* SECTION 1: Crop Information */}
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-850 dark:bg-slate-900 space-y-5">
                 <div className="flex justify-between items-start">
@@ -584,18 +583,17 @@ export default function ConsumerTracking() {
                       <FileText className="h-6 w-6 text-emerald-600" /> {selectedCrop.crop_type}
                     </h3>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                    selectedCrop.verification_status === 'VERIFIED' 
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-450 dark:border-emerald-900' 
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${selectedCrop.verification_status === 'VERIFIED'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-450 dark:border-emerald-900'
                       : selectedCrop.verification_status === 'REJECTED'
-                      ? 'bg-rose-50 text-rose-700 border-rose-250 dark:bg-rose-950/30 dark:text-rose-450 dark:border-rose-900'
-                      : 'bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-amber-450 dark:border-amber-900'
-                  }`}>
-                    {selectedCrop.verification_status === 'VERIFIED' 
-                      ? 'Verified & On-Chain' 
+                        ? 'bg-rose-50 text-rose-700 border-rose-250 dark:bg-rose-950/30 dark:text-rose-450 dark:border-rose-900'
+                        : 'bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-amber-450 dark:border-amber-900'
+                    }`}>
+                    {selectedCrop.verification_status === 'VERIFIED'
+                      ? 'Verified & On-Chain'
                       : selectedCrop.verification_status === 'REJECTED'
-                      ? 'Rejected by Inspector'
-                      : 'Inspection Pending'}
+                        ? 'Rejected by Inspector'
+                        : 'Inspection Pending'}
                   </span>
                 </div>
 
@@ -683,8 +681,8 @@ export default function ConsumerTracking() {
                     <div>
                       <span className="text-slate-400 block">Inspection Approval Timestamp</span>
                       <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
-                        {selectedCrop.verification_date 
-                          ? new Date(selectedCrop.verification_date).toLocaleString() 
+                        {selectedCrop.verification_date
+                          ? new Date(selectedCrop.verification_date).toLocaleString()
                           : (product ? new Date(product.test_date).toLocaleString() : 'N/A')}
                       </p>
                     </div>
@@ -694,10 +692,10 @@ export default function ConsumerTracking() {
                     <div>
                       <span className="text-slate-400 block">Quality remarks / lab notes</span>
                       <p className="italic text-slate-600 dark:text-slate-400 bg-emerald-50/20 border border-emerald-100/50 p-3 rounded-lg dark:bg-slate-950 dark:border-slate-800">
-                        {selectedCrop.tester_remarks 
-                          ? `"${selectedCrop.tester_remarks}"` 
-                          : (selectedCrop.is_approved 
-                            ? '"All crop biochemistry parameters satisfy chemical-free farming regulations. Soil toxicity check passed. Verified compliant organic grade."' 
+                        {selectedCrop.tester_remarks
+                          ? `"${selectedCrop.tester_remarks}"`
+                          : (selectedCrop.is_approved
+                            ? '"All crop biochemistry parameters satisfy chemical-free farming regulations. Soil toxicity check passed. Verified compliant organic grade."'
                             : '"Awaiting initial on-site testing logs and verification parameters."')}
                       </p>
                     </div>
@@ -753,7 +751,7 @@ export default function ConsumerTracking() {
                           </div>
                           <div>
                             <span className="text-slate-400 block mb-0.5">Funding Capital</span>
-                            <span className="font-bold text-emerald-650 dark:text-emerald-450">Rs. {acceptedLoi.amount.toLocaleString('en-IN')}</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">Rs. {acceptedLoi.amount.toLocaleString('en-IN')}</span>
                           </div>
                           <div>
                             <span className="text-slate-400 block mb-0.5">Returns Share</span>
@@ -773,18 +771,27 @@ export default function ConsumerTracking() {
                   })()
                 ) : (
                   <div className="space-y-4 text-xs">
-                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                       This certified crop lot is open for micro-finance investments. Verified partners can submit custom profit margin proposals and Letter of Intents (LOI) to fund labor, seeds, and organic fertilizers.
                     </p>
+
+                    {user?.role !== 'INVESTOR' && (
+                      <div className="p-3 bg-amber-50 border border-amber-100 text-amber-850 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-400 rounded-xl leading-relaxed text-[11px] flex gap-2 animate-in fade-in">
+                        <AlertCircle className="h-4.5 w-4.5 shrink-0 text-amber-600 dark:text-amber-500 mt-0.5" />
+                        <span>Only registered investors can submit partnership proposals or fund crop lots.</span>
+                      </div>
+                    )}
 
                     {product && product.certification_status === 'APPROVED' && (
                       <div className="pt-2">
                         <button
                           onClick={() => navigate('/finance', { state: { selectLot: product.lot_number } })}
-                          className="w-full flex justify-center items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-650 dark:hover:bg-emerald-600 text-white py-3 text-xs font-bold transition shadow-md shadow-emerald-650/10"
+                          className="w-full flex justify-center items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white py-3 text-xs font-bold transition shadow-md shadow-emerald-600/10"
                         >
-                          <Coins className="h-4 w-4" /> 
-                          {user?.role === 'FARMER' ? 'View Received Proposals' : 'Submit Letter of Intent / Propose Partnership'}
+                          <Coins className="h-4 w-4" />
+                          {user?.role === 'INVESTOR'
+                            ? 'Submit Letter of Intent / Propose Partnership'
+                            : 'View Funding Marketplace Details'}
                         </button>
                       </div>
                     )}
@@ -828,7 +835,7 @@ export default function ConsumerTracking() {
 
             {/* Right Content (Span 1) */}
             <div className="space-y-8">
-              
+
               {/* SECTION 5: Crop Journey Timeline */}
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-850 dark:bg-slate-900 space-y-5">
                 <h3 className="font-bold text-slate-900 dark:text-white text-md flex items-center gap-2">
@@ -851,7 +858,7 @@ export default function ConsumerTracking() {
                   const activeStep = getStatusStepNumber(selectedCrop.timeline_status || 'CROP_REGISTERED');
                   return (
                     <div className="relative border-l-2 border-emerald-100 dark:border-slate-800 ml-3 pl-6 space-y-6 text-xs">
-                      
+
                       {/* Step 1: Crop Registered */}
                       <div className="relative">
                         <div className="absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-4 ring-white dark:ring-slate-900">
@@ -863,9 +870,8 @@ export default function ConsumerTracking() {
 
                       {/* Step 2: Quality Tested */}
                       <div className="relative">
-                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                          activeStep >= 2 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                        }`}>
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${activeStep >= 2 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                          }`}>
                           <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                         </div>
                         <h4 className={`font-bold ${activeStep >= 2 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Quality Tested</h4>
@@ -874,9 +880,8 @@ export default function ConsumerTracking() {
 
                       {/* Step 3: Tester Approved */}
                       <div className="relative">
-                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                          activeStep >= 3 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                        }`}>
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${activeStep >= 3 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                          }`}>
                           <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                         </div>
                         <h4 className={`font-bold ${activeStep >= 3 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Tester Approved</h4>
@@ -885,9 +890,8 @@ export default function ConsumerTracking() {
 
                       {/* Step 4: Funding Completed */}
                       <div className="relative">
-                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                          activeStep >= 4 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                        }`}>
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${activeStep >= 4 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                          }`}>
                           <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                         </div>
                         <h4 className={`font-bold ${activeStep >= 4 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Funding Completed</h4>
@@ -896,9 +900,8 @@ export default function ConsumerTracking() {
 
                       {/* Step 5: Ready to Harvest */}
                       <div className="relative">
-                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                          activeStep >= 5 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                        }`}>
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${activeStep >= 5 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                          }`}>
                           <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                         </div>
                         <h4 className={`font-bold ${activeStep >= 5 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Ready to Harvest</h4>
@@ -907,9 +910,8 @@ export default function ConsumerTracking() {
 
                       {/* Step 6: Harvest Completed */}
                       <div className="relative">
-                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                          activeStep >= 6 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                        }`}>
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${activeStep >= 6 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                          }`}>
                           <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                         </div>
                         <h4 className={`font-bold ${activeStep >= 6 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Harvest Completed</h4>
@@ -918,9 +920,8 @@ export default function ConsumerTracking() {
 
                       {/* Step 7: Product Available */}
                       <div className="relative">
-                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${
-                          activeStep >= 7 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
-                        }`}>
+                        <div className={`absolute -left-[31px] top-0 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-slate-900 ${activeStep >= 7 ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-800'
+                          }`}>
                           <CheckCircle2 className="h-3.5 w-3.5 text-white" />
                         </div>
                         <h4 className={`font-bold ${activeStep >= 7 ? 'text-slate-950 dark:text-white' : 'text-slate-400'}`}>Product Available</h4>
@@ -959,7 +960,7 @@ export default function ConsumerTracking() {
                 <h3 className="font-bold text-slate-900 dark:text-white text-md flex items-center gap-1.5">
                   <ShieldCheck className="h-5 w-5 text-emerald-600" /> Cryptographic Proof
                 </h3>
-                
+
                 <div className="space-y-3 text-xs">
                   <div>
                     <span className="text-slate-400 block mb-0.5">Verification Status</span>

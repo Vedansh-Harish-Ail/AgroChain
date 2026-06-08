@@ -616,11 +616,11 @@ export default function BlockchainExplorer() {
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <span className="text-slate-400 uppercase text-[9px] block font-sans">Certificate Mint Tx Hash</span>
-                      <span className="text-slate-955 dark:text-white block select-all font-semibold break-all">{result.data.tx_hash}</span>
+                      <span className="text-slate-900 dark:text-white block select-all font-semibold break-all">{result.data.tx_hash}</span>
                     </div>
                     <div>
                       <span className="text-slate-400 uppercase text-[9px] block font-sans">Ledger Block Height</span>
-                      <span className="text-slate-955 dark:text-white font-bold block">Confirmed at Block #{result.data.block_number || 'N/A'}</span>
+                      <span className="text-slate-900 dark:text-white font-bold block">Confirmed at Block #{result.data.block_number || 'N/A'}</span>
                     </div>
                   </div>
                 </div>

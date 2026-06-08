@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Coins, ArrowLeft, Clock, XCircle, ShieldCheck, 
-  Mail, Phone, FileText, Download, ExternalLink 
+import {
+  Coins, ArrowLeft, Clock, XCircle, ShieldCheck,
+  Mail, Phone, FileText, Download, ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
@@ -67,15 +67,15 @@ export default function SubmittedLOIs() {
     if (!element) return;
 
     const opt = {
-      margin:       [0.4, 0.4, 0.4, 0.4],
-      filename:     `Letter_of_Intent_LOI_${selectedLoiForDoc.id}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { 
-        scale: 2, 
+      margin: [0.4, 0.4, 0.4, 0.4],
+      filename: `Letter_of_Intent_LOI_${selectedLoiForDoc.id}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff'
       },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
 
     const originalStyle = element.getAttribute('style') || '';
@@ -88,10 +88,10 @@ export default function SubmittedLOIs() {
     textElements.forEach(el => {
       const origColor = el.style.color;
       styledElements.push({ el, type: 'color', val: origColor });
-      
+
       if (el.classList.contains('text-slate-400') || el.classList.contains('text-slate-450') || el.classList.contains('text-slate-455')) {
         el.style.color = '#64748b';
-      } else if (el.classList.contains('text-emerald-600') || el.classList.contains('text-emerald-650')) {
+      } else if (el.classList.contains('text-emerald-600') || el.classList.contains('text-emerald-500')) {
         el.style.color = '#059669';
       } else if (el.classList.contains('text-blue-600')) {
         el.style.color = '#2563eb';
@@ -168,7 +168,7 @@ export default function SubmittedLOIs() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-slate-955 dark:text-white flex items-center gap-2">
-              <Coins className="h-6 w-6 text-emerald-650" />
+              <Coins className="h-6 w-6 text-emerald-600" />
               Submitted Letters of Intent (LOI)
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -211,8 +211,7 @@ export default function SubmittedLOIs() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl border transition-all duration-200 ${
-                    isActive 
+                  className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl border transition-all duration-200 ${isActive
                       ? tab.id === 'ALL'
                         ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white shadow-sm'
                         : tab.id === 'PENDING'
@@ -221,11 +220,10 @@ export default function SubmittedLOIs() {
                             ? 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800/80 dark:text-emerald-400 shadow-sm ring-1 ring-emerald-500/20'
                             : 'bg-rose-50 border-rose-300 text-rose-800 dark:bg-rose-950/40 dark:border-rose-800/80 dark:text-rose-400 shadow-sm ring-1 ring-rose-500/20'
                       : 'border-slate-200 dark:border-slate-800 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-850/60 text-slate-550 dark:text-slate-405'
-                  }`}
+                    }`}
                 >
                   <span>{tab.label}</span>
-                  <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                    isActive
+                  <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-extrabold ${isActive
                       ? tab.id === 'ALL'
                         ? 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-100'
                         : tab.id === 'PENDING'
@@ -234,7 +232,7 @@ export default function SubmittedLOIs() {
                             ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-300'
                             : 'bg-rose-100 text-rose-900 dark:bg-rose-900/50 dark:text-rose-300'
                       : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                  }`}>
+                    }`}>
                     {tab.count}
                   </span>
                 </button>
@@ -253,22 +251,20 @@ export default function SubmittedLOIs() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredLois.map(loi => (
-                <div 
-                  key={loi.id} 
-                  className={`rounded-2xl border bg-white p-6 shadow-sm dark:bg-slate-900 flex flex-col justify-between gap-5 hover:shadow-md transition-all duration-300 ${
-                    loi.status === 'ACCEPTED' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 
-                    loi.status === 'DECLINED' ? 'border-rose-500 ring-2 ring-rose-500/10 dark:border-rose-900/40' : 
-                    'border-amber-500 ring-2 ring-amber-500/10 dark:border-amber-900/40'
-                  }`}
+                <div
+                  key={loi.id}
+                  className={`rounded-2xl border bg-white p-6 shadow-sm dark:bg-slate-900 flex flex-col justify-between gap-5 hover:shadow-md transition-all duration-300 ${loi.status === 'ACCEPTED' ? 'border-emerald-500 ring-2 ring-emerald-500/10' :
+                      loi.status === 'DECLINED' ? 'border-rose-500 ring-2 ring-rose-500/10 dark:border-rose-900/40' :
+                        'border-amber-500 ring-2 ring-amber-500/10 dark:border-amber-900/40'
+                    }`}
                 >
                   <div className="space-y-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          loi.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400' :
-                          loi.status === 'DECLINED' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-455' :
-                          'bg-amber-100 text-amber-805 dark:bg-amber-950 dark:text-amber-455'
-                        }`}>{loi.status === 'DECLINED' ? 'REJECTED' : loi.status}</span>
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${loi.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400' :
+                            loi.status === 'DECLINED' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-455' :
+                              'bg-amber-100 text-amber-805 dark:bg-amber-950 dark:text-amber-455'
+                          }`}>{loi.status === 'DECLINED' ? 'REJECTED' : loi.status}</span>
                         <h4 className="font-bold text-slate-900 dark:text-white text-base mt-2">LOI for Lot #{loi.lot_number}</h4>
                       </div>
                       <span className="text-[10px] font-semibold text-slate-400">Ref: #{loi.id}</span>
@@ -297,7 +293,7 @@ export default function SubmittedLOIs() {
                         </p>
                       </div>
                     )}
-                    
+
                     <button
                       onClick={() => setSelectedLoiForDoc(loi)}
                       className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 py-2.5 rounded-xl transition"
@@ -316,7 +312,7 @@ export default function SubmittedLOIs() {
       {selectedLoiForDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto no-scrollbar print:p-0 print:bg-transparent print:relative">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 print:border-none print:shadow-none print:p-0 print:m-0">
-            
+
             {/* Header */}
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4 print:hidden">
               <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -351,11 +347,11 @@ export default function SubmittedLOIs() {
               <div className="space-y-4 text-sm leading-relaxed">
                 <p className="font-bold font-sans text-slate-900 dark:text-white print:text-black">LETTER OF INTENT FOR AGRICULTURAL CO-INVESTMENT</p>
                 <p>
-                  This official document is issued by the co-investor 
-                  <strong> {selectedLoiForDoc.investor_name}</strong> to the cultivator 
+                  This official document is issued by the co-investor
+                  <strong> {selectedLoiForDoc.investor_name}</strong> to the cultivator
                   <strong> {selectedLoiForDoc.farmer_name}</strong> as a formal proposal to fund crop cultivation Lot <strong>#{selectedLoiForDoc.lot_number}</strong>. This LOI serves as the basis of the smart contract transaction logged on the immutable blockchain ledger.
                 </p>
-                
+
                 <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl font-sans text-xs my-4 print:bg-slate-100 print:text-black">
                   <div>
                     <span className="text-slate-455 block mb-0.5">Proposed Funding Amount</span>
@@ -428,7 +424,7 @@ export default function SubmittedLOIs() {
               </button>
               <button
                 onClick={handleDownloadLoiPDF}
-                className="rounded-xl bg-emerald-650 hover:bg-emerald-600 text-white px-6 py-2.5 text-xs font-bold transition flex items-center gap-1.5"
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 text-xs font-bold transition flex items-center gap-1.5"
               >
                 <Download className="h-4 w-4" /> Download PDF
               </button>

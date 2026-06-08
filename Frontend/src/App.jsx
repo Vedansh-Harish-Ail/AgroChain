@@ -268,7 +268,7 @@ const MainLayout = ({ theme, toggleTheme }) => {
               <ProtectedRoute roles={['INVESTOR', 'ADMIN']}><SubmittedLOIs /></ProtectedRoute>
             } />
             <Route path="/tester/approve" element={
-              <ProtectedRoute roles={['TESTER', 'ADMIN']}><QualityTesting /></ProtectedRoute>
+              <ProtectedRoute roles={['INSPECTOR', 'TESTER', 'ADMIN']}><QualityTesting /></ProtectedRoute>
             } />
             <Route path="/tester/product" element={
               <ProtectedRoute roles={['TESTER', 'ADMIN']}><ProductRegistration /></ProtectedRoute>

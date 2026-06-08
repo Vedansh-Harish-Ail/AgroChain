@@ -5,7 +5,7 @@ from utils.auth import token_required, roles_allowed
 finance_bp = Blueprint('finance', __name__)
 
 @finance_bp.route('/invest', methods=['POST'])
-@roles_allowed('INVESTOR', 'CONSUMER', 'ADMIN')
+@roles_allowed('INVESTOR')
 def make_investment(current_user):
     data = request.get_json() or {}
     
@@ -67,7 +67,7 @@ def make_investment(current_user):
 
 
 @finance_bp.route('/my-investments', methods=['GET'])
-@roles_allowed('INVESTOR', 'CONSUMER', 'ADMIN')
+@roles_allowed('INVESTOR')
 def get_my_investments(current_user):
     investments = Investment.query.filter_by(investor_id=current_user.id).all()
     return jsonify([inv.to_dict() for inv in investments]), 200

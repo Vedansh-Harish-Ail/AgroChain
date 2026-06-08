@@ -49,7 +49,7 @@ export default function AdminDashboard() {
               e.preventDefault();
               navigate('/explorer', { state: { searchQuery: matchText } });
             }}
-            className="font-mono text-[10px] bg-purple-50 text-purple-650 dark:bg-purple-950/40 dark:text-purple-400 hover:underline px-1.5 py-0.5 rounded border border-purple-100 dark:border-purple-900 inline-block font-semibold ml-1"
+            className="font-mono text-[10px] bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 hover:underline px-1.5 py-0.5 rounded border border-purple-100 dark:border-purple-900 inline-block font-semibold ml-1"
           >
             {matchText.substring(0, 8)}...{matchText.substring(matchText.length - 6)}
           </a>

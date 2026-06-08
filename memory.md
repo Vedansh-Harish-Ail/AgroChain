@@ -241,9 +241,14 @@ Managed via React Router inside `Frontend/src/App.jsx`.
    - **Print Certificate & QR**: Renders batch quality certificates containing a dynamic QR Code image linking to the explorer.
    - *Note: Both documents support direct PDF downloads using `html2pdf.js` with a forced light-mode configuration for clean, ink-saving printing.*
 5. **Investor LOI Tracking (`/investor/lois` - `SubmittedLOIs.jsx`)**: Dedicated portal for investors to track all their submitted proposals. Features status-based filter tabs (Accepted, Pending, Rejected), displays unlocked farmer contact info, and allows generating formal PDF Letter of Intent agreements.
-5. **Funding Page (`/finance`)**: Active product lot grid where investors click cards, view target funding amounts, submit terms, connect wallets, and trigger ETH transfers.
+5. Funding Page (`/finance`): Active product lot grid where investors click cards, view target funding amounts, submit terms, connect wallets, and trigger ETH transfers. Restricted to the `INVESTOR` role for submitting LOIs. Features dynamic `"LOI Sent (Status)"` status badges on cards and transitions the button option to `"Resend LOI / Propose New Terms"` to allow resending updated proposals.
 6. **Consumer Tracking (`/consumer/track`)**: Public directory listing all farmers and crops. Tapping cards loads provenance milestones, GPS map coordinates, and allows consumers to log reviews.
 7. **Redesigned Explorer Portal (`/explorer` - `BlockchainExplorer.jsx`)**: Toggled lookup panel (Crop ID / Lot number) which also decodes URL parameter scans (`?lot=1001` or `?crop=1`).
+
+### D. Styling & Aesthetic Guardrails (Tailwind CSS)
+To maintain the platform's premium design aesthetic and prevent elements (like buttons and badges) from rendering invisibly:
+* **Standard Tailwind Weights Only**: Avoid using invalid/non-standard Tailwind color weights (e.g., `emerald-650`, `slate-650`, `purple-650`, `slate-955`). Always use standard weights (`50`, `100`, `200`, `300`, `400`, `500`, `600`, `700`, `800`, `900`, `950`).
+* **Active Theme Support**: Ensure colors resolve properly in both light and dark modes (using the `.dark` class prefix).
 
 ---
 

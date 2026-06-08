@@ -483,7 +483,7 @@ export default function Dashboard() {
         <div className="space-y-6 pt-4">
           <div className="border-t border-slate-200 dark:border-slate-800 pt-6">
             <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Coins className="h-5 w-5 text-emerald-650" /> Received Letters of Intent (LOI)
+              <Coins className="h-5 w-5 text-emerald-600" /> Received Letters of Intent (LOI)
               {unreadProposals > 0 && (
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-extrabold text-white shadow-sm ring-1 ring-rose-500/50 animate-pulse ml-2">
                   {unreadProposals}
@@ -567,7 +567,7 @@ export default function Dashboard() {
                     <div className="flex gap-2.5 mt-5 pt-3 border-t border-slate-100 dark:border-slate-800">
                       <button
                         onClick={() => handleProposalAction(prop.id, 'ACCEPTED')}
-                        className="flex-1 py-2 rounded-xl bg-emerald-650 hover:bg-emerald-600 text-white font-bold text-xs transition"
+                        className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition"
                       >
                         Accept Proposal
                       </button>

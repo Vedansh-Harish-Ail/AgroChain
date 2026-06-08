@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Sprout, ShieldCheck, ArrowLeft, Clock, XCircle, 
-  FileText, Award, Download, ExternalLink 
+import {
+  Sprout, ShieldCheck, ArrowLeft, Clock, XCircle,
+  FileText, Award, Download, ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
@@ -62,15 +62,15 @@ export default function CropHistory() {
     if (!element) return;
 
     const opt = {
-      margin:       [0.4, 0.4, 0.4, 0.4],
-      filename:     `Approval_Letter_Crop_${selectedCropForLetter.id}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { 
-        scale: 2, 
+      margin: [0.4, 0.4, 0.4, 0.4],
+      filename: `Approval_Letter_Crop_${selectedCropForLetter.id}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff'
       },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
 
     const originalStyle = element.getAttribute('style') || '';
@@ -83,7 +83,7 @@ export default function CropHistory() {
     textElements.forEach(el => {
       const origColor = el.style.color;
       styledElements.push({ el, type: 'color', val: origColor });
-      
+
       if (el.classList.contains('text-slate-400') || el.classList.contains('text-slate-450') || el.classList.contains('text-slate-455')) {
         el.style.color = '#64748b';
       } else if (el.classList.contains('text-emerald-600')) {
@@ -130,15 +130,15 @@ export default function CropHistory() {
     if (!element) return;
 
     const opt = {
-      margin:       [0.4, 0.4, 0.4, 0.4],
-      filename:     `Quality_Certificate_Lot_${selectedCropForCertificate.product.lot_number}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { 
-        scale: 2, 
+      margin: [0.4, 0.4, 0.4, 0.4],
+      filename: `Quality_Certificate_Lot_${selectedCropForCertificate.product.lot_number}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff'
       },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
 
     const originalStyle = element.getAttribute('style') || '';
@@ -151,7 +151,7 @@ export default function CropHistory() {
     textElements.forEach(el => {
       const origColor = el.style.color;
       styledElements.push({ el, type: 'color', val: origColor });
-      
+
       if (el.classList.contains('text-slate-400') || el.classList.contains('text-slate-505')) {
         el.style.color = '#64748b';
       } else if (el.classList.contains('text-emerald-800') || el.classList.contains('text-emerald-455')) {
@@ -212,7 +212,7 @@ export default function CropHistory() {
   const getTimelineSelectProps = (crop) => {
     const isVerified = crop.verification_status === 'VERIFIED';
     const status = crop.timeline_status || 'CROP_REGISTERED';
-    
+
     if (!isVerified) {
       return {
         disabled: true,
@@ -221,7 +221,7 @@ export default function CropHistory() {
         ]
       };
     }
-    
+
     switch (status) {
       case 'CROP_REGISTERED':
       case 'QUALITY_TESTED':
@@ -354,7 +354,7 @@ export default function CropHistory() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {myCrops.map(crop => {
               const matchedProduct = products.find(p => p.farmer_id === crop.id);
-              
+
               return (
                 <div key={crop.id} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between gap-5 hover:shadow-md transition">
                   <div className="flex gap-4">
@@ -387,11 +387,10 @@ export default function CropHistory() {
                           value={crop.timeline_status || 'CROP_REGISTERED'}
                           disabled={selectProps.disabled}
                           onChange={(e) => handleUpdateTimeline(crop.id, e.target.value)}
-                          className={`w-full rounded-xl border border-slate-200 py-2 px-3 text-xs text-slate-800 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-                            selectProps.disabled
+                          className={`w-full rounded-xl border border-slate-200 py-2 px-3 text-xs text-slate-800 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${selectProps.disabled
                               ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed text-slate-400 dark:text-slate-550'
                               : 'bg-slate-50 dark:bg-slate-950'
-                          }`}
+                            }`}
                         >
                           {selectProps.options.map(opt => (
                             <option key={opt.value} value={opt.value}>
@@ -402,7 +401,7 @@ export default function CropHistory() {
                       );
                     })()}
                   </div>
-                  
+
                   {/* Status and Action Buttons */}
                   <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
                     {crop.verification_status === 'VERIFIED' ? (
@@ -410,7 +409,7 @@ export default function CropHistory() {
                         <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-950">
                           <ShieldCheck className="h-4 w-4" /> Blockchain Verified
                         </div>
-                        
+
                         <div className="grid grid-cols-1 gap-2 pt-1">
                           <button
                             onClick={() => setSelectedCropForLetter(crop)}
@@ -461,7 +460,7 @@ export default function CropHistory() {
       {selectedCropForLetter && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto no-scrollbar print:p-0 print:bg-transparent print:relative">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 print:border-none print:shadow-none print:p-0 print:m-0">
-            
+
             {/* Header */}
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4 print:hidden">
               <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -496,10 +495,10 @@ export default function CropHistory() {
               <div className="space-y-4 text-sm leading-relaxed">
                 <p className="font-bold font-sans text-slate-900 dark:text-white print:text-black">TO WHOMSOEVER IT MAY CONCERN</p>
                 <p>
-                  This official document serves as a certificate of compliance confirming that the crop cultivation lot registered by 
+                  This official document serves as a certificate of compliance confirming that the crop cultivation lot registered by
                   <strong> {selectedCropForLetter.farmer_name || user?.name}</strong> under ID <strong>#{selectedCropForLetter.id}</strong> has passed all rigorous chemical-free farming standards, soil health toxicity tests, and ownership deed verifications conducted on-site by our authorized verifiers.
                 </p>
-                
+
                 <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-950 p-4 rounded-xl font-sans text-xs my-4 print:bg-slate-100 print:text-black">
                   <div>
                     <span className="text-slate-450 block mb-0.5">Crop Cultivation Type</span>
@@ -583,7 +582,7 @@ export default function CropHistory() {
       {selectedCropForCertificate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto no-scrollbar print:p-0 print:bg-transparent print:relative">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 print:border-none print:shadow-none print:p-0 print:m-0">
-            
+
             {/* Header */}
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4 print:hidden">
               <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -599,7 +598,7 @@ export default function CropHistory() {
 
             {/* Certificate Content */}
             <div id="batch-certificate-print-area" className="border-4 border-double border-emerald-500 rounded-2xl p-6 space-y-6 bg-gradient-to-br from-emerald-50/10 to-teal-50/10 dark:from-slate-950 dark:to-slate-900 print:bg-transparent print:border-emerald-600 print:text-black">
-              
+
               {/* Certificate Badge & Title */}
               <div className="text-center space-y-2">
                 <div className="flex justify-center">
@@ -644,11 +643,11 @@ export default function CropHistory() {
                 {/* Right QR Code Link (Dynamic link to explorer) */}
                 <div className="flex flex-col items-center space-y-2 shrink-0">
                   <div className="p-2 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white shadow-sm print:border-slate-300">
-                    <img 
+                    <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(
                         window.location.origin + '/explorer?lot=' + selectedCropForCertificate.product.lot_number
-                      )}`} 
-                      alt="Product Batch QR Code" 
+                      )}`}
+                      alt="Product Batch QR Code"
                       className="w-32 h-32"
                     />
                   </div>
