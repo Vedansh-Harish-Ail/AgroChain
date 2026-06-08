@@ -422,3 +422,20 @@ This log tracks when key features and files were introduced or modified in the p
 
 * **May 25, 2026** (Initial Repository Structure):
   * **Baseline Setup**: Configured directories, seeded database connections, created [README.md](file:///c:/MY%20PROJECTS/AgroChain-Morden/README.md), and set up the consumer directories [ConsumerTracking.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/ConsumerTracking.jsx).
+
+---
+
+## 10. Future Roadmap & Scope (UX Enhancements)
+
+For future scale-up and enhancement of the platform's user experience (particularly to reduce the barrier to entry for rural farmers), the following architecture is proposed:
+
+### A. Unified Web2 Social Authentication for Farmers
+*   **Google OAuth2 Integration**: In place of MetaMask wallets, Farmers register or log in with one-click **Google Sign-In** or SMS-based OTP verification.
+*   **Familiar UI**: Removes Web3 client requirements (browser extensions, gas management, and seed phrase recovery) for non-technical users.
+
+### B. Auto-Generating Wallets (Embedded Web3)
+*   **SDK Integrations**: Implement services like **Privy**, **Web3Auth**, or **Magic Link** to derive an Ethereum wallet address securely in the background upon Google OAuth login.
+*   **Invisible Custody**: The derived address is saved to the user's `wallet_address` column. Farmers never see key phrases or sign contract transactions, but are fully equipped to receive micro-finance escrow payments directly on-chain.
+
+### C. Automatic Fiat Off-Ramp
+*   **Stripe / Transak Integrations**: Provide a one-click `"Withdraw to Bank"` button that automatically initiates a fiat off-ramp (converting received ETH to local currency, e.g., INR) and transfers it directly to their bank account.
