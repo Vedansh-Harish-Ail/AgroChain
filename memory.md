@@ -1,5 +1,7 @@
 # AgroChain (Modernized) — Complete Project Memory
 
+**Last Updated:** *June 8, 2026, 07:08 PM IST (UTC+5:30)*
+
 This document is the master documentation of the **AgroChain** (Modernized) project. It contains a detailed breakdown of the project’s purpose, features, security models, data structures, backend routes, contract details, frontend screens, and step-by-step developer checklists.
 
 ---
@@ -24,42 +26,42 @@ AgroChain bridges the gap between farmers, quality inspectors, consumers, and mi
 ### A. Role-Based Stakeholder Workflows
 The platform implements strict Role-Based Access Control (RBAC) across five separate user roles:
 
-1. **System Administrator (`ADMIN`)**:
+1. **System Administrator (`ADMIN`)** *(Updated: June 7, 2026, 11:28 PM)*:
    - Oversees the entire ecosystem, approves pending user registration accounts, and monitors the overall system health.
    - Features the **System Audit Trail** showing all backend operations, with auto-parsed transaction hashes and crop/lot IDs that link directly to the lookup explorer.
    - Displays system analytics (total farmers, testers, consumers, dedicated investors, crop category distributions, and fraud alerts).
 
-2. **Farmer (`FARMER`)**:
+2. **Farmer (`FARMER`)** *(Updated: June 8, 2026, 06:35 PM)*:
    - Registers crop cultivations by entering expected yields, locations, farm sizes, crop types, land survey numbers, GPS coordinates, and uploading evidence photos.
    - Manages crop lifecycles through a restricted timeline status.
    - Reviews Letters of Intent (proposals) submitted by investors and accepts/declines them.
    - Accesses the **Farmer Document Center** to view and print official crop approval letters and certified batch certificates containing dynamic QR codes.
 
-3. **Agricultural Inspector (`INSPECTOR`)**:
+3. **Agricultural Inspector (`INSPECTOR`)** *(Updated: June 7, 2026, 11:28 PM)*:
    - Assigned to specific crops based on their geographic location (district and pin code).
    - Accesses the Pending Inspection Queue showing crop registrations in their assigned region that need checking.
    - Inspects the farmer's land deeds, coordinates, and soil metrics. Approves or rejects crop registrations, recording audit dates, signatures, and verifier remarks. Requires MetaMask for signing verifications.
 
-4. **Quality Tester / Lab (`TESTER`)**:
+4. **Quality Tester / Lab (`TESTER`)** *(Updated: June 7, 2026, 11:28 PM)*:
    - Assigned to specific verified crops based on their geographic location (district and pin code).
    - Issues **Product Quality Certificates** for harvested crops after conducting scientific tests, specifying quality grades (e.g., `Grade A+`, `Grade A`) and setting the listing price and expiry dates. Requires MetaMask for signing certificates.
 
-5. **Dedicated Investor (`INVESTOR`)**:
+5. **Dedicated Investor (`INVESTOR`)** *(Updated: June 8, 2026, 06:35 PM)*:
    - Logs in to explore verified, active crop listings seeking funding.
    - Submits formal micro-finance proposals (proposing funding amounts in Rupees, return yield margins, and terms).
    - Locks and transfers funds (test ETH) directly to the farmer's MetaMask wallet using the `MicroFinance.sol` smart contract escrow mechanism.
 
-6. **Consumer / Retail Buyer (`CONSUMER` / Legacy Role)**:
+6. **Consumer / Retail Buyer (`CONSUMER` / Legacy Role)** *(Updated: June 7, 2026, 11:28 PM)*:
    - Explores the public agricultural supply chain directory without needing to log in.
    - Traces crop provenance (GPS coordinates, map links, testing dates, and timeline steps).
    - Logs in to submit reviews and trust ratings (evaluating reliability, quality, and delivery satisfaction). Supports walletless Web2 interactions, where ratings are logged in the database if a MetaMask wallet is not connected, but verified on-chain if connected.
 
-### B. High-Fidelity Lookup Portal & QR Link
+### B. High-Fidelity Lookup Portal & QR Link *(Updated: June 8, 2026, 06:35 PM)*
 * **Explorer Redesign (`/explorer`)**: Replaced raw, tech-heavy blockchain transaction indexes with a dual-tab lookup interface (Crop Cultivation ID vs. Product Lot Number) displaying clean certificates.
 * **Redirection query parsing**: The explorer parses browser search query parameters on mount (e.g., `?lot=1001` or `?crop=2`). 
 * **Physical Packaging QR Code**: Testers generate a Product Lot Number that is encoded into a QR Code. When printed and stuck on a crop bag, scanning the QR code redirects the consumer directly to the explorer page, auto-filling and loading the lot details.
 
-### C. Printable Modals & Printer CSS
+### C. Printable Modals & Printer CSS *(Updated: June 8, 2026, 06:35 PM)*
 * **Crop Verification Approval Letter**: A formal letterhead issued by "AgroChain Transparency Labs" detailing passed soil chemistry parameters, survey numbers, coordinates, and signatures.
 * **Batch Quality Certificate**: A gold-and-green styled border certificate displaying the grade badge, price, dates, and the scannable QR Code.
 * **Print CSS Rules**: Custom `@media print` rules hide sidebars, buttons, headers, and backgrounds, formatting only the certificate document cleanly on standard paper sizes.
@@ -165,7 +167,7 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 ### A. SQLite Table Schemas (`models.py`)
 
 1. **`users`**:
-   - `id` (PK), `name`, `email` (Unique), `phone_number` (Unique), `password_hash`, `role` (`ADMIN`, `FARMER`, `INSPECTOR`, `TESTER`, `CONSUMER`, `INVESTOR`), `wallet_address`, `is_approved`, `is_verified_farmer`, `government_id`, `ownership_proof_url`, `district`, `pin_code`.
+   - `id` (PK), `name`, `email` (Unique), `phone_number` (Unique), `password_hash`, `role` (`ADMIN`, `FARMER`, `INSPECTOR`, `TESTER`, `CONSUMER`, `INVESTOR`), `wallet_address`, `is_approved`, `is_verified_farmer`, `government_id`, `ownership_proof_url`, `district`, `pin_code`, `coverage_pins` (Text list of pins for verifiers).
 2. **`farmers`**:
    - `id` (PK), `user_id` (FK $\rightarrow$ `users`), `farm_location`, `farm_size`, `farming_type`, `crop_type`, `expected_yield`, `cultivation_date`, `tx_hash`, `block_number`, `blockchain_status` (`DB_ONLY`, `VERIFIED`), `is_approved`, `timeline_status`, `land_survey_no`, `gps_latitude`, `gps_longitude`, `evidence_photos` (JSON list), `verification_status` (`PENDING`, `VERIFIED`, `REJECTED`), `tester_remarks`, `assigned_inspector_id` (FK), `assigned_tester_id` (FK), `tester_id` (FK), `verification_date`, `farm_address`, `district`, `pin_code`.
 3. **`products`**:
@@ -173,7 +175,7 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 4. **`investments`**:
    - `id` (PK), `investor_id` (FK $\rightarrow$ `users`), `farmer_id` (FK $\rightarrow$ `farmers`), `lot_number` (FK $\rightarrow$ `products`), `amount` (Rs. value proposal), `tx_hash`, `block_number`, `profit_percentage`, `status` (`PENDING`, `ACCEPTED`, `DECLINED`), `terms`, `message`, `timestamp`.
 5. **`ratings`**:
-   - `id` (PK), `consumer_id` (FK), `farmer_id` (FK), `lot_number` (FK), `reliability`, `product_quality`, `delivery_satisfaction`, `comment`, `tx_hash`, `block_number`, `timestamp`.
+   - `id` (PK), `consumer_id` (FK), `farmer_id` (FK), `lot_number` (FK), `reliability`, `product_quality`, `delivery_satisfaction`, `comment`, `tx_hash`, `block_number`, `blockchain_status` (`DB_ONLY`, `VERIFIED`), `timestamp`.
 6. **`transactions`**:
    - `id` (PK), `tx_hash` (Unique), `block_number`, `from_address`, `to_address`, `amount`, `method_name`, `event_data` (JSON string).
 7. **`audit_logs`**:
@@ -229,21 +231,21 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 Managed via React Router inside `Frontend/src/App.jsx`.
 
 ### Navigation Pages
-1. **Landing Page (`/`)**: Main presentation dashboard, display metrics, role explanations.
-2. **Login/Signup (`/login`, `/register`)**: OTP request fields, role selection dropdowns, MetaMask wallet link tools.
-3. **Control Dashboard (`/dashboard`)**: Role-specific options with real-time notification badges using `localStorage` cache validation:
+1. **Landing Page (`/`)** *(Updated: May 30, 2026, 03:45 PM)*: Main presentation dashboard, display metrics, role explanations.
+2. **Login/Signup (`/login`, `/register`)** *(Updated: June 7, 2026, 11:28 PM)*: OTP request fields, role selection dropdowns, MetaMask wallet link tools.
+3. **Control Dashboard (`/dashboard`)** *(Updated: June 8, 2026, 06:35 PM)*: Role-specific options with real-time notification badges using `localStorage` cache validation:
    - *Farmers*: Received micro-finance proposals (badges for new incoming LOIs), link wallets, shortcuts to register crops and view crop lists (badges for crop verification status updates).
    - *Testers*: Shortcuts to check pending crops (badges for new registrations) and certify harvested crop batches (badges for verified crops awaiting certification).
    - *Investors*: Track Submitted LOIs (badges for accepted/declined proposals).
    - *Admins*: Full analytics panel (metrics grids, logs console, user list table).
-4. **My Crops Directory (`/farmer/crops` - `CropHistory.jsx`)**: The primary farmer document hub. Allows updating timelines and displays action modals:
+4. **My Crops Directory (`/farmer/crops` - `CropHistory.jsx`)** *(Updated: June 8, 2026, 06:35 PM)*: The primary farmer document hub. Allows updating timelines and displays action modals:
    - **View Approval Letter**: Printable modal showing verifier sign-offs and coordinates.
    - **Print Certificate & QR**: Renders batch quality certificates containing a dynamic QR Code image linking to the explorer.
    - *Note: Both documents support direct PDF downloads using `html2pdf.js` with a forced light-mode configuration for clean, ink-saving printing.*
-5. **Investor LOI Tracking (`/investor/lois` - `SubmittedLOIs.jsx`)**: Dedicated portal for investors to track all their submitted proposals. Features status-based filter tabs (Accepted, Pending, Rejected), displays unlocked farmer contact info, and allows generating formal PDF Letter of Intent agreements.
-5. Funding Page (`/finance`): Active product lot grid where investors click cards, view target funding amounts, submit terms, connect wallets, and trigger ETH transfers. Restricted to the `INVESTOR` role for submitting LOIs. Features dynamic `"LOI Sent (Status)"` status badges on cards and transitions the button option to `"Resend LOI / Propose New Terms"` to allow resending updated proposals.
-6. **Consumer Tracking (`/consumer/track`)**: Public directory listing all farmers and crops. Tapping cards loads provenance milestones, GPS map coordinates, and allows consumers to log reviews.
-7. **Redesigned Explorer Portal (`/explorer` - `BlockchainExplorer.jsx`)**: Toggled lookup panel (Crop ID / Lot number) which also decodes URL parameter scans (`?lot=1001` or `?crop=1`).
+5. **Investor LOI Tracking (`/investor/lois` - `SubmittedLOIs.jsx`)** *(Updated: June 8, 2026, 06:35 PM)*: Dedicated portal for investors to track all their submitted proposals. Features status-based filter tabs (Accepted, Pending, Rejected), displays unlocked farmer contact info, and allows generating formal PDF Letter of Intent agreements.
+6. **Funding Page (`/finance`)** *(Updated: June 8, 2026, 06:35 PM)*: Active product lot grid where investors click cards, view target funding amounts, submit terms, connect wallets, and trigger ETH transfers. Restricted to the `INVESTOR` role for submitting LOIs. Features dynamic `"LOI Sent (Status)"` status badges on cards and transitions the button option to `"Resend LOI / Propose New Terms"` to allow resending updated proposals.
+7. **Consumer Tracking (`/consumer/track`)** *(Updated: June 8, 2026, 06:35 PM)*: Public directory listing all farmers and crops. Tapping cards loads provenance milestones, GPS map coordinates, and allows consumers to log reviews.
+8. **Redesigned Explorer Portal (`/explorer` - `BlockchainExplorer.jsx`)** *(Updated: June 8, 2026, 06:35 PM)*: Toggled lookup panel (Crop ID / Lot number) which also decodes URL parameter scans (`?lot=1001` or `?crop=1`).
 
 ### D. Styling & Aesthetic Guardrails (Tailwind CSS)
 To maintain the platform's premium design aesthetic and prevent elements (like buttons and badges) from rendering invisibly:
@@ -312,3 +314,110 @@ To ensure the safety and integrity of the AgroChain project, all developers and 
 3. **Never Commit Secrets**: Ensure that `.env` is always included in the `.gitignore` file. Only `.env.example` should be committed to the repository, containing dummy or placeholder values.
 4. **Secure Defaults**: If a new service requires a credential, fall back to secure default handling (e.g., throwing an error if the secret is missing, rather than defaulting to a publicly known "test" secret in production).
 5. **Private Key Handling**: Ethereum private keys used for deployment or testing must only reside in secure environment variables or local node memory (like Hardhat's default test accounts), never pushed to version control.
+
+---
+
+## 8. Codebase Directory & File Breakdown
+
+Here is a comprehensive index of all key files in the AgroChain workspace:
+
+### A. Root Configurations & Scripts
+* [.gitignore](file:///c:/MY%20PROJECTS/AgroChain-Morden/.gitignore): Specifies files to be ignored by Git (e.g., node_modules, Python virtual environments, SQLite databases, and `.env` credentials).
+* [README.md](file:///c:/MY%20PROJECTS/AgroChain-Morden/README.md): Primary developer setup documentation.
+* [walkthrough.md](file:///c:/MY%20PROJECTS/AgroChain-Morden/walkthrough.md): Comprehensive system walkthrough showing architecture diagrams, core routes, pages, and validation status checklists.
+* [start-presentation.bat](file:///c:/MY%20PROJECTS/AgroChain-Morden/start-presentation.bat): Windows batch script that automates running the local Hardhat node, deploying smart contracts, running the Flask API server, and launching the Vite web app in parallel.
+
+### B. Blockchain Network Component (`Blockchain/`)
+* [Blockchain/contracts/FarmerRegistry.sol](file:///c:/MY%20PROJECTS/AgroChain-Morden/Blockchain/contracts/FarmerRegistry.sol): Solidity contract verifying farmer registration details, inspector assignments, and on-chain cultivation validation status.
+* [Blockchain/contracts/ProductRegistry.sol](file:///c:/MY%20PROJECTS/AgroChain-Morden/Blockchain/contracts/ProductRegistry.sol): Solidity contract defining the quality certificate registry, laboratory grades, and base prices in Wei.
+* [Blockchain/contracts/MicroFinance.sol](file:///c:/MY%20PROJECTS/AgroChain-Morden/Blockchain/contracts/MicroFinance.sol): Solidity contract handling peer-to-peer escrow transfers, investments tracking, and status modifications.
+* [Blockchain/contracts/RatingSystem.sol](file:///c:/MY%20PROJECTS/AgroChain-Morden/Blockchain/contracts/RatingSystem.sol): Solidity contract storing user-submitted reviews and computing averaged numeric trust rankings.
+* [Blockchain/hardhat.config.js](file:///c:/MY%20PROJECTS/AgroChain-Morden/Blockchain/hardhat.config.js): JavaScript configuration declaring RPC endpoint details and compilation compiler settings.
+* [Blockchain/scripts/deploy.js](file:///c:/MY%20PROJECTS/AgroChain-Morden/Blockchain/scripts/deploy.js): Script that compiles Solidity contracts, deploys them to the Localhost node, and updates ABI and address assets in the Frontend/Backend settings.
+
+### C. Backend API Server Component (`Backend/`)
+* [Backend/app.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/app.py): Entry script initializing the Flask app factory, configuring CORS rules, registering SQLAlchemy database models, and binding blueprints.
+* [Backend/config.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/config.py): Declares database file URIs, upload directories, and JWT access credentials.
+* [Backend/models.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/models.py): Declares the SQLite SQLAlchemy database schemas (Users, Farmers, Products, Investments, Ratings, Transactions, Audit Logs, and OTPs).
+* [Backend/seed.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/seed.py): Populates the SQLite database with testing credentials, mock inspector/tester profiles, location pins, and dummy registrations.
+* [Backend/utils/auth.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/utils/auth.py): Contains JWT session helpers (`generate_token`, `token_required`, `role_required`) to enforce route access.
+* **API Routing Blueprints (`Backend/routes/`)**:
+  * [Backend/routes/admin.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/admin.py): Serves administrative analytics tables, user approval logs, and system audit trails.
+  * [Backend/routes/auth.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/auth.py): Manages OTP codes, profile linkages, and MetaMask addresses.
+  * [Backend/routes/explorer.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/explorer.py): Logs mined blockchain hashes and processes transaction search lookups.
+  * [Backend/routes/farmer.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/farmer.py): Registers crops, fetches crop lists, and restricts timeline status changes.
+  * [Backend/routes/finance.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/finance.py): Connects investor proposals, accepts LOIs, and triggers status changes.
+  * [Backend/routes/product.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/product.py): Registers new product lot credentials and references parent crops.
+  * [Backend/routes/quality.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/quality.py): Handles inspector/tester verification queues and remarks.
+  * [Backend/routes/rating.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/rating.py): Processes walletless rating additions and computes dynamic trust levels.
+
+### D. Frontend React Application (`Frontend/`)
+* [Frontend/index.html](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/index.html): Base HTML document layout rendering the root React workspace.
+* [Frontend/src/main.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/main.jsx): Root file bootstrap loading components into React DOM.
+* [Frontend/src/App.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/App.jsx): Declares the client-side router endpoints and wraps pages in role-based guards.
+* [Frontend/src/index.css](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/index.css): Master style sheet detailing Tailwind CSS directives, theme toggles, scrollbars, and printable document media layouts.
+* **Context Stores (`Frontend/src/context/`)**:
+  * [Frontend/src/context/AuthContext.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/context/AuthContext.jsx): Handles JWT user log-in sessions, verification triggers, and logs credentials to memory.
+  * [Frontend/src/context/WalletContext.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/context/WalletContext.jsx): Stores active MetaMask addresses and provides Ethers.js v6 smart contract instances.
+* **Console Pages (`Frontend/src/pages/`)**:
+  * [Frontend/src/pages/LandingPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/LandingPage.jsx): Initial presentation page featuring active system counters.
+  * [Frontend/src/pages/LoginPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/LoginPage.jsx): Sign-in UI supporting password and OTP login forms.
+  * [Frontend/src/pages/RegisterPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/RegisterPage.jsx): Dynamic signup portal with geographical input parameters and role choices.
+  * [Frontend/src/pages/Dashboard.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/Dashboard.jsx): The main hub for all roles, displaying action shortcuts and unread notification badges.
+  * [Frontend/src/pages/FarmerRegistration.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/FarmerRegistration.jsx): Registration form for crops (GPS, expected yield, district, land survey).
+  * [Frontend/src/pages/CropHistory.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/CropHistory.jsx): Document center for farmers to trace crops, update status, and print letters or certificates.
+  * [Frontend/src/pages/QualityTesting.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/QualityTesting.jsx): Queue of pending crops for inspectors/testers.
+  * [Frontend/src/pages/ProductRegistration.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/ProductRegistration.jsx): Form for testers to certify crop lots (grade, expiry, price).
+  * [Frontend/src/pages/FundingPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/FundingPage.jsx): Funding portal listing lots for investors to submit proposals.
+  * [Frontend/src/pages/SubmittedLOIs.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/SubmittedLOIs.jsx): Panel for investors to trace LOIs, unlock contacts, and print PDF agreements.
+  * [Frontend/src/pages/ConsumerTracking.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/ConsumerTracking.jsx): Directory for tracking crops, map lookup, and walletless ratings.
+  * [Frontend/src/pages/BlockchainExplorer.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/BlockchainExplorer.jsx): Decodes block history and parses URL crop/lot queries.
+  * [Frontend/src/pages/AdminDashboard.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/AdminDashboard.jsx): Admin portal with audit logs and user validation logs.
+
+### E. Secondary Configurations & Build Files
+* [Backend/.env.example](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/.env.example): Blueprint configuration template outlining requirements for keys, database paths, and OTP setups.
+* [Backend/requirements.txt](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/requirements.txt): Declares Python dependency packages for running Flask and SQLAlchemy.
+* [Backend/contracts/addresses.json](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/contracts/addresses.json) / [Frontend/src/contracts/addresses.json](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/contracts/addresses.json): Stores deployment contract addresses synced by the Hardhat compilation scripts.
+* **Solidity ABI compilation files** (e.g. `FarmerRegistry.json`, `MicroFinance.json`, `ProductRegistry.json`, `RatingSystem.json` inside `Backend/contracts/` and `Frontend/src/contracts/`): Contain ABI descriptors mapping JavaScript/Python requests to smart contract methods.
+* [Frontend/tailwind.config.js](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/tailwind.config.js): Handles spacing grid layouts, typography defaults, and color palette declarations.
+* [Frontend/postcss.config.js](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/postcss.config.js): Integrates Tailwind CSS compilation processes.
+* [Frontend/vite.config.js](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/vite.config.js): Coordinates fast HMR compilation parameters and maps API proxy configurations.
+* [LICENSE](file:///c:/MY%20PROJECTS/AgroChain-Morden/LICENSE): Open-source license declaration.
+* [My Notepad.txt](file:///c:/MY%20PROJECTS/AgroChain-Morden/My%20Notepad.txt): Development scratchpad used for temporary developer notes.
+
+---
+
+## 9. Chronological Change Log
+
+This log tracks when key features and files were introduced or modified in the project:
+
+* **June 8, 2026** (Dashboard & Navigation refinement):
+  * **Unified Badging**: Added real-time notification badges and clear button alerts based on `localStorage` caches in [Dashboard.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/Dashboard.jsx).
+  * **LOI Redirection & Banning**: Updated [FundingPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/FundingPage.jsx) with warning banners for non-investor roles and added "Resend LOI / Propose New Terms" button workflows.
+  * **Styling Guardrails**: Standardized CSS color weights across [SubmittedLOIs.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/SubmittedLOIs.jsx) and [ConsumerTracking.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/ConsumerTracking.jsx) to align with Tailwind standards.
+  * **Project Memory Expansion**: Documented the complete project layout and directory files breakdown in [memory.md](file:///c:/MY%20PROJECTS/AgroChain-Morden/memory.md).
+
+* **June 7, 2026** (LOI Portal, Document Center & Database Extensions):
+  * **Submitted LOI Tracking**: Added [SubmittedLOIs.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/SubmittedLOIs.jsx) for investors to monitor and filter sent proposals.
+  * **Printer Layouts**: Designed printable modals and generated PDF layouts for [CropHistory.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/CropHistory.jsx) using `html2pdf.js` with forced light-mode formatting.
+  * **Geographical DB Schemas**: Expanded [models.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/models.py) database schemas with `district`, `pin_code`, and `coverage_pins`.
+  * **Geographical Assignment API**: Added assignment checks to [auth.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/auth.py), [farmer.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/farmer.py), [quality.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/quality.py) and expanded [seed.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/seed.py) to automatically map nearest verifiers on register.
+
+* **June 6, 2026** (Microfinance Escrow & Ratings Smart Contracts):
+  * **MicroFinance Escrow**: Created and deployed [MicroFinance.sol](file:///c:/MY%20PROJECTS/AgroChain-Morden/Blockchain/contracts/MicroFinance.sol) to lock and distribute Ethereum funding tokens to farmers.
+  * **Decentralized Reviews**: Created and deployed [RatingSystem.sol](file:///c:/MY%20PROJECTS/AgroChain-Morden/Blockchain/contracts/RatingSystem.sol) to store consumer ratings and calculate scaled average trust scores.
+  * **MetaMask Context**: Implemented contract instance bindings in [WalletContext.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/context/WalletContext.jsx).
+
+* **June 3, 2026** (Product Registry Smart Contract & Auth Flow):
+  * **Quality Certification Contract**: Built [ProductRegistry.sol](file:///c:/MY%20PROJECTS/AgroChain-Morden/Blockchain/contracts/ProductRegistry.sol) to register laboratory grades on-chain.
+  * **Security Tokenization**: Implemented backend JWT generation and decorator check guards in [auth.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/utils/auth.py).
+  * **Client Authentication**: Implemented login interfaces in [LoginPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/LoginPage.jsx) and [AuthContext.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/context/AuthContext.jsx).
+
+* **May 30, 2026** (Landing Page & Presentation Layout):
+  * **UI Landing Page**: Created [LandingPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/LandingPage.jsx) featuring platform stats grids and animations.
+
+* **May 27, 2026** (Automation scripts):
+  * **Orchestration Batch Script**: Created [start-presentation.bat](file:///c:/MY%20PROJECTS/AgroChain-Morden/start-presentation.bat) to launch the four system servers in parallel console processes.
+
+* **May 25, 2026** (Initial Repository Structure):
+  * **Baseline Setup**: Configured directories, seeded database connections, created [README.md](file:///c:/MY%20PROJECTS/AgroChain-Morden/README.md), and set up the consumer directories [ConsumerTracking.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/ConsumerTracking.jsx).
