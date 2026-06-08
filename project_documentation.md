@@ -252,11 +252,28 @@ A review of existing research indicates that while enterprise traceability solut
 ### 4.1 Architecture Diagram
 The system structure consists of a three-tier Web3 hybrid architecture:
 
-```
-[ Frontend: React / Vite ]  <---->  [ Backend: Flask API ]  ---->  [ Database: SQLite ]
-            |                               |
-            v                               v
-[ Web3 Provider: MetaMask ] <---->  [ Hardhat Ethereum Node ]
+```mermaid
+flowchart TD
+    subgraph ClientTier["Client Tier (Frontend)"]
+        ReactApp["React / Vite App<br>(JavaScript / UI)"]
+        MetaMask["MetaMask Extension<br>(Web3 Provider)"]
+        ReactApp <-->|Ethers.js Client| MetaMask
+    end
+
+    subgraph AppTier["Application Tier (Backend API)"]
+        FlaskAPI["Flask API Server<br>(Python / SQLAlchemy ORM)"]
+    end
+
+    subgraph DataLedgerTier["Data & Ledger Tier (Storage & Ledger)"]
+        SQLiteDB[("SQLite Database<br>(Relational Cache & State)")]
+        HardhatNode[("Hardhat Local Node<br>(Ethereum Blockchain)")]
+    end
+
+    %% Connections
+    ReactApp <-->|HTTP REST Requests & JWT| FlaskAPI
+    FlaskAPI -->|ORM DB Transactions| SQLiteDB
+    MetaMask <-->|JSON-RPC Provider Protocol| HardhatNode
+    FlaskAPI <-->|Web3 RPC Queries| HardhatNode
 ```
 
 ### 4.2 UML Diagrams
