@@ -60,10 +60,28 @@ def make_investment(current_user):
     db.session.add(audit)
     db.session.commit()
     
+    # Notify Farmer via email
+    from utils.email import send_email, get_html_template
+    farmer_user = farmer.user
+    if farmer_user and farmer_user.email:
+        subject = "New Funding Proposal Received - AgroChain"
+        text_body = f"Hello {farmer_user.name},\n\nYou have received a new funding proposal for Crop Lot {lot_number} from Investor {current_user.name} for Rs. {amount}.\n\nLog in to your AgroChain dashboard to accept or decline the proposal."
+        html_body = get_html_template(
+            title="New Funding Proposal",
+            body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>You have received a new funding proposal for your crop lot <strong>Lot {lot_number}</strong> from investor <strong>{current_user.name}</strong>.</p><table style='width: 100%; margin: 20px 0; border-collapse: collapse; border: 1px solid #e5e7eb;'><tr style='background-color: #f9fafb;'><td style='padding: 10px; font-weight: bold; border-bottom: 1px solid #e5e7eb;'>Proposal Amount:</td><td style='padding: 10px; border-bottom: 1px solid #e5e7eb;'>Rs. {amount:,}</td></tr><tr><td style='padding: 10px; font-weight: bold; border-bottom: 1px solid #e5e7eb;'>Proposed Profit Share:</td><td style='padding: 10px; border-bottom: 1px solid #e5e7eb;'>{profit_percentage}%</td></tr><tr style='background-color: #f9fafb;'><td style='padding: 10px; font-weight: bold;'>Message:</td><td style='padding: 10px;'>{message or 'No message provided.'}</td></tr></table><p>Please log in to your dashboard to review and manage this proposal.</p>",
+            cta_text="Go to Dashboard",
+            cta_url="http://localhost:5173/dashboard"
+        )
+        try:
+            send_email(subject, farmer_user.email, text_body, html_body)
+        except Exception as e:
+            print(f"Error sending email to farmer: {e}")
+            
     return jsonify({
         'message': 'Proposal submitted successfully!',
         'investment': new_investment.to_dict()
     }), 201
+
 
 
 @finance_bp.route('/my-investments', methods=['GET'])
@@ -130,7 +148,32 @@ def update_investment_status(current_user, investment_id):
     db.session.add(audit)
     db.session.commit()
     
+    # Notify Investor via email
+    from utils.email import send_email, get_html_template
+    investor_user = investment.investor
+    if investor_user and investor_user.email:
+        subject = f"Your Funding Proposal Has Been {status.capitalize()} - AgroChain"
+        if status == 'ACCEPTED':
+            title_text = "Funding Proposal Accepted!"
+            body_text = f"<p>Hello <strong>{investor_user.name}</strong>,</p><p>We are pleased to inform you that Farmer <strong>{investment.farmer.user.name}</strong> has accepted your funding proposal of <strong>Rs. {investment.amount:,}</strong> for crop <strong>{investment.product.crop_name} (Lot {investment.lot_number})</strong>.</p><p>The agreement terms are now active. You can review details and check updates on your dashboard.</p>"
+        else:
+            title_text = "Funding Proposal Declined"
+            body_text = f"<p>Hello <strong>{investor_user.name}</strong>,</p><p>We regret to inform you that Farmer <strong>{investment.farmer.user.name}</strong> has declined your funding proposal of <strong>Rs. {investment.amount:,}</strong> for crop lot <strong>Lot {investment.lot_number}</strong>.</p><p>Feel free to browse the marketplace for other verified farming opportunities.</p>"
+            
+        text_body = f"Hello {investor_user.name},\nYour funding proposal has been {status} for Crop Lot {investment.lot_number}.\nLog in to your AgroChain dashboard for details."
+        html_body = get_html_template(
+            title=title_text,
+            body_text=body_text,
+            cta_text="Go to Dashboard",
+            cta_url="http://localhost:5173/dashboard"
+        )
+        try:
+            send_email(subject, investor_user.email, text_body, html_body)
+        except Exception as e:
+            print(f"Error sending email status update to investor: {e}")
+            
     return jsonify({
         'message': f'Investment status updated to {status}!',
         'investment': investment.to_dict()
     }), 200
+

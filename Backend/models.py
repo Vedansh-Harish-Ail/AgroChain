@@ -65,7 +65,8 @@ class OTPVerification(db.Model):
     __tablename__ = 'otp_verifications'
     
     id = db.Column(db.Integer, primary_key=True)
-    phone_number = db.Column(db.String(20), unique=True, nullable=False)
+    phone_number = db.Column(db.String(120), unique=True, nullable=True)
+    email = db.Column(db.String(120), unique=True, nullable=True)
     otp_code = db.Column(db.String(6), nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -74,10 +75,12 @@ class OTPVerification(db.Model):
         return {
             'id': self.id,
             'phone_number': self.phone_number,
+            'email': self.email,
             'otp_code': self.otp_code,
             'expires_at': self.expires_at.isoformat(),
             'created_at': self.created_at.isoformat()
         }
+
 
 
 

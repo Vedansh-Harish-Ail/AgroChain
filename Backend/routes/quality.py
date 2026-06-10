@@ -44,6 +44,23 @@ def approve_crop(current_user, crop_id):
     db.session.add(audit)
     db.session.commit()
     
+    # Notify Farmer via email
+    from utils.email import send_email, get_html_template
+    farmer_user = crop.user
+    if farmer_user and farmer_user.email:
+        subject = "Crop Registration Approved - AgroChain"
+        text_body = f"Hello {farmer_user.name},\n\nYour crop registration for {crop.crop_type} (ID: {crop_id}) has been approved by Inspector {current_user.name}.\n\nRemarks: {tester_remarks}"
+        html_body = get_html_template(
+            title="Crop Registration Approved!",
+            body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>We are pleased to inform you that Agricultural Inspector <strong>{current_user.name}</strong> has verified and approved your crop registration for <strong>{crop.crop_type} (ID: {crop_id})</strong>.</p><p><strong>Inspector Remarks:</strong><br>{tester_remarks or 'No remarks provided.'}</p><p>You can now update your crop status or prepare for testing.</p>",
+            cta_text="View Crop History",
+            cta_url="http://localhost:5173/dashboard"
+        )
+        try:
+            send_email(subject, farmer_user.email, text_body, html_body)
+        except Exception as e:
+            print(f"Error sending crop approval email: {e}")
+            
     return jsonify({
         'message': 'Crop registration approved successfully!',
         'crop': crop.to_dict()
@@ -81,6 +98,23 @@ def reject_crop(current_user, crop_id):
     db.session.add(audit)
     db.session.commit()
     
+    # Notify Farmer via email
+    from utils.email import send_email, get_html_template
+    farmer_user = crop.user
+    if farmer_user and farmer_user.email:
+        subject = "Crop Registration Rejected - AgroChain"
+        text_body = f"Hello {farmer_user.name},\n\nYour crop registration for {crop.crop_type} (ID: {crop_id}) has been rejected by Inspector {current_user.name}.\n\nRemarks: {tester_remarks}"
+        html_body = get_html_template(
+            title="Crop Registration Rejected",
+            body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>We regret to inform you that Agricultural Inspector <strong>{current_user.name}</strong> has rejected your crop registration for <strong>{crop.crop_type} (ID: {crop_id})</strong>.</p><p><strong>Inspector Remarks:</strong><br>{tester_remarks or 'No remarks provided.'}</p><p>Please review the remarks and resubmit if necessary.</p>",
+            cta_text="Go to Dashboard",
+            cta_url="http://localhost:5173/dashboard"
+        )
+        try:
+            send_email(subject, farmer_user.email, text_body, html_body)
+        except Exception as e:
+            print(f"Error sending crop rejection email: {e}")
+            
     return jsonify({
         'message': 'Crop registration rejected.',
         'crop': crop.to_dict()

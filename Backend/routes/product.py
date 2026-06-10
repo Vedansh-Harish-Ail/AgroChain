@@ -74,10 +74,28 @@ def register_product(current_user):
     db.session.add(audit)
     db.session.commit()
     
+    # Notify Farmer via email
+    from utils.email import send_email, get_html_template
+    farmer_user = farmer_project.user
+    if farmer_user and farmer_user.email:
+        subject = f"Crop Lot Certified ({quality_grade}) - AgroChain"
+        text_body = f"Hello {farmer_user.name},\n\nYour crop lot for '{crop_name}' has been certified by the Quality Lab with Grade '{quality_grade}' (Lot Number: {lot_number}).\n\nYou can now view and print your Certificate & Batch QR code from your dashboard."
+        html_body = get_html_template(
+            title="Crop Lot Certified!",
+            body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>We are excited to inform you that Quality Lab Tester <strong>{current_user.name}</strong> has tested and certified your crop batch.</p><table style='width: 100%; margin: 20px 0; border-collapse: collapse; border: 1px solid #e5e7eb;'><tr style='background-color: #f9fafb;'><td style='padding: 10px; font-weight: bold; border-bottom: 1px solid #e5e7eb;'>Crop Name:</td><td style='padding: 10px; border-bottom: 1px solid #e5e7eb;'>{crop_name}</td></tr><tr><td style='padding: 10px; font-weight: bold; border-bottom: 1px solid #e5e7eb;'>Certified Quality Grade:</td><td style='padding: 10px; border-bottom: 1px solid #e5e7eb; color: #059669; font-weight: bold;'>{quality_grade}</td></tr><tr style='background-color: #f9fafb;'><td style='padding: 10px; font-weight: bold;'>Lot Number:</td><td style='padding: 10px;'>{lot_number}</td></tr></table><p>You can now view, download, or print your gold-bordered Batch Quality Certificate and dynamic QR packaging labels directly from your AgroChain Document Center.</p>",
+            cta_text="Go to Document Center",
+            cta_url="http://localhost:5173/dashboard"
+        )
+        try:
+            send_email(subject, farmer_user.email, text_body, html_body)
+        except Exception as e:
+            print(f"Error sending certification email: {e}")
+            
     return jsonify({
         'message': 'Product Lot certified and registered successfully!',
         'product': new_product.to_dict()
     }), 201
+
 
 
 @product_bp.route('/all', methods=['GET'])

@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, role, walletAddress, phoneNumber, otpCode, locationData = {}) => {
+  const register = async (name, email, password, role, walletAddress, phoneNumber, emailOtp, smsOtp, locationData = {}) => {
     try {
       const res = await axios.post('/api/auth/register', {
         name,
@@ -65,7 +65,8 @@ export const AuthProvider = ({ children }) => {
         role,
         wallet_address: walletAddress || null,
         phone_number: phoneNumber,
-        otp_code: otpCode,
+        email_otp: emailOtp,
+        sms_otp: smsOtp,
         ...locationData
       });
       return { success: true, user: res.data.user };
@@ -77,7 +78,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const sendOtp = async (phoneNumber) => {
+  const sendSmsOtp = async (phoneNumber) => {
     try {
       const res = await axios.post('/api/auth/send-otp', {
         phone_number: phoneNumber
@@ -86,10 +87,25 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       return {
         success: false,
-        message: err.response?.data?.message || 'Failed to send OTP. Please check the phone number.'
+        message: err.response?.data?.message || 'Failed to send SMS OTP. Please check the phone number.'
       };
     }
   };
+
+  const sendEmailOtp = async (email) => {
+    try {
+      const res = await axios.post('/api/auth/send-email-otp', {
+        email: email
+      });
+      return { success: true, data: res.data };
+    } catch (err) {
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Failed to send email OTP. Please check the email address.'
+      };
+    }
+  };
+
 
   const linkWallet = async (walletAddress) => {
     try {
@@ -114,7 +130,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, linkWallet, sendOtp }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, linkWallet, sendSmsOtp, sendEmailOtp }}>
       {children}
     </AuthContext.Provider>
   );

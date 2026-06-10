@@ -92,19 +92,21 @@ const Navbar = ({ theme, toggleTheme }) => {
 
           <div className="hidden md:flex md:items-center md:gap-4">
             {/* Wallet Connect */}
-            <button
-              onClick={handleWalletConnect}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold shadow-sm transition-all duration-300 ${
-                isConnected
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800'
-                  : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500'
-              }`}
-            >
-              <Wallet className="h-4 w-4" />
-              {isConnected
-                ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`
-                : 'Connect Wallet'}
-            </button>
+            {user && ['ADMIN', 'INSPECTOR', 'TESTER'].includes(user.role) && (
+              <button
+                onClick={handleWalletConnect}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold shadow-sm transition-all duration-300 ${
+                  isConnected
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800'
+                    : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500'
+                }`}
+              >
+                <Wallet className="h-4 w-4" />
+                {isConnected
+                  ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`
+                  : 'Connect Wallet'}
+              </button>
+            )}
 
             {/* Dark Mode Toggle */}
             <button
@@ -194,13 +196,15 @@ const Navbar = ({ theme, toggleTheme }) => {
             </Link>
           )}
           
-          <button
-            onClick={() => { handleWalletConnect(); setMobileMenuOpen(false); }}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-semibold dark:bg-emerald-600"
-          >
-            <Wallet className="h-4 w-4" />
-            {isConnected ? 'Wallet Connected' : 'Connect Wallet'}
-          </button>
+          {user && ['ADMIN', 'INSPECTOR', 'TESTER'].includes(user.role) && (
+            <button
+              onClick={() => { handleWalletConnect(); setMobileMenuOpen(false); }}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-semibold dark:bg-emerald-600"
+            >
+              <Wallet className="h-4 w-4" />
+              {isConnected ? 'Wallet Connected' : 'Connect Wallet'}
+            </button>
+          )}
 
           {user ? (
             <button

@@ -239,28 +239,24 @@ export default function Dashboard() {
         </div>
 
         <div className="shrink-0">
-          {user?.wallet_address ? (
-            <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-xs text-slate-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400 font-mono">
-              <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Wallet: {user.wallet_address.substring(0, 6)}...{user.wallet_address.substring(user.wallet_address.length - 4)}</span>
-            </div>
-          ) : user?.role === 'FARMER' ? (
-            <div className="flex items-center gap-3">
-               <span className="text-xs font-medium text-slate-500 dark:text-slate-400 italic">No wallet required for basic use</span>
-               <button
+          {['ADMIN', 'INSPECTOR', 'TESTER'].includes(user?.role) ? (
+            user?.wallet_address ? (
+              <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-xs text-slate-600 dark:bg-slate-955 dark:border-slate-800 dark:text-slate-400 font-mono">
+                <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Wallet: {user.wallet_address.substring(0, 6)}...{user.wallet_address.substring(user.wallet_address.length - 4)}</span>
+              </div>
+            ) : (
+              <button
                 onClick={handleWalletLink}
-                className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 text-xs font-semibold shadow-sm transition-all"
+                className="flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 text-xs font-semibold shadow-sm transition-all"
               >
-                <Wallet className="h-4 w-4" /> Link Secure Wallet
+                <TrendingUp className="h-4.5 w-4.5" /> Link MetaMask Wallet
               </button>
-            </div>
+            )
           ) : (
-            <button
-              onClick={handleWalletLink}
-              className="flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 text-xs font-semibold shadow-sm transition-all"
-            >
-              <TrendingUp className="h-4.5 w-4.5" /> Link MetaMask Wallet
-            </button>
+            <span className="text-xs font-medium text-slate-505 dark:text-slate-400 italic">
+              Secure Cloud Account Active
+            </span>
           )}
         </div>
       </div>

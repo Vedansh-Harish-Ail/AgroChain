@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 export default function RegisterPage() {
-  const { register, sendOtp } = useAuth();
+  const { register, sendSmsOtp, sendEmailOtp } = useAuth();
   const { walletAddress, isConnected, connectWallet } = useWallet();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,10 +20,19 @@ export default function RegisterPage() {
   const [district, setDistrict] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [coveragePins, setCoveragePins] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [sendingOtp, setSendingOtp] = useState(false);
-  const [countdown, setCountdown] = useState(0);
+  
+  // Email OTP States
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
+  const [emailCountdown, setEmailCountdown] = useState(0);
+  
+  // SMS OTP States
+  const [smsOtp, setSmsOtp] = useState('');
+  const [smsOtpSent, setSmsOtpSent] = useState(false);
+  const [sendingSmsOtp, setSendingSmsOtp] = useState(false);
+  const [smsCountdown, setSmsCountdown] = useState(0);
+  
   const [devOtpMessage, setDevOtpMessage] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -32,13 +41,23 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
+  // Email Countdown Effect
   useEffect(() => {
     let timer;
-    if (countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    if (emailCountdown > 0) {
+      timer = setTimeout(() => setEmailCountdown(emailCountdown - 1), 1000);
     }
     return () => clearTimeout(timer);
-  }, [countdown]);
+  }, [emailCountdown]);
+
+  // SMS Countdown Effect
+  useEffect(() => {
+    let timer;
+    if (smsCountdown > 0) {
+      timer = setTimeout(() => setSmsCountdown(smsCountdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [smsCountdown]);
 
   const handleWalletLink = async () => {
     if (!isConnected) {
@@ -49,27 +68,50 @@ export default function RegisterPage() {
     }
   };
 
-  const handleSendOtp = async () => {
+  const handleSendEmailOtp = async () => {
+    if (!email) {
+      setError('Please enter an email address first.');
+      return;
+    }
+    setError('');
+    setDevOtpMessage('');
+    setSendingEmailOtp(true);
+    const result = await sendEmailOtp(email);
+    setSendingEmailOtp(false);
+    if (result.success) {
+      setEmailOtpSent(true);
+      setSuccess('Email verification code sent successfully! Please check your inbox.');
+      if (result.data?.dev_otp) {
+        setDevOtpMessage(`Developer Fallback Email OTP: ${result.data.dev_otp}`);
+      }
+      setEmailCountdown(60);
+    } else {
+      setError(result.message);
+    }
+  };
+
+  const handleSendSmsOtp = async () => {
     if (!phoneNumber) {
       setError('Please enter a phone number first.');
       return;
     }
     setError('');
     setDevOtpMessage('');
-    setSendingOtp(true);
-    const result = await sendOtp(phoneNumber);
-    setSendingOtp(false);
+    setSendingSmsOtp(true);
+    const result = await sendSmsOtp(phoneNumber);
+    setSendingSmsOtp(false);
     if (result.success) {
-      setOtpSent(true);
-      setSuccess('OTP sent successfully! Please check your phone.');
+      setSmsOtpSent(true);
+      setSuccess('SMS OTP code generated! Check terminal or dev box.');
       if (result.data?.dev_otp) {
-        setDevOtpMessage(`Developer Fallback OTP: ${result.data.dev_otp}`);
+        setDevOtpMessage(`Developer Fallback SMS OTP: ${result.data.dev_otp}`);
       }
-      setCountdown(60);
+      setSmsCountdown(60);
     } else {
       setError(result.message);
     }
   };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,8 +122,12 @@ export default function RegisterPage() {
       setError('Phone number is required.');
       return;
     }
-    if (!otpCode) {
-      setError('OTP verification code is required.');
+    if (!emailOtp) {
+      setError('Email verification OTP is required.');
+      return;
+    }
+    if (!smsOtp) {
+      setError('SMS verification OTP is required (type "123456" in dev).');
       return;
     }
 
@@ -93,7 +139,7 @@ export default function RegisterPage() {
       ? { district, pin_code: pinCode, coverage_pins: coveragePins } 
       : {};
 
-    const result = await register(name, email, password, role, activeWallet, phoneNumber, otpCode, locationData);
+    const result = await register(name, email, password, role, activeWallet, phoneNumber, emailOtp, smsOtp, locationData);
     setLoading(false);
 
     if (result.success) {
@@ -109,10 +155,10 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-[75vh] items-center justify-center py-4 px-4">
-      <div className="w-full relative max-w-5xl overflow-hidden flex flex-col md:flex-row-reverse bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/60 dark:border-slate-800/60">
+      <div className="w-full relative max-w-6xl overflow-hidden flex flex-col md:flex-row-reverse bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/60 dark:border-slate-800/60">
         
         {/* Right Content Section (Visual Panel) */}
-        <div className="bg-black text-white p-6 md:p-8 md:w-1/2 relative overflow-hidden flex flex-col justify-between min-h-[180px] md:min-h-0">
+        <div className="bg-black text-white p-6 md:p-8 md:w-[42%] relative overflow-hidden flex flex-col justify-between min-h-[180px] md:min-h-0">
           {/* Gradients and shapes overlay */}
           <div 
             className="w-full h-full z-[2] absolute inset-0 opacity-90"
@@ -150,7 +196,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Left Login Section (Form) */}
-        <div className="p-6 md:p-8 md:w-1/2 flex flex-col justify-center bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 z-10">
+        <div className="p-6 md:p-8 md:w-[58%] flex flex-col justify-center bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 z-10">
           <div className="flex flex-col items-start mb-4">
             <div className="text-emerald-600 mb-3 bg-emerald-500/10 p-2 rounded-xl">
               <UserPlus className="h-6 w-6" />
@@ -177,7 +223,7 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-3.5" noValidate>
             
-            {/* Full Name & Email Row */}
+            {/* Full Name & Password Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="name" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -199,29 +245,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="email" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Mail className="h-4 w-4 text-slate-400" />
-                  </div>
-                  <input
-                    type="email"
-                    id="email"
-                    placeholder="name@example.com"
-                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Password & System Role Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="password" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Password
@@ -252,7 +275,122 @@ export default function RegisterPage() {
                   </button>
                 </div>
               </div>
+            </div>
 
+            {/* Email Address & Email OTP Verification Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="email" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Email Address
+                </label>
+                <div className="relative flex gap-2">
+                  <div className="relative flex-grow">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <Mail className="h-4 w-4 text-slate-400" />
+                    </div>
+                    <input
+                      type="email"
+                      id="email"
+                      placeholder="name@example.com"
+                      disabled={emailOtpSent}
+                      className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-70"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={sendingEmailOtp || emailCountdown > 0}
+                    onClick={handleSendEmailOtp}
+                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition-colors whitespace-nowrap"
+                  >
+                    {sendingEmailOtp ? 'Sending...' : emailCountdown > 0 ? `Resend (${emailCountdown}s)` : emailOtpSent ? 'Resend Code' : 'Send Code'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="emailOtp" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Email OTP Code {emailOtpSent && <span className="text-emerald-600 dark:text-emerald-400 font-normal">(Sent)</span>}
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <KeyRound className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    id="emailOtp"
+                    required
+                    maxLength={6}
+                    placeholder="Enter 6-digit Email OTP"
+                    disabled={!emailOtpSent}
+                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-50"
+                    value={emailOtp}
+                    onChange={(e) => setEmailOtp(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Phone Number & SMS OTP Verification Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="phoneNumber" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Phone Number
+                </label>
+                <div className="relative flex gap-2">
+                  <div className="relative flex-grow">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <Phone className="h-4 w-4 text-slate-400" />
+                    </div>
+                    <input
+                      type="tel"
+                      id="phoneNumber"
+                      required
+                      placeholder="+919876543210"
+                      disabled={smsOtpSent}
+                      className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-70"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={sendingSmsOtp || smsCountdown > 0}
+                    onClick={handleSendSmsOtp}
+                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition-colors whitespace-nowrap"
+                  >
+                    {sendingSmsOtp ? 'Sending...' : smsCountdown > 0 ? `Resend (${smsCountdown}s)` : smsOtpSent ? 'Resend Code' : 'Send Code'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="smsOtp" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  SMS OTP Code {smsOtpSent && <span className="text-emerald-600 dark:text-emerald-400 font-normal">(Sent)</span>}
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <KeyRound className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    id="smsOtp"
+                    required
+                    maxLength={6}
+                    placeholder="Enter 6-digit SMS OTP"
+                    disabled={!smsOtpSent}
+                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-50"
+                    value={smsOtp}
+                    onChange={(e) => setSmsOtp(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* System Role Row */}
+            <div className="grid grid-cols-1 gap-3">
               <div>
                 <label htmlFor="role" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   System Role
@@ -299,61 +437,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Phone Number & OTP Verification Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="phoneNumber" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Phone Number
-                </label>
-                <div className="relative flex gap-2">
-                  <div className="relative flex-grow">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Phone className="h-4 w-4 text-slate-400" />
-                    </div>
-                    <input
-                      type="tel"
-                      id="phoneNumber"
-                      required
-                      placeholder="+919876543210"
-                      disabled={otpSent}
-                      className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-70"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    disabled={sendingOtp || countdown > 0}
-                    onClick={handleSendOtp}
-                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition-colors whitespace-nowrap"
-                  >
-                    {sendingOtp ? 'Sending...' : countdown > 0 ? `Resend (${countdown}s)` : otpSent ? 'Resend OTP' : 'Send OTP'}
-                  </button>
-                </div>
-              </div>
 
-              <div>
-                <label htmlFor="otpCode" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  OTP Code {otpSent && <span className="text-emerald-600 dark:text-emerald-400 font-normal">(Sent)</span>}
-                </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <KeyRound className="h-4 w-4 text-slate-400" />
-                  </div>
-                  <input
-                    type="text"
-                    id="otpCode"
-                    required
-                    maxLength={6}
-                    placeholder="Enter 6-digit OTP"
-                    disabled={!otpSent}
-                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-50"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
 
             {devOtpMessage && (
               <div className="p-2.5 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30 flex items-center justify-between font-mono">
@@ -373,26 +457,7 @@ export default function RegisterPage() {
             )}
 
             {/* Compact Conditional Wallet Section */}
-            {['FARMER', 'CONSUMER'].includes(role) ? (
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50/30 p-3 dark:border-emerald-950/20 dark:bg-emerald-950/10">
-                <div className="flex gap-2.5">
-                  <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 mt-0.5 flex-shrink-0" />
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-100">Quick Onboarding Enabled</p>
-                    <p className="text-[11px] leading-relaxed text-emerald-700 dark:text-emerald-400">Farmers can securely link a wallet later when verifying crops.</p>
-                  </div>
-                </div>
-                {!showWallet && (
-                  <button 
-                    type="button"
-                    onClick={() => setShowWallet(true)}
-                    className="mt-2 text-[11px] font-semibold text-emerald-600 hover:text-emerald-500 flex items-center gap-0.5"
-                  >
-                    I have a wallet already <ChevronRight className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            ) : (
+            {['INSPECTOR', 'TESTER', 'ADMIN'].includes(role) && (
               <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-3 dark:border-slate-800 dark:bg-slate-950/30">
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">Recommended: Link your MetaMask wallet now for Web3 features.</p>
                 <button
@@ -405,7 +470,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {(showWallet || !['FARMER', 'CONSUMER'].includes(role)) && (
+            {['INSPECTOR', 'TESTER', 'ADMIN'].includes(role) && (
               <div className="animate-in fade-in slide-in-from-top-1 duration-200">
                 <label htmlFor="wallet" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Wallet Address (Optional)

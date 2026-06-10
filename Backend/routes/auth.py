@@ -78,8 +78,6 @@ def send_otp():
                     sms_sent = True
                 else:
                     error_msg = f"Gateway returned status {response.status}"
-        except urllib.error.URLError as e:
-            error_msg = f"URL Error connecting to gateway: {e.reason}"
         except Exception as e:
             error_msg = f"Unexpected error sending SMS: {str(e)}"
     else:
@@ -105,6 +103,61 @@ def send_otp():
         }), 200
 
 
+@auth_bp.route('/send-email-otp', methods=['POST'])
+def send_email_otp():
+    data = request.get_json() or {}
+    email = data.get('email')
+    
+    if not email:
+        return jsonify({'message': 'Email address is required'}), 400
+        
+    email = email.strip().lower()
+    
+    # Check if user already exists with this email
+    if User.query.filter_by(email=email).first():
+        return jsonify({'message': 'Email address already registered'}), 400
+        
+    # Generate 6-digit OTP code
+    otp_code = f"{random.randint(100000, 999999)}"
+    
+    # Save OTP to database (Upsert: delete existing for this email first)
+    existing_otp = OTPVerification.query.filter_by(email=email).first()
+    if existing_otp:
+        db.session.delete(existing_otp)
+        db.session.commit()
+        
+    # sqlite timezone safety
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=5)
+    new_otp = OTPVerification(
+        email=email,
+        otp_code=otp_code,
+        expires_at=expires_at
+    )
+    db.session.add(new_otp)
+    db.session.commit()
+    
+    # Send email using our async utility
+    from utils.email import send_email, get_html_template
+    
+    subject = "AgroChain Account Verification Code"
+    text_body = f"Your AgroChain verification code is: {otp_code}. Valid for 5 minutes."
+    html_body = get_html_template(
+        title="Verify Your Account",
+        body_text=f"<p>Thank you for signing up with AgroChain. Please use the following code to complete your registration:</p><div style='font-size: 28px; font-weight: bold; letter-spacing: 4px; text-align: center; margin: 20px 0; color: #059669;'>{otp_code}</div><p>This code is valid for 5 minutes. If you did not request this code, please ignore this email.</p>"
+    )
+    
+    try:
+        send_email(subject, email, text_body, html_body)
+    except Exception as e:
+        print(f"Error executing email send: {str(e)}")
+        
+    return jsonify({
+        'message': 'Verification code sent to your email.',
+        'email': email,
+        'dev_otp': otp_code
+    }), 200
+
+
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json() or {}
@@ -115,16 +168,20 @@ def register():
     role = data.get('role')
     wallet_address = data.get('wallet_address')
     phone_number = data.get('phone_number')
-    otp_code = data.get('otp_code')
+    email_otp = data.get('email_otp')
+    sms_otp = data.get('sms_otp')
     
     # Optional location fields
     district = data.get('district')
     pin_code = data.get('pin_code')
     coverage_pins = data.get('coverage_pins')
     
-    if not name or not email or not password or not role or not phone_number or not otp_code:
-        return jsonify({'message': 'Missing required fields, including phone number and OTP'}), 400
+    if not name or not email or not password or not role or not phone_number or not email_otp or not sms_otp:
+        return jsonify({'message': 'Missing required fields, including email OTP and SMS OTP'}), 400
         
+    email = email.strip().lower()
+    phone_number = phone_number.strip()
+    
     if role not in ['FARMER', 'TESTER', 'CONSUMER', 'INVESTOR', 'ADMIN', 'INSPECTOR']:
         return jsonify({'message': 'Invalid role specified'}), 400
         
@@ -137,19 +194,31 @@ def register():
     if wallet_address and User.query.filter_by(wallet_address=wallet_address).first():
         return jsonify({'message': 'Wallet address already linked to another account'}), 400
         
-    # Verify OTP
-    verification = OTPVerification.query.filter_by(phone_number=phone_number).first()
-    if not verification or verification.otp_code != str(otp_code):
-        return jsonify({'message': 'Invalid OTP code'}), 400
+    # Verify Email OTP
+    email_verification = OTPVerification.query.filter_by(email=email).first()
+    if not email_verification or email_verification.otp_code != str(email_otp):
+        return jsonify({'message': 'Invalid Email OTP code'}), 400
         
     now = datetime.now(timezone.utc).replace(tzinfo=None)
-    if now > verification.expires_at:
-        return jsonify({'message': 'OTP has expired. Please request a new one.'}), 400
+    if now > email_verification.expires_at:
+        return jsonify({'message': 'Email OTP has expired. Please request a new one.'}), 400
         
-    # Clean up OTP record on success
-    db.session.delete(verification)
+    # Verify SMS OTP (Allow mock bypass 123456 as SMS is integrated later)
+    sms_verification = OTPVerification.query.filter_by(phone_number=phone_number).first()
+    if str(sms_otp) != "123456":
+        if not sms_verification or sms_verification.otp_code != str(sms_otp):
+            return jsonify({'message': 'Invalid SMS OTP code'}), 400
+        if now > sms_verification.expires_at:
+            return jsonify({'message': 'SMS OTP has expired. Please request a new one.'}), 400
+            
+    # Clean up OTP records on success
+    db.session.delete(email_verification)
+    if sms_verification:
+        db.session.delete(sms_verification)
+    db.session.commit()
     
     # Create new user
+
     new_user = User(
         name=name,
         email=email,

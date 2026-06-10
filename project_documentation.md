@@ -626,3 +626,14 @@ def roles_allowed(*roles):
 1.  **Scan/Search**: Scan a packaging QR code or enter the lot number on the Explorer page (`/explorer`).
 2.  **Verify**: Review the provenance timeline to check inspector coordinates, verification dates, and laboratory test grades.
 3.  **Review**: Log in to submit ratings and comments to help build community trust.
+
+---
+
+### Appendix D: External References
+1.  **India Today Article**: [Check out AgroChain, a platform to boost the effectiveness of blockchain-based agriculture](https://www.indiatoday.in/cryptocurrency/story/check-out-agrochain-a-platform-to-boost-the-effectiveness-of-blockchain-based-agriculture-2338549-2023-02-23)
+2.  **IEEE Access Review Paper**: [Blockchain Technology to Support Agri-Food Supply Chains: A Comprehensive Review](https://ieeexplore.ieee.org/document/9090154)
+3.  **IEEE System Review**: [Role of Blockchain Technology in Agriculture Supply Chain: A Systematic Literature Review](https://ieeexplore.ieee.org/document/9972583)
+4.  **ResearchGate Review**: [Impact of Blockchain Technology In Agriculture Supply Chain: A Comprehensive Review of Applications, Challenges, and Future Directions](https://www.researchgate.net/publication/379628876_Impact_of_Blockchain_Technology_In_Agriculture_Supply_Chain_A_Comprehensive_Review_of_Applications_Challenges_and_Future_Directions)
+5.  **IEEE 3ICT Conference Paper**: [Towards a Blockchain-Based Agricultural Ecosystem: A Systematic Review](https://ieeexplore.ieee.org/document/10390311)
+
+
