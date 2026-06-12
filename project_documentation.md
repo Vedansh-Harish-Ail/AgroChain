@@ -78,10 +78,11 @@ Modern consumer ecosystems are characterized by an information asymmetry between
 To resolve these twin challenges, this project introduces **AgroChain**, a hybrid Web2/Web3 application that anchors supply chain data onto a public, decentralized ledger while supporting peer-to-peer (P2P) micro-loans. Using public **Ethereum Smart Contracts**, AgroChain records crop lifecycles, soil parameters, inspector audits, and laboratory grade certifications, preventing unauthorized database modifications. A local **Flask API** acts as a metadata cache to reduce blockchain RPC call overhead, while a **React (Vite)** frontend coordinates stakeholder activities.
 
 The system features:
-1.  **Geographical Verifier Allocation**: Crop listings are automatically routed to local inspectors and testers based on postal code parameters.
-2.  **Double-Verification Gate**: Smart contracts ensure a crop lot cannot receive a quality certificate unless it has been verified on-chain by a designated inspector.
-3.  **Micro-Finance Proposal System**: Implements a Letter of Intent (LOI) system where investors submit funding proposals, unlocking direct communication lines upon farmer acceptance.
-4.  **Integrated Document Center**: Farmer dashboards feature printable, clean-styled compliance certificates and batch QR codes linked to an on-chain registry explorer.
+1.  **Kerala Geographical Verifier Allocation**: Crop listings are automatically routed to active local inspectors based on a Kerala administrative hierarchy (Priority 1: same Taluk, Priority 2: same District, Priority 3: DISTRICT-level fallback), removing the need for raw GPS distance calculations.
+2.  **MetaMask Ownership & Status Workflow**: Inspectors must progress from PENDING_SETUP to ACTIVE status by setting up passwords and linking wallets verified cryptographically on the backend using message signature verification.
+3.  **Double-Verification Gate & Lab Onboarding**: Private Quality Labs self-register with details (license, accreditation, certificates) and are reviewed/activated by the Admin via a detailed dashboard modal before receiving assignments. Smart contracts ensure a crop lot cannot receive a quality certificate unless it has been verified on-chain by a designated inspector.
+4.  **Micro-Finance Proposal System**: Implements a Letter of Intent (LOI) system where investors submit funding proposals, unlocking direct communication lines upon farmer acceptance.
+5.  **Integrated Document Center**: Farmer dashboards feature printable, clean-styled compliance certificates and batch QR codes linked to an on-chain registry explorer.
 
 The result is a transparent, peer-to-peer supply chain ecosystem that restores consumer trust and supports agricultural financing.
 
@@ -145,7 +146,8 @@ Traditional agricultural supply chains face four primary failures:
 
 ### 1.3 Project Engineering Objectives
 *   To deploy a public Ethereum contract system that records crop lifecycles from planting to final packaging.
-*   To automate geographical inspector assignments based on postal codes.
+*   To automate geographical inspector assignments using a priority location routing model based on sub-district (Taluk) and district levels.
+*   To secure verifier actions with cryptographic MetaMask signature ownership checks.
 *   To build a peer-to-peer micro-finance proposal system linking farmers directly with investors.
 *   To enable physical package traceability using dynamic QR codes linked to an on-chain registry explorer.
 *   To print clean, light-mode certificates with forced CSS style overrides for physical packaging.
@@ -190,12 +192,24 @@ A review of existing research indicates that while enterprise traceability solut
 ## CHAPTER 3: REQUIREMENTS ENGINEERING & MODELING
 
 ### 3.1 Functional Requirements Architecture
-1.  **Farmer Onboarding**: Farmer registers profile, links an Ethereum wallet address, and registers crops.
-2.  **Inspector Verification**: Inspectors review assigned crop coordinates and sign approvals on-chain.
-3.  **Quality Lab Certification**: Testers input scientific metrics, assign certified grade lots, and mint certificates.
-4.  **Investor Marketplace**: Investors review certified lots and submit funding proposals (Letters of Intent).
-5.  **Consumer Explorer**: Public lookup scans and searches crop/lot IDs to verify milestones.
-6.  **Admin Governance**: Administrators monitor audit trails and verify new verifier credentials.
+1.  **Farmer Onboarding and Crop Registration**: Farmer registers profile, links an Ethereum wallet address (optional for ratings, required for micro-finance), and registers crops with location details (District, Taluk/Sub-District, Village), expected yields, and separate uploads for evidence photos (`evidence_photos`) and official documents (`evidence_documents`).
+2.  **Admin-Managed Inspector Creation**: Administrators create Agricultural Inspector profiles by inputting their official name, email, district, sub-district (Taluk), coverage level (`SUB_DISTRICT` or `DISTRICT`), and contact number. The system automatically generates a temporary password.
+3.  **Inspector Account Activation and Setup**:
+    - **Password Change**: Inspectors are prompted to change their temporary password on first login, which blocks dashboard access until completed.
+    - **MetaMask Cryptographic Signature Link**: Inspectors connect their MetaMask wallet and sign a verification message (`personal_sign`), which is validated cryptographically on the backend. This updates their wallet address and changes their status from `PENDING_SETUP` to `ACTIVE`.
+4.  **Geographical Priority Routing**: The system automatically assigns newly registered crops to active inspectors based on a prioritized routing model:
+    - **Priority 1**: Inspector matches the crop's sub-district (Taluk).
+    - **Priority 2**: Inspector matches the crop's district.
+    - **Priority 3**: Fallback to any active inspector with DISTRICT-level coverage.
+    - *Only inspectors with `ACTIVE` status receive crop assignments.*
+5.  **Inspector Evaluation & Verification Options**: Inspectors inspect crop details, remarks, and separated photos/deeds. They can:
+    - **Save Notes Offline**: Save detailed inspection notes and select the inspection method (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`) directly to the SQLite database without requiring a MetaMask wallet connection.
+    - **Approve/Reject On-Chain**: Conduct final blockchain transaction validation to sign approvals on-chain (contract: `FarmerRegistry.sol`) once their wallet is connected.
+6.  **Quality Lab Self-Registration & Onboarding**: Quality Labs self-register via the signup portal by providing their credentials (lab name, license number, accreditation number, government registration number) and uploading certificates and supporting documents. On registration, their account is set to `PENDING_APPROVAL` status (`is_approved = False`) and they cannot access testing features.
+7.  **Quality Lab Active Assignment & Certification**: Only Quality Labs approved by the Admin and set to `ACTIVE` status receive harvested crops in their district and PIN code. Approved labs perform scientific tests, assign grades, and certify crop lots on-chain (contract: `ProductRegistry.sol`) using MetaMask. A warning is displayed if their wallet is unlinked.
+8.  **Investor Marketplace**: Investors review certified lots, submit funding proposals (Letters of Intent), track them in a dedicated LOIs hub, and lock/transfer ETH through the microfinance escrow contract.
+9.  **Consumer Explorer**: Public lookup scans and searches crop/lot IDs to verify milestones and scan QR codes.
+10. **Admin Governance**: Administrators monitor audit trails, verify user credentials (including using a detailed review modal to inspect and approve pending Quality Labs), and manage inspector profiles.
 
 ### 3.2 Non-Functional System Guarantees
 *   **Data Integrity**: Role-Based Access Control (RBAC) is enforced using JWT session tokens and OpenZeppelin contract guards.
@@ -454,7 +468,21 @@ def roles_allowed(*roles):
 ```
 
 ### 5.3 Relational Cache Schemas
-The database schema uses SQLAlchemy to map application state. It includes geographical attributes like `district` and `pin_code` to automate regional assignments.
+The database schema uses SQLAlchemy to map application state. It has been extended to support localized Kerala administrative structures, inspector workflows, and split verification assets:
+*   **`users` table extensions**:
+    *   `sub_district` (Taluk): Defines the inspector's localized Taluk jurisdiction.
+    *   `coverage_level`: Enums `SUB_DISTRICT` or `DISTRICT` to set Inspector routing boundaries.
+    *   `must_change_password`: Boolean flag to enforce temporary credential reset on first login.
+    *   `status`: User account state (`PENDING_SETUP`, `ACTIVE`, `INACTIVE`, `SUSPENDED`, `PENDING_APPROVAL`).
+    *   `lab_name`, `authorized_person`, `lab_license_number`, `accreditation_number`, `gov_reg_number`: Specific fields for self-registered Quality Labs.
+    *   `lab_certificates` & `supporting_documents`: JSON text fields storing uploaded laboratory credentials and verification documents.
+*   **`farmers` table extensions**:
+    *   `sub_district` (Taluk) & `village`: Specific localization for cultivation mapping.
+    *   `evidence_photos` & `evidence_documents`: Stored as JSON arrays of URLs to separate physical crop imagery from official land deeds and certificates.
+    *   `assigned_inspector_id`: References the assigned `users.id` who meets the Kerala priority routing criteria.
+    *   `inspection_date`: Records the date the inspection was carried out.
+    *   `inspection_notes`: Caches text comments logged by the inspector.
+    *   `inspection_method`: Enums the audit mechanism (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`).
 
 ### 5.4 Solidity Smart Contracts
 1.  `FarmerRegistry.sol`: Tracks crop registration, verification status, and verifier permissions.
@@ -591,16 +619,39 @@ def roles_allowed(*roles):
 *   **Send OTP** (`POST /api/auth/send-otp`)
     *   *Request*: `{ "phone_number": "+10000000001" }`
     *   *Response*: `{ "message": "OTP sent successfully (Dev code: 123456)" }`
-*   **Register User** (`POST /api/auth/register`)
-    *   *Request*: `{ "name": "Rajesh Patel", "email": "rajesh@gmail.com", "phone_number": "+10000000001", "role": "FARMER", "password": "password123", "otp_code": "123456", "district": "Pune", "pin_code": "411001" }`
+*   **Register User** (`POST /api/auth/register`) (FARMER, TESTER, CONSUMER, INVESTOR)
+    *   *Farmer Request*: `{ "name": "Rajesh Patel", "email": "rajesh@gmail.com", "phone_number": "+10000000001", "role": "FARMER", "password": "password123", "otp_code": "123456", "district": "Thrissur", "pin_code": "680001" }`
+    *   *Quality Lab Request*: `{ "name": "Dr. Anita Sharma", "email": "lab@test.com", "phone_number": "+919999999999", "role": "TESTER", "password": "password123", "otp_code": "123456", "district": "Thrissur", "pin_code": "680001", "lab_name": "Thrissur Soil and Crop Quality Testing Lab", "authorized_person": "Dr. Anita Sharma", "lab_license_number": "LIC-THR-2026-99A", "accreditation_number": "NABL-9876", "gov_reg_number": "GOV-REG-44321", "lab_certificates": ["/uploads/cert1.pdf"], "supporting_documents": ["/uploads/doc1.pdf"] }`
     *   *Response*: `{ "message": "User registered successfully!" }`
+*   **Change Password** (`POST /api/auth/change-password`)
+    *   *Request*: `{ "current_password": "Temp@1234", "new_password": "NewSecurePassword123" }`
+    *   *Response*: `{ "message": "Password updated successfully!" }`
+*   **Link Wallet (Signature Verification)** (`POST /api/auth/link-wallet`)
+    *   *Request*: `{ "wallet_address": "0x90F8bf3A... ", "signature": "0x..." }`
+    *   *Response*: `{ "message": "Wallet linked and verifier activated successfully" }`
 
-#### 2. Crop Management
+#### 2. Admin Portal
+*   **Create Inspector** (`POST /api/admin/create-inspector`)
+    *   *Request*: `{ "name": "Inspector Kumar", "email": "kumar@gov.in", "phone_number": "+919876543210", "district": "Thrissur", "sub_district": "Chavakkad", "coverage_level": "SUB_DISTRICT" }`
+    *   *Response*: `{ "message": "Inspector account created successfully", "temp_password": "Temp@1234" }`
+*   **Approve User** (`POST /api/admin/approve-user/<id>`)
+    *   *Request*: `{}` (Empty body)
+    *   *Response*: `{ "message": "User Dr. Anita Sharma approved successfully!", "user": { ... } }`
+
+#### 3. Crop Management
 *   **Register Cultivation** (`POST /api/farmer/register`)
-    *   *Request*: `{ "crop_type": "Wheat", "farming_type": "Organic", "expected_yield": "5000", "land_survey_no": "242/A", "gps_latitude": "18.5204", "gps_longitude": "73.8567", "farm_location": "Pune Farm" }`
+    *   *Request*: `{ "crop_type": "Wheat", "farming_type": "Organic", "expected_yield": "5000", "land_survey_no": "242/A", "gps_latitude": "10.5204", "gps_longitude": "76.8567", "farm_location": "Thrissur Farm", "district": "Thrissur", "sub_district": "Chavakkad", "village": "Chavakkad Central", "pin_code": "680001", "evidence_photos": ["/uploads/img1.jpg"], "evidence_documents": ["/uploads/doc1.pdf"] }`
     *   *Response*: `{ "message": "Crop registered successfully", "id": 1 }`
 
-#### 3. Finance proposals
+#### 4. Quality Inspection
+*   **Save Notes Offline** (`POST /api/quality/save-notes/<id>`)
+    *   *Request*: `{ "inspection_notes": "Visually inspected soil quality and survey markers.", "inspection_method": "PHYSICAL_VISIT" }`
+    *   *Response*: `{ "message": "Inspection notes saved successfully" }`
+*   **Approve Crop On-Chain** (`POST /api/quality/approve/<id>`)
+    *   *Request*: `{ "inspection_notes": "On-chain signature matching registry coordinates.", "inspection_method": "HYBRID", "tx_hash": "0x123..." }`
+    *   *Response*: `{ "message": "Crop approved successfully on-chain" }`
+
+#### 5. Finance proposals
 *   **Propose Investment** (`POST /api/finance/invest`)
     *   *Request*: `{ "farmer_id": 1, "lot_number": 1001, "amount": 50000, "profit_percentage": 12, "terms": "Repayment within 30 days of sales" }`
     *   *Response*: `{ "message": "Proposal submitted successfully!" }`
@@ -610,17 +661,26 @@ def roles_allowed(*roles):
 ### Appendix C: Operational User Guide
 
 #### User Manual for Farmers
-1.  **Register & Link Wallet**: Create your account on `/register`, verify your phone number via OTP, and link your wallet address.
-2.  **Register Crops**: Navigate to the **"Register Crop"** tab and fill out the cultivation details, coordinates, and survey numbers.
-3.  **Audit & Verification**: Wait for the regional Inspector to approve your crop. Once approved, you can print your **Approval Letter** from the **Crop History** page.
+1.  **Register Profile**: Create your account on `/register` (public signup available for Farmers, Testers, Consumers, and Investors), and verify your phone number via OTP.
+2.  **Register Crops**: Navigate to the **"Register Crop"** tab. Fill out the cultivation details, expected yield, Kerala geographical information (District, Taluk/Sub-District, Village), and land survey number. Upload crop photos under **Evidence Photos** and official land deeds/documents under **Evidence Documents**.
+3.  **Audit & Verification**: Wait for the assigned regional Inspector to verify your crop. Once approved, you can print your **Approval Letter** from the **Crop History** page.
 4.  **Update Timeline**: Once you harvest the crop, set the status to `READY_TO_HARVEST` or `HARVEST_COMPLETED` to queue the crop for the Quality Lab.
 5.  **Print Certificate**: Once the Quality Lab certifies the crop, click **"Print Certificate & QR"** to print packaging labels.
 6.  **Accept Loans**: Go to your dashboard to review investor proposals. Accept a proposal to receive direct escrow funding.
 
+#### User Manual for Agricultural Inspectors
+1.  **Credentials**: Since public registration is disabled for inspectors, obtain your temporary password from the Administrator.
+2.  **Account Setup**: On your first login to `/login`, you must change your temporary password on the forced fullscreen modal.
+3.  **MetaMask Signature Activation**: Connect your MetaMask wallet on the dashboard card and click **"Verify Wallet"** to cryptographically sign the ownership confirmation. This activates your status to `ACTIVE`.
+4.  **Priority Queue**: Access the pending inspection list. Crops are assigned to you based on location matching (Priority 1: same Taluk, Priority 2: same District, Priority 3: DISTRICT-level fallback).
+5.  **Save Notes & Remarks**: Review the farmer's location, GPS coordinates, and separate links for evidence documents/deeds. You can fill out inspection remarks, select the inspection method (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`), and click **"Save Notes (No MetaMask)"** to save directly to the DB, or connect MetaMask to finalize the on-chain approval.
+
 #### User Manual for Quality Lab Testers
-1.  **Onboard**: Register with the `TESTER` role and set your coverage pin codes.
-2.  **Review Queue**: Check the dashboard queue for regional crops marked as harvested.
-3.  **Certify**: Click **"Approve & Certify Crop"** to automatically calculate the quality grade and register the batch lot on-chain.
+1.  **Onboard**: Register with the `TESTER` role at `/register` by inputting all required laboratory specifications (lab name, license number, accreditation details, government registration number) and uploading lab certificates and supporting documents.
+2.  **Await Approval**: Await approval from the System Administrator. Your account is initially in `PENDING_APPROVAL` status and you cannot access testing operations or receive assignments.
+3.  **Active Dashboard**: Once approved, your status transitions to `ACTIVE`. Log into the dashboard. If you haven't linked or connected your MetaMask wallet, a warning card is displayed reminding you to do so.
+4.  **Review Queue**: Check the dashboard queue for regional crops marked as harvested (based on matching your district and PIN code coverage). Only active, approved Quality Labs receive crop assignments.
+5.  **Certify**: Click **"Approve & Certify Crop"** (requires MetaMask connected) to automatically calculate the quality grade and register the batch lot on-chain. Note that the parent crop must have been approved by an Agricultural Inspector on-chain first.
 
 #### User Manual for Consumers
 1.  **Scan/Search**: Scan a packaging QR code or enter the lot number on the Explorer page (`/explorer`).

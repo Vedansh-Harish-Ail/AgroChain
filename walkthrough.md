@@ -50,21 +50,24 @@ graph TB
 
 ### Key Architectural Enhancements
 
-1. **Role Separation (Inspector vs. Tester)**
-   - **Agricultural Inspector (`INSPECTOR`)**: Handles physical verification of crop existence, land survey numbers, GPS coordinates, and soil metrics. Inspects registrations and logs approval status.
-   - **Quality Tester (`TESTER`)**: Performs scientific lab quality checks post-harvest. Certifies crop batches, assigns quality grades (e.g., Grade A+), and registers certified lots.
-2. **Location-Based Assignment Algorithm**
-   - Automatically assigns the nearest available `INSPECTOR` and `TESTER` when a farmer registers a crop.
-   - **Matching Hierarchy**: First attempts matching by exact `pin_code`. If no matching inspector/tester is found, it matches by `district`. If still unmatched, it falls back to any available user in that role.
-3. **Walletless Web2 Ratings for Consumers**
-   - Offers a hybrid experience: consumers can submit ratings without a wallet (saved securely in the backend SQLite DB as `DB_ONLY`), or sign the transaction on-chain via MetaMask (logged on-chain as `VERIFIED`).
-4. **Investor letters of Intent (LOI) Portal**
-   - Investors can propose Rupees (Rs.) funding and returns on certified crop lots.
-   - Cards display status-based glow borders (Accepted = Emerald, Pending = Amber, Declined = Rose).
-   - Acceptances unlock farmer email and phone number contacts.
-5. **Printable Document Center**
-   - Direct downloads for **Crop Verification Letters** and **Quality Certificates** as PDFs using `html2pdf.js`.
-   - Forces paper-style light-mode formatting automatically during printing/exporting to look highly professional and save ink.
+1. **Role Separation (Inspector vs. Tester) & Access Control**
+   - **Agricultural Inspector (`INSPECTOR`)**: Government officers. Private signup disabled. Created strictly by the Administrator with a generated temporary password. Must change password on first login. Performs field checks of cultivations.
+   - **Quality Lab Tester (`TESTER`)**: Private laboratories. Can self-register via the signup portal. On registration, their account is set to `PENDING_APPROVAL` status and `is_approved = False`. The Administrator reviews their details (Accreditation Number, License Number, Government Registration, Certificates, and Supporting Documents) using a review modal on the Admin Dashboard, and activates them. Once approved (`is_approved = True` and status becomes `ACTIVE`), they can receive region-specific crop assignments, conduct post-harvest scientific lab checks, and certify crop batches on-chain.
+2. **Inspector & Quality Lab Activation Flows**
+   - **Inspectors**: Progress through states: `PENDING_SETUP` (upon creation) $\rightarrow$ (Password Changed) $\rightarrow$ (MetaMask linked via signature verification) $\rightarrow$ `ACTIVE`. Wallet ownership is verified using message signature verification (`personal_sign`). Only `ACTIVE` inspectors receive assignments.
+   - **Quality Labs**: Self-register and start in `PENDING_APPROVAL` status. Must be approved by the Admin to become `ACTIVE`. MetaMask is not required for logging in, but is required for issuing quality certificates, final quality approvals, and blockchain-backed certifications. A MetaMask warning card is shown on the dashboard if their wallet is not linked.
+3. **Location Assignment & Routing Algorithms**
+   - **Agricultural Inspector Priority Routing**: Replaces geodesic calculations with Kerala administrative level priority assignment (Taluk/Sub-district $\rightarrow$ District $\rightarrow$ District-level fallback). Only `ACTIVE` inspectors receive assignments.
+   - **Quality Lab Region Matching**: Harvested crops are automatically routed to the tester queue of Quality Labs covering that crop's district and PIN code, provided the lab's status is `ACTIVE` and approved.
+4. **Separate Evidence Storage & Detailed Metadata**
+   - Crop evidence is split into `evidence_photos` (visual proofs) and `evidence_documents` (PDF deeds, tax receipts, and soil tests).
+   - Stores rich inspection metadata: `inspection_date`, `inspection_notes`, and `inspection_method` (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, or `HYBRID`).
+5. **Walletless Web2 Ratings for Consumers**
+   - Consumers and farmers remain completely walletless. Consumers can rate farmers via SQLite (`DB_ONLY`) or on-chain using MetaMask if they choose.
+6. **Investor Letters of Intent (LOI) Portal**
+   - Investors can propose funding and returns share on certified product lots, unlocking contact info upon farmer approval.
+7. **Printable Document Center**
+   - Direct downloads for **Crop Verification Letters** and **Quality Certificates** as PDFs using `html2pdf.js` with forced light-mode formatting.
 
 ---
 
@@ -219,11 +222,19 @@ The complete stakeholder verification workflow functions as follows:
 | Smart contracts compile and test successfully | ✅ |
 | Contracts deploy to local hardhat network | ✅ |
 | Database seeds with users, crop history, and product lots | ✅ |
-| Location assignments correctly route inspectors/testers based on PIN/District | ✅ |
+| Kerala Priority matching routes inspectors correctly (Priority 1 $\rightarrow$ 2 $\rightarrow$ 3) | ✅ |
+| Admin-only inspector creation with temporary password generation | ✅ |
+| Forced password change on first login for PENDING_SETUP inspectors | ✅ |
+| MetaMask wallet signature verification for inspector activation | ✅ |
+| Quality Lab self-registration with specific credentials (license, accreditation, certificates) | ✅ |
+| Admin credentials review modal and approval flow for Quality Labs | ✅ |
+| Crop assignments routed only to active Quality Labs | ✅ |
+| MetaMask wallet warnings displayed for active Quality Labs lacking linked wallets | ✅ |
+| Separate evidence storage for photos (`evidence_photos`) and PDF docs (`evidence_documents`) | ✅ |
+| Inspector notes and method saved directly to database without MetaMask | ✅ |
 | Walletless Web2 rating submission vs Web3 verified on-chain rating | ✅ |
-| Password hashing (scrypt) verified | ✅ |
 | Flask API responds to all endpoints (JWT authenticated routes) | ✅ |
-| Unified dashboard notification badges dynamically update via localStorage | ✅ |
+| Production build of React frontend builds successfully | ✅ |
 | Direct PDF downloads with forced light-mode layouts | ✅ |
 | Dark/light mode theme toggle rendering properly | ✅ |
 | Role-based protected routes verified in React Router | ✅ |

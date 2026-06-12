@@ -27,6 +27,19 @@ class User(db.Model):
     district = db.Column(db.String(100), nullable=True)
     pin_code = db.Column(db.String(20), nullable=True)
     coverage_pins = db.Column(db.Text, nullable=True)
+    sub_district = db.Column(db.String(100), nullable=True)
+    coverage_level = db.Column(db.String(50), nullable=True)
+    must_change_password = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(50), default='ACTIVE')
+    
+    # Quality Lab fields
+    lab_name = db.Column(db.String(150), nullable=True)
+    authorized_person = db.Column(db.String(100), nullable=True)
+    lab_license_number = db.Column(db.String(100), nullable=True)
+    accreditation_number = db.Column(db.String(100), nullable=True)
+    gov_reg_number = db.Column(db.String(100), nullable=True)
+    lab_certificates = db.Column(db.Text, nullable=True)
+    supporting_documents = db.Column(db.Text, nullable=True)
     
     # Relationships
     farmer_profile = db.relationship('Farmer', backref=db.backref('user', foreign_keys='Farmer.user_id'), uselist=False, cascade="all, delete-orphan", foreign_keys='Farmer.user_id')
@@ -57,6 +70,17 @@ class User(db.Model):
             'district': self.district,
             'pin_code': self.pin_code,
             'coverage_pins': self.coverage_pins,
+            'sub_district': self.sub_district,
+            'coverage_level': self.coverage_level,
+            'must_change_password': self.must_change_password,
+            'status': self.status,
+            'lab_name': self.lab_name,
+            'authorized_person': self.authorized_person,
+            'lab_license_number': self.lab_license_number,
+            'accreditation_number': self.accreditation_number,
+            'gov_reg_number': self.gov_reg_number,
+            'lab_certificates': self.lab_certificates,
+            'supporting_documents': self.supporting_documents,
             'created_at': self.created_at.isoformat()
         }
 
@@ -114,7 +138,15 @@ class Farmer(db.Model):
 
     farm_address = db.Column(db.Text, nullable=True)
     district = db.Column(db.String(100), nullable=True)
+    sub_district = db.Column(db.String(100), nullable=True)
+    village = db.Column(db.String(100), nullable=True)
     pin_code = db.Column(db.String(20), nullable=True)
+    evidence_documents = db.Column(db.Text, nullable=True) # JSON or comma-separated list of URLs
+    
+    inspection_date = db.Column(db.DateTime, nullable=True)
+    inspection_notes = db.Column(db.Text, nullable=True)
+    inspection_method = db.Column(db.String(50), nullable=True) # PHYSICAL_VISIT, PHOTO_REVIEW, HYBRID
+
     assigned_inspector_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     assigned_tester_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
@@ -163,6 +195,7 @@ class Farmer(db.Model):
             'gps_latitude': self.gps_latitude,
             'gps_longitude': self.gps_longitude,
             'evidence_photos': self.evidence_photos,
+            'evidence_documents': self.evidence_documents,
             'verification_status': self.verification_status,
             'tester_remarks': self.tester_remarks,
             'tester_id': self.tester_id,
@@ -170,7 +203,12 @@ class Farmer(db.Model):
             'verification_date': self.verification_date.isoformat() if self.verification_date else None,
             'farm_address': self.farm_address,
             'district': self.district,
+            'sub_district': self.sub_district,
+            'village': self.village,
             'pin_code': self.pin_code,
+            'inspection_date': self.inspection_date.isoformat() if self.inspection_date else None,
+            'inspection_notes': self.inspection_notes,
+            'inspection_method': self.inspection_method,
             'assigned_inspector_id': self.assigned_inspector_id,
             'assigned_inspector_name': self.assigned_inspector.name if self.assigned_inspector else None,
             'assigned_tester_id': self.assigned_tester_id,

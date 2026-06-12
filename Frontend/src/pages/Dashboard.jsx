@@ -4,12 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
 import { 
   Sprout, FileCheck, Coins, Eye, Cpu, Settings, ShieldCheck, 
-  HelpCircle, UserCheck, CheckCircle2, TrendingUp, Layers, AlertCircle, ArrowRight, Wallet, Mail, Phone
+  HelpCircle, UserCheck, CheckCircle2, TrendingUp, Layers, AlertCircle, ArrowRight, Wallet, Mail, Phone,
+  UserPlus, X
 } from 'lucide-react';
 import axios from 'axios';
 
 export default function Dashboard() {
-  const { user, linkWallet } = useAuth();
+  const { user, linkWallet, changePassword } = useAuth();
   const { walletAddress, isConnected, connectWallet, contracts } = useWallet();
   const [stats, setStats] = useState({
     cropsCount: 0,
@@ -32,15 +33,133 @@ export default function Dashboard() {
   const [currentPendingCertIds, setCurrentPendingCertIds] = useState([]);
   const [currentFarmerCropStatuses, setCurrentFarmerCropStatuses] = useState({});
 
+  // Password reset state
+  const [newPassword, setNewPassword] = useState('');
+  const [changingPass, setChangingPass] = useState(false);
+  const [passError, setPassError] = useState('');
+  const [passSuccess, setPassSuccess] = useState('');
+
+  // Wallet verification state
+  const [walletError, setWalletError] = useState('');
+  const [walletSuccess, setWalletSuccess] = useState('');
+  const [linkingWallet, setLinkingWallet] = useState(false);
+
+  // Inspector creation states
+  const [showCreateInspectorModal, setShowCreateInspectorModal] = useState(false);
+  const [inspectorName, setInspectorName] = useState('');
+  const [inspectorEmail, setInspectorEmail] = useState('');
+  const [inspectorPhone, setInspectorPhone] = useState('');
+  const [inspectorDistrict, setInspectorDistrict] = useState('');
+  const [inspectorSubDistrict, setInspectorSubDistrict] = useState('');
+  const [inspectorCoverage, setInspectorCoverage] = useState('SUB_DISTRICT');
+  const [creatingInspector, setCreatingInspector] = useState(false);
+  const [createSuccess, setCreateSuccess] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [generatedTempPassword, setGeneratedTempPassword] = useState('');
+
   const navigate = useNavigate();
 
   const handleWalletLink = async () => {
-    let address = walletAddress;
-    if (!isConnected) {
-      address = await connectWallet();
+    setWalletError('');
+    setWalletSuccess('');
+    setLinkingWallet(true);
+    try {
+      let address = walletAddress;
+      if (!isConnected) {
+        address = await connectWallet();
+      }
+      if (!address) {
+        setWalletError('MetaMask connection failed or was rejected.');
+        setLinkingWallet(false);
+        return;
+      }
+      
+      if (user?.role === 'INSPECTOR') {
+        const message = `Verify wallet ownership for AgroChain Inspector: ${user.email}`;
+        let signature;
+        try {
+          signature = await window.ethereum.request({
+            method: 'personal_sign',
+            params: [message, address],
+          });
+        } catch (signErr) {
+          console.error(signErr);
+          setWalletError('Signature request was rejected by user.');
+          setLinkingWallet(false);
+          return;
+        }
+        
+        const res = await linkWallet(address, message, signature);
+        if (res.success) {
+          setWalletSuccess('MetaMask wallet successfully verified and linked!');
+        } else {
+          setWalletError(res.message);
+        }
+      } else {
+        const res = await linkWallet(address);
+        if (res.success) {
+          setWalletSuccess('Wallet linked successfully.');
+        } else {
+          setWalletError(res.message);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setWalletError('Failed to link wallet.');
+    } finally {
+      setLinkingWallet(false);
     }
-    if (address) {
-      await linkWallet(address);
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPassError('');
+    setPassSuccess('');
+    if (!newPassword || newPassword.length < 6) {
+      setPassError('Password must be at least 6 characters long.');
+      return;
+    }
+    setChangingPass(true);
+    const res = await changePassword(newPassword);
+    setChangingPass(false);
+    if (res.success) {
+      setPassSuccess('Password updated successfully!');
+    } else {
+      setPassError(res.message);
+    }
+  };
+
+  const handleCreateInspector = async (e) => {
+    e.preventDefault();
+    setCreateSuccess('');
+    setCreateError('');
+    setGeneratedTempPassword('');
+    setCreatingInspector(true);
+    
+    try {
+      const res = await axios.post('/api/admin/create-inspector', {
+        name: inspectorName,
+        email: inspectorEmail,
+        phone_number: inspectorPhone,
+        district: inspectorDistrict,
+        sub_district: inspectorSubDistrict,
+        coverage_level: inspectorCoverage
+      });
+      setCreateSuccess('Inspector account created successfully!');
+      setGeneratedTempPassword(res.data.temp_password);
+      
+      // Clear form
+      setInspectorName('');
+      setInspectorEmail('');
+      setInspectorPhone('');
+      setInspectorDistrict('');
+      setInspectorSubDistrict('');
+      setInspectorCoverage('SUB_DISTRICT');
+    } catch (err) {
+      console.error(err);
+      setCreateError(err.response?.data?.message || 'Failed to create inspector account.');
+    } finally {
+      setCreatingInspector(false);
     }
   };
 
@@ -222,6 +341,52 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 py-4">
+      {/* First Login Change Password Modal */}
+      {user?.must_change_password && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <AlertCircle className="h-6 w-6 text-amber-500 animate-pulse" /> First Login: Password Reset
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              For security reasons, you must change your temporary password before accessing your dashboard.
+            </p>
+            {passError && (
+              <div className="p-3 text-xs text-rose-600 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400 rounded-xl">
+                {passError}
+              </div>
+            )}
+            {passSuccess && (
+              <div className="p-3 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-xl">
+                {passSuccess}
+              </div>
+            )}
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={changingPass}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-xl transition text-xs flex justify-center items-center gap-2"
+              >
+                {changingPass ? 'Saving...' : 'Update Password & Continue'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Profile Welcome Block */}
       <div className="relative overflow-hidden rounded-3xl bg-white p-6 sm:p-8 border border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
@@ -248,7 +413,8 @@ export default function Dashboard() {
             ) : (
               <button
                 onClick={handleWalletLink}
-                className="flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 text-xs font-semibold shadow-sm transition-all"
+                disabled={linkingWallet}
+                className="flex items-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 text-xs font-semibold shadow-sm transition-all disabled:opacity-50"
               >
                 <TrendingUp className="h-4.5 w-4.5" /> Link MetaMask Wallet
               </button>
@@ -260,6 +426,66 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* MetaMask Warning Alert for Inspectors */}
+      {user?.role === 'INSPECTOR' && !user?.wallet_address && (
+        <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-5 dark:border-amber-900/30 dark:bg-amber-950/20 space-y-4">
+          <div className="flex gap-4">
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-600 rounded-xl shrink-0">
+              <Wallet className="h-6 w-6 animate-pulse" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-bold text-amber-900 dark:text-amber-100 text-lg">Action Required: Link MetaMask Wallet</h4>
+              <p className="text-sm text-amber-700 dark:text-amber-400 max-w-xl">
+                Your account is currently in <strong>PENDING_SETUP</strong> status. You must verify and link your MetaMask wallet to transition to <strong>ACTIVE</strong> status and receive crop inspection assignments.
+              </p>
+              {walletError && (
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-2">{walletError}</p>
+              )}
+              {walletSuccess && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-2">{walletSuccess}</p>
+              )}
+            </div>
+          </div>
+          <button 
+            onClick={handleWalletLink}
+            disabled={linkingWallet}
+            className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-amber-600/20 transition disabled:opacity-50"
+          >
+            {linkingWallet ? 'Verifying...' : 'Connect & Verify MetaMask'} <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* MetaMask Warning Alert for Quality Labs */}
+      {user?.role === 'TESTER' && !user?.wallet_address && (
+        <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-5 dark:border-amber-900/30 dark:bg-amber-950/20 space-y-4">
+          <div className="flex gap-4">
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/40 text-amber-600 rounded-xl shrink-0">
+              <Wallet className="h-6 w-6 animate-pulse" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-bold text-amber-900 dark:text-amber-100 text-lg">Attention: MetaMask Connection Required</h4>
+              <p className="text-sm text-amber-700 dark:text-amber-400 max-w-xl">
+                To perform crop quality certifications, issue lab certificates, and log batch quality records on the blockchain, you must connect and link your MetaMask wallet.
+              </p>
+              {walletError && (
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold mt-2">{walletError}</p>
+              )}
+              {walletSuccess && (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-2">{walletSuccess}</p>
+              )}
+            </div>
+          </div>
+          <button 
+            onClick={handleWalletLink}
+            disabled={linkingWallet}
+            className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-amber-600/20 transition disabled:opacity-50"
+          >
+            {linkingWallet ? 'Connecting...' : 'Connect & Link MetaMask'} <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Pending Inspection Alert for Farmers */}
       {user?.role === 'FARMER' && myCrops.some(c => c.verification_status === 'PENDING') && (
@@ -488,6 +714,27 @@ export default function Dashboard() {
               </div>
             </Link>
           )}
+
+          {/* Admin Specific Action: Create Inspector */}
+          {user?.role === 'ADMIN' && (
+            <button 
+              onClick={() => {
+                setCreateSuccess('');
+                setCreateError('');
+                setGeneratedTempPassword('');
+                setShowCreateInspectorModal(true);
+              }}
+              className="text-left group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4 w-full"
+            >
+              <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-xl text-purple-600 group-hover:scale-105 transition-transform shrink-0">
+                <UserPlus className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Create Inspector Account</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">ADMIN: Onboard official field officers, assign coverage, and generate passwords.</p>
+              </div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -599,8 +846,132 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Create Inspector Modal (Admin only) */}
+      {user?.role === 'ADMIN' && showCreateInspectorModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto no-scrollbar">
+            <button 
+              onClick={() => setShowCreateInspectorModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+            >
+              <X className="h-6 w-6" />
+            </button>
 
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <UserPlus className="h-6 w-6 text-purple-600 dark:text-purple-400" /> Create Agricultural Inspector Account
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Enter details to create a new field inspector. The system will auto-generate a temporary password.
+              </p>
+            </div>
 
+            {createSuccess && (
+              <div className="rounded-xl bg-emerald-50 p-4 text-xs text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 font-semibold space-y-2">
+                <p>{createSuccess}</p>
+                {generatedTempPassword && (
+                  <div className="font-mono bg-white dark:bg-slate-950 p-2.5 rounded border border-emerald-200 dark:border-emerald-800/40 inline-block">
+                    Temporary Password: <strong className="text-emerald-700 dark:text-emerald-450 select-all">{generatedTempPassword}</strong> (Copy and share with inspector)
+                  </div>
+                )}
+              </div>
+            )}
+
+            {createError && (
+              <div className="rounded-xl bg-rose-50 p-4 text-xs text-rose-600 dark:bg-rose-955/30 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
+                {createError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateInspector} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Inspector Name</label>
+                <input 
+                  type="text" 
+                  value={inspectorName} 
+                  onChange={(e) => setInspectorName(e.target.value)} 
+                  required 
+                  placeholder="Rajiv Kumar" 
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Official Email</label>
+                <input 
+                  type="email" 
+                  value={inspectorEmail} 
+                  onChange={(e) => setInspectorEmail(e.target.value)} 
+                  required 
+                  placeholder="inspector@agrochain.gov" 
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Contact Number</label>
+                <input 
+                  type="tel" 
+                  value={inspectorPhone} 
+                  onChange={(e) => setInspectorPhone(e.target.value)} 
+                  required 
+                  placeholder="+919876543210" 
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">District</label>
+                <input 
+                  type="text" 
+                  value={inspectorDistrict} 
+                  onChange={(e) => setInspectorDistrict(e.target.value)} 
+                  required 
+                  placeholder="Ernakulam" 
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Sub-District (Taluk)</label>
+                <input 
+                  type="text" 
+                  value={inspectorSubDistrict} 
+                  onChange={(e) => setInspectorSubDistrict(e.target.value)} 
+                  required 
+                  placeholder="Aluva" 
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Coverage Level</label>
+                <select 
+                  value={inspectorCoverage} 
+                  onChange={(e) => setInspectorCoverage(e.target.value)} 
+                  required 
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="SUB_DISTRICT">SUB_DISTRICT</option>
+                  <option value="DISTRICT">DISTRICT</option>
+                </select>
+              </div>
+              
+              <div className="sm:col-span-2 flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateInspectorModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/50 font-semibold text-xs transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingInspector}
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2.5 px-6 rounded-xl transition disabled:opacity-50 text-xs shadow-md shadow-purple-600/10"
+                >
+                  {creatingInspector ? 'Creating...' : 'Create Inspector Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -56,7 +56,7 @@ graph TD
      * `verification_status` is set to `'PENDING'`
      * `timeline_status` is set to `'PENDING'`
      * `blockchain_status` is set to `'DB_ONLY'`
-     * `assigned_inspector_id` and `assigned_tester_id` are auto-allocated based on matching District and Pin Code coverage.
+     * `assigned_inspector_id` and `assigned_tester_id` are auto-allocated based on matching District and Pin Code coverage. The designated tester must be in `ACTIVE` status (approved by the Admin) to receive assignments.
 
 ### Phase 3: Land & Audit Verification (Inspector Audit)
 1. **Awaiting Audit**:
@@ -136,26 +136,30 @@ The Quality Lab Tester validates harvested crop yields, certifies food quality p
 
 ```mermaid
 graph TD
-    A[Register Tester Account] --> B[Set Regional Testing Coverage]
-    B --> C[Monitor Queue: READY_TO_HARVEST or HARVEST_COMPLETED]
-    C --> D[Retrieve Inspector Approval Letter Details]
-    D --> E[Conduct Scientific Verification & Quality Grading]
-    E --> F[Click One-Click Approve & Certify Crop]
-    F --> G[On-Chain registerProduct MetaMask Signing]
-    G --> H[Update DB to PRODUCT_AVAILABLE & Generate printable QR Certificate]
+    A[Self-Register Lab Account: PENDING_APPROVAL] --> B[Admin Reviews & Approves: ACTIVE]
+    B --> C[Set Regional Testing Coverage & Link Wallet]
+    C --> D[Monitor Queue: READY_TO_HARVEST or HARVEST_COMPLETED]
+    D --> E[Retrieve Inspector Approval Letter Details]
+    E --> F[Conduct Scientific Verification & Quality Grading]
+    F --> G[Click One-Click Approve & Certify Crop]
+    G --> H[On-Chain registerProduct MetaMask Signing]
+    H --> I[Update DB to PRODUCT_AVAILABLE & Generate printable QR Certificate]
 ```
 
-1. **Tester Registration & Verification**:
-   * Register with the `TESTER` role, indicating geographical test center codes and postal code coverage.
+1. **Lab Registration & Verification**:
+   * **Self-Registration Portal**: Quality Labs sign up at `/register` selecting the `TESTER` role. They must provide: Lab Name, Authorized Person, Email, Phone, District, Sub-District, Lab License Number, Accreditation Number, Government Registration Number, and upload Lab Certificates and Supporting Documents.
+   * **Initial Status**: The account starts in `PENDING_APPROVAL` status (`is_approved = False`). They cannot access testing functions or receive crop assignments in this state.
+   * **Admin Review**: System Administrator reviews the lab's documents, certificates, and accreditation in the Admin Console. Once approved, the lab's status changes to `ACTIVE` (`is_approved = True`).
+   * **MetaMask Flow & Wallet warning**: MetaMask is not required to log in. It is only required to sign the final on-chain product certifications. If an active Quality Lab is logged in but their MetaMask wallet is not linked or connected, a wallet warning card is shown on their dashboard.
 2. **Harvest Tracking Queue**:
-   * Watch the tester dashboard queue for crops marked as `READY_TO_HARVEST` or `HARVEST_COMPLETED` within their region.
-   * Check the Inspector's initial **Approval Letter** and notes linked directly on the page.
+   * Harvested crops (timeline status `HARVEST_COMPLETED`) are automatically routed to Quality Labs covering that crop's district and PIN code, provided the lab is `ACTIVE`.
+   * The Quality Lab reviews the Inspector's initial **Approval Letter** and remarks linked directly on the testing dashboard.
 3. **Batch Quality Testing**:
    * Conduct scientific lab assessments (moisture levels, heavy metal presence, organic purity, pesticide screening).
 4. **One-Click Automated Certification**:
    * Select a crop from the list.
-   * Click **"Approve & Certify Crop"** on the Quality Testing Portal (`/quality-testing`).
-   * This executes the `productRegistry.registerProduct` smart contract.
+   * Click **"Approve & Certify Crop"** on the Quality Testing Portal (`/tester/approve`).
+   * This executes the `productRegistry.registerProduct` smart contract (requires MetaMask connected).
    * It registers the product lot number, crop name, certified grade (`Grade A+`), pricing details in Wei, test timestamps, and expiry date.
    * The backend database matches the crop ID to the newly certified lot number, moving the status to `PRODUCT_AVAILABLE` (Certified).
 
@@ -242,8 +246,11 @@ graph TD
 ```
 
 1. **Role Approvals & Registrations**:
-   * Log in to the Admin Dashboard.
-   * Review registrations of new verifiers (Inspectors and Testers) to verify their credentials.
+   * Log in to the Admin Dashboard (`/admin` or via operations panel).
+   * Review registrations of new verifiers (specifically, unapproved self-registered Quality Labs).
+   * Click the **"Review Lab"** button to open a detailed review modal displaying all credentials (lab name, license number, accreditation number, government registration number) and links to uploaded certificates and supporting documents.
+   * Approve valid Quality Labs, which changes their status to `ACTIVE` (`is_approved = True`) so they can receive assignments.
+   * Onboard and create field Inspectors (role `INSPECTOR`) using the inspector creation modal.
 2. **Audit Trails & Security Monitoring**:
    * Monitor the **System Audit Trail** console (`/dashboard`).
    * View live logs of actions (e.g., `FARMER_CROP_APPROVED`, `PRODUCT_CERTIFIED`, `INVESTMENT_ACCEPTED`).

@@ -1,6 +1,6 @@
 # AgroChain (Modernized) — Complete Project Memory
 
-**Last Updated:** *June 8, 2026, 07:08 PM IST (UTC+5:30)*
+**Last Updated:** *June 12, 2026, 05:00 PM IST (UTC+5:30)*
 
 This document is the master documentation of the **AgroChain** (Modernized) project. It contains a detailed breakdown of the project’s purpose, features, security models, data structures, backend routes, contract details, frontend screens, and step-by-step developer checklists.
 
@@ -37,14 +37,20 @@ The platform implements strict Role-Based Access Control (RBAC) across five sepa
    - Reviews Letters of Intent (proposals) submitted by investors and accepts/declines them.
    - Accesses the **Farmer Document Center** to view and print official crop approval letters and certified batch certificates containing dynamic QR codes.
 
-3. **Agricultural Inspector (`INSPECTOR`)** *(Updated: June 7, 2026, 11:28 PM)*:
-   - Assigned to specific crops based on their geographic location (district and pin code).
-   - Accesses the Pending Inspection Queue showing crop registrations in their assigned region that need checking.
-   - Inspects the farmer's land deeds, coordinates, and soil metrics. Approves or rejects crop registrations, recording audit dates, signatures, and verifier remarks. Requires MetaMask for signing verifications.
+3. **Agricultural Inspector (`INSPECTOR`)** *(Updated: June 11, 2026, 01:00 AM)*:
+   - Private signup disabled. Accounts created only by the Admin with an auto-generated temporary password.
+   - Forced to change password on first login (blocks dashboard interaction).
+   - Must connect their MetaMask wallet and sign a verification message (`personal_sign`) to prove ownership. Upon backend signature verification, the wallet is stored and status changes from `PENDING_SETUP` to `ACTIVE`.
+   - Only `ACTIVE` inspectors receive crop assignments.
+   - Assigned crops based on the Kerala-based hierarchy: Priority 1 (Same Taluk/Sub-District), Priority 2 (Same District), Priority 3 (Any active DISTRICT-level Inspector).
+   - Inspects registrations by viewing deeds and coordinates, adding remarks and an inspection method (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`). Can save notes in the DB without MetaMask, or sign final verifications on-chain.
 
-4. **Quality Tester / Lab (`TESTER`)** *(Updated: June 7, 2026, 11:28 PM)*:
-   - Assigned to specific verified crops based on their geographic location (district and pin code).
-   - Issues **Product Quality Certificates** for harvested crops after conducting scientific tests, specifying quality grades (e.g., `Grade A+`, `Grade A`) and setting the listing price and expiry dates. Requires MetaMask for signing certificates.
+4. **Quality Tester / Lab (`TESTER`)** *(Updated: June 12, 2026, 05:00 PM)*:
+   - Self-registers. Requires: Lab Name, Authorized Person, Email, Phone, District, Sub-District, Lab License Number, Accreditation Number, Government Registration Number, Lab Certificates, and Supporting Documents.
+   - On self-registration, their account status is set to `PENDING_APPROVAL` with `is_approved = False`. In this state, they cannot access testing services or receive assignments.
+   - The System Administrator reviews their credentials using a dedicated modal on the Admin Dashboard and activates them to `ACTIVE` status (`is_approved = True`).
+   - Only active, approved Quality Labs are matched to crops (based on geographic location: district and pin code) and can receive assignments.
+   - MetaMask is NOT required to log in. It is only required to sign the final on-chain product certificates. A warning card is displayed on their dashboard if their MetaMask wallet is unlinked.
 
 5. **Dedicated Investor (`INVESTOR`)** *(Updated: June 8, 2026, 06:35 PM)*:
    - Logs in to explore verified, active crop listings seeking funding.
@@ -167,9 +173,9 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 ### A. SQLite Table Schemas (`models.py`)
 
 1. **`users`**:
-   - `id` (PK), `name`, `email` (Unique), `phone_number` (Unique), `password_hash`, `role` (`ADMIN`, `FARMER`, `INSPECTOR`, `TESTER`, `CONSUMER`, `INVESTOR`), `wallet_address`, `is_approved`, `is_verified_farmer`, `government_id`, `ownership_proof_url`, `district`, `pin_code`, `coverage_pins` (Text list of pins for verifiers).
+   - `id` (PK), `name`, `email` (Unique), `phone_number` (Unique), `password_hash`, `role` (`ADMIN`, `FARMER`, `INSPECTOR`, `TESTER`, `CONSUMER`, `INVESTOR`), `wallet_address`, `is_approved`, `is_verified_farmer`, `government_id`, `ownership_proof_url`, `district`, `pin_code`, `coverage_pins` (Text list of pins for verifiers), `sub_district` (Taluk), `coverage_level` (`SUB_DISTRICT`, `DISTRICT`), `must_change_password` (Boolean), `status` (`PENDING_SETUP`, `ACTIVE`, `INACTIVE`, `SUSPENDED`, `PENDING_APPROVAL`), `lab_name` (Text), `authorized_person` (Text), `lab_license_number` (Text), `accreditation_number` (Text), `gov_reg_number` (Text), `lab_certificates` (Text JSON), `supporting_documents` (Text JSON).
 2. **`farmers`**:
-   - `id` (PK), `user_id` (FK $\rightarrow$ `users`), `farm_location`, `farm_size`, `farming_type`, `crop_type`, `expected_yield`, `cultivation_date`, `tx_hash`, `block_number`, `blockchain_status` (`DB_ONLY`, `VERIFIED`), `is_approved`, `timeline_status`, `land_survey_no`, `gps_latitude`, `gps_longitude`, `evidence_photos` (JSON list), `verification_status` (`PENDING`, `VERIFIED`, `REJECTED`), `tester_remarks`, `assigned_inspector_id` (FK), `assigned_tester_id` (FK), `tester_id` (FK), `verification_date`, `farm_address`, `district`, `pin_code`.
+   - `id` (PK), `user_id` (FK $\rightarrow$ `users`), `farm_location`, `farm_size`, `farming_type`, `crop_type`, `expected_yield`, `cultivation_date`, `tx_hash`, `block_number`, `blockchain_status` (`DB_ONLY`, `VERIFIED`), `is_approved`, `timeline_status`, `land_survey_no`, `gps_latitude`, `gps_longitude`, `evidence_photos` (JSON list of URLs), `evidence_documents` (JSON list of URLs), `verification_status` (`PENDING`, `VERIFIED`, `REJECTED`), `tester_remarks`, `assigned_inspector_id` (FK), `assigned_tester_id` (FK), `tester_id` (FK), `verification_date`, `farm_address`, `district`, `sub_district` (Taluk), `village`, `pin_code`, `inspection_date`, `inspection_notes`, `inspection_method` (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`).
 3. **`products`**:
    - `lot_number` (PK), `farmer_id` (FK $\rightarrow$ `farmers`), `crop_name`, `quality_grade`, `price` (BigInt Wei), `test_date`, `expiry_date`, `certification_status` (`APPROVED`, `REJECTED`), `tx_hash`, `block_number`, `timestamp`.
 4. **`investments`**:
@@ -187,22 +193,30 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 
 #### Auth Blueprint (`/api/auth`)
 * `POST /send-otp` $\rightarrow$ Generates 6-digit random code, saves to DB with 5 min expiry, triggers SMS Gateway or fallback dev log.
-* `POST /register` $\rightarrow$ Validates registration inputs, verifies phone number against OTP, hashes password using `scrypt`, creates User profile.
+* `POST /register` $\rightarrow$ Validates registration inputs (public registration restricted to FARMER, TESTER, CONSUMER, INVESTOR roles), verifies OTP, hashes password, creates user.
 * `POST /login` $\rightarrow$ Authenticates user credentials, logs login event, generates a JWT token containing `id` and `role` claims.
 * `GET /profile` $\rightarrow$ Decodes JWT token and returns user details.
-* `POST /link-wallet` $\rightarrow$ Links MetaMask public address to User account.
+* `POST /change-password` $\rightarrow$ Allows authenticated users to change their password (clears `must_change_password` flag).
+* `POST /link-wallet` $\rightarrow$ Verifies MetaMask signature ownership using cryptographic recover message (`personal_sign` signature and email verification text matching) before saving the address. Changes Inspector status to `ACTIVE`.
+
+#### Admin Blueprint (`/api/admin`)
+* `POST /create-inspector` $\rightarrow$ Allows Admins to create new inspectors, generates a temporary password, and sends an notification email.
+* `GET /users` $\rightarrow$ Lists all users in the system.
+* `POST /approve-user/<id>` $\rightarrow$ Admin approves user profile.
+* `GET /audit-logs` $\rightarrow$ Fetches recent audit logs.
 
 #### Farmer Blueprint (`/api/farmer`)
-* `POST /register` $\rightarrow$ Registers new cultivation and records audit log.
+* `POST /register` $\rightarrow$ Registers new cultivation with District, Taluk (Sub-District), and Village parameters. Assigns verifiers using Kerala Priority Assignment matching: Priority 1 (same Taluk), Priority 2 (same District), Priority 3 (any active DISTRICT-level inspector). Only active inspectors receive assignments.
 * `GET /my-crops` $\rightarrow$ Lists authenticated farmer's crops.
 * `GET /all-crops` $\rightarrow$ Publicly lists all crop projects.
 * `GET /<id>` $\rightarrow$ Retrieves detailed specifications of a specific crop.
 * `POST /update-timeline/<id>` $\rightarrow$ Restricts manual timeline updates. Validates timeline status shifts (`READY_TO_HARVEST`, `HARVEST_COMPLETED`).
 
 #### Quality Blueprint (`/api/quality`)
-* `POST /approve/<id>` $\rightarrow$ Tester marks crop approved, sets `verification_status = 'VERIFIED'`, sets Remarks, coordinates, and advances timeline to `TESTER_APPROVED`.
-* `POST /reject/<id>` $\rightarrow$ Tester marks crop `REJECTED`, logging verifier remarks.
-* `GET /pending` $\rightarrow$ Retrieves list of unapproved crop listings.
+* `POST /approve/<id>` $\rightarrow$ Inspector/Admin approves crop on-chain using MetaMask, logging `inspection_notes` and `inspection_method`.
+* `POST /reject/<id>` $\rightarrow$ Inspector/Admin rejects crop registration, loggingremarks.
+* `POST /save-notes/<id>` $\rightarrow$ Inspector/Admin saves detailed inspection notes and method (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`) directly to the DB without MetaMask.
+* `GET /pending` $\rightarrow$ Retrieves list of unapproved crop listings assigned to the verifier.
 
 #### Product Blueprint (`/api/product`)
 * `POST /register` $\rightarrow$ Registers Product lot, sets pricing, dates, and automatically updates the parent crop timeline to `PRODUCT_AVAILABLE`.
@@ -232,12 +246,10 @@ Managed via React Router inside `Frontend/src/App.jsx`.
 
 ### Navigation Pages
 1. **Landing Page (`/`)** *(Updated: May 30, 2026, 03:45 PM)*: Main presentation dashboard, display metrics, role explanations.
-2. **Login/Signup (`/login`, `/register`)** *(Updated: June 7, 2026, 11:28 PM)*: OTP request fields, role selection dropdowns, MetaMask wallet link tools.
-3. **Control Dashboard (`/dashboard`)** *(Updated: June 8, 2026, 06:35 PM)*: Role-specific options with real-time notification badges using `localStorage` cache validation:
-   - *Farmers*: Received micro-finance proposals (badges for new incoming LOIs), link wallets, shortcuts to register crops and view crop lists (badges for crop verification status updates).
-   - *Testers*: Shortcuts to check pending crops (badges for new registrations) and certify harvested crop batches (badges for verified crops awaiting certification).
-   - *Investors*: Track Submitted LOIs (badges for accepted/declined proposals).
-   - *Admins*: Full analytics panel (metrics grids, logs console, user list table).
+2. **Login/Signup (`/login`, `/register`)** *(Updated: June 11, 2026, 01:00 AM)*: Signup role selection has `INSPECTOR` role removed (only Admin can create inspectors). Support username and password authentication (MetaMask optional for login).
+3. **Control Dashboard (`/dashboard`)** *(Updated: June 11, 2026, 01:10 AM)*: Role-specific consoles with notification badges.
+   - **For Inspectors**: Blocks page with a fullscreen **First Login Change Password Modal** if `must_change_password` is enabled. Shows a **MetaMask Wallet Connection Card** requiring inspectors to connect their wallet and sign a verification message to activate their account (transitioning status from `PENDING_SETUP` to `ACTIVE`).
+   - **For Admins**: Features a **Create Inspector Account** card in the Operations Console grid, launching a beautiful pop-up modal to onboard field verifiers directly.
 4. **My Crops Directory (`/farmer/crops` - `CropHistory.jsx`)** *(Updated: June 8, 2026, 06:35 PM)*: The primary farmer document hub. Allows updating timelines and displays action modals:
    - **View Approval Letter**: Printable modal showing verifier sign-offs and coordinates.
    - **Print Certificate & QR**: Renders batch quality certificates containing a dynamic QR Code image linking to the explorer.
@@ -246,6 +258,9 @@ Managed via React Router inside `Frontend/src/App.jsx`.
 6. **Funding Page (`/finance`)** *(Updated: June 8, 2026, 06:35 PM)*: Active product lot grid where investors click cards, view target funding amounts, submit terms, connect wallets, and trigger ETH transfers. Restricted to the `INVESTOR` role for submitting LOIs. Features dynamic `"LOI Sent (Status)"` status badges on cards and transitions the button option to `"Resend LOI / Propose New Terms"` to allow resending updated proposals.
 7. **Consumer Tracking (`/consumer/track`)** *(Updated: June 8, 2026, 06:35 PM)*: Public directory listing all farmers and crops. Tapping cards loads provenance milestones, GPS map coordinates, and allows consumers to log reviews.
 8. **Redesigned Explorer Portal (`/explorer` - `BlockchainExplorer.jsx`)** *(Updated: June 8, 2026, 06:35 PM)*: Toggled lookup panel (Crop ID / Lot number) which also decodes URL parameter scans (`?lot=1001` or `?crop=1`).
+9. **Quality Testing (`/tester/approve` - `QualityTesting.jsx`)** *(Updated: June 11, 2026, 01:00 AM)*: Pending verification queue for Inspectors and Testers. Inspector panel renders District, Taluk, Village, and separate links for Evidence Documents. Features Inspection Method dropdown, Remarks input, and a **Save Notes (No MetaMask)** action button.
+10. **Admin Console (`/admin` - `AdminDashboard.jsx`)** *(Updated: June 11, 2026, 01:00 AM)*: Central system analytics and audit logs. Oversees registered users list, approves user authorities, and displays system-level analytical charts.
+11. **Create Inspector Modal Trigger** *(Updated: June 11, 2026, 01:10 AM)*: Integrated directly into the **Operations Console** on the main [Dashboard.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/Dashboard.jsx) page, allowing administrators to onboard field inspectors, set jurisdictions, and generate credentials.
 
 ### D. Styling & Aesthetic Guardrails (Tailwind CSS)
 To maintain the platform's premium design aesthetic and prevent elements (like buttons and badges) from rendering invisibly:
@@ -389,7 +404,23 @@ Here is a comprehensive index of all key files in the AgroChain workspace:
 
 ## 9. Chronological Change Log
 
-This log tracks when key features and files were introduced or modified in the project:
+* **June 12, 2026** (Quality Lab Tester Model & Onboarding Flow):
+  * **Private Lab self-registration**: Extended registration forms to allow Quality Labs (`TESTER`) to input lab name, license number, accreditation details, and upload credentials.
+  * **Pending Approval state**: New tester accounts default to `PENDING_APPROVAL` and `is_approved = False`.
+  * **Admin Credentials Review Modal**: Added a detailed pop-up modal to the Admin Dashboard to review all registration credentials and documents.
+  * **Active Tester check**: Restricted crop assignment routing to only Quality Labs that have been approved by the Admin and are in `ACTIVE` status.
+  * **MetaMask Warnings**: Added warning cards to the Quality Lab dashboard to alert testers if their MetaMask wallets are not connected or linked.
+  * **MetaMask Setup Help**: Added a toggleable, non-technical setup guide inside the wallet connection section on [RegisterPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/RegisterPage.jsx) explaining how to set up MetaMask as a digital signature card on `agroblock.in`.
+  * **Notice Modal & Form Flow**: Added a signup warning notice modal when "Quality Lab" is selected from the role dropdown, and updated the signup button label to dynamically say "Apply for Quality Lab Account".
+  * **Automated Email Notifications**: Configured `/approve-user/<int:user_id>` in [admin.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/admin.py) to automatically send a welcome email to the tester when the administrator approves their application, detailing how to log in with their credentials.
+  * **Strict Terms & Conditions**: Built [TermsPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/TermsPage.jsx) and registered `/terms` route in [App.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/App.jsx). Added a required terms consent checkbox for the Quality Lab signup flow.
+
+* **June 11, 2026** (Inspector Restructure & Kerala Assignment Model):
+  * **Admin-Only Inspector Creation**: Disabled public signups for inspectors. Added an admin-only creation panel in [AdminDashboard.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/AdminDashboard.jsx) and backend routes.
+  * **Password Setup & Reset**: Implemented forced password reset modal on first login for inspectors in [Dashboard.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/Dashboard.jsx).
+  * **MetaMask Signature verification**: Updated backend and frontend linking flows to require cryptographically verifying a signed verification message (`personal_sign` signature) to activate inspector status to `ACTIVE`.
+  * **Kerala Location Hierarchy**: Replaced geodesic calculations with priority routing (Priority 1: same Taluk/Sub-District, Priority 2: same District, Priority 3: any active DISTRICT-level inspector). Only active inspectors receive assignments.
+  * **Separate Evidence & Notes Saving**: Split evidence storage into photos and documents in [FarmerRegistration.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/FarmerRegistration.jsx) and [QualityTesting.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/QualityTesting.jsx). Added "Save Notes (No MetaMask)" option for inspectors to save detailed notes and inspection methods.
 
 * **June 8, 2026** (Dashboard & Navigation refinement):
   * **Unified Badging**: Added real-time notification badges and clear button alerts based on `localStorage` caches in [Dashboard.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/Dashboard.jsx).

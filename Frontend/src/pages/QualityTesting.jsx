@@ -18,6 +18,8 @@ export default function QualityTesting() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [remarks, setRemarks] = useState('');
+  const [inspectionMethod, setInspectionMethod] = useState('PHYSICAL_VISIT');
+  const [savingNotes, setSavingNotes] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
   const [txDetails, setTxDetails] = useState(null);
@@ -82,12 +84,9 @@ export default function QualityTesting() {
     }
 
     if (!isConnected) {
-      const address = await connectWallet();
-      if (!address) {
-        setError('Please connect your MetaMask wallet to execute approvals.');
-        setLoading(false);
-        return;
-      }
+      setError('Please connect MetaMask to continue.');
+      setLoading(false);
+      return;
     }
 
     try {
@@ -138,13 +137,16 @@ export default function QualityTesting() {
       await axios.post(`/api/quality/approve/${crop.id}`, {
         tx_hash: tx.hash,
         block_number: blockNumber,
-        tester_remarks: remarks
+        tester_remarks: remarks,
+        inspection_notes: remarks,
+        inspection_method: inspectionMethod
       });
 
       setLoading(false);
       alert(`Farmer crop ID ${crop.id} has been verified and registered on-chain successfully!`);
       setSelectedCrop(null);
       setRemarks('');
+      setInspectionMethod('PHYSICAL_VISIT');
       fetchPendingCrops();
 
     } catch (err) {
@@ -163,17 +165,42 @@ export default function QualityTesting() {
     setLoading(true);
     try {
       await axios.post(`/api/quality/reject/${crop.id}`, {
-        tester_remarks: remarks
+        tester_remarks: remarks,
+        inspection_notes: remarks,
+        inspection_method: inspectionMethod
       });
       alert("Crop rejected.");
       setSelectedCrop(null);
       setRemarks('');
+      setInspectionMethod('PHYSICAL_VISIT');
       fetchPendingCrops();
     } catch (err) {
       console.error(err);
       setError("Failed to reject cultivation project.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!remarks) {
+      setError('Please add inspection remarks/notes before saving.');
+      return;
+    }
+    setError('');
+    setSavingNotes(true);
+    try {
+      await axios.post(`/api/quality/save-notes/${selectedCrop.id}`, {
+        inspection_notes: remarks,
+        inspection_method: inspectionMethod
+      });
+      alert('Inspection notes saved successfully!');
+      fetchPendingCrops();
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || 'Failed to save inspection notes.');
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -278,6 +305,20 @@ export default function QualityTesting() {
     } catch (e) {
       if (typeof evidencePhotos === 'string') {
         return evidencePhotos.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+    return [];
+  };
+
+  // Helper to parse evidence documents
+  const getDocsList = (evidenceDocs) => {
+    if (!evidenceDocs) return [];
+    try {
+      const parsed = JSON.parse(evidenceDocs);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      if (typeof evidenceDocs === 'string') {
+        return evidenceDocs.split(',').map(s => s.trim()).filter(Boolean);
       }
     }
     return [];
@@ -429,6 +470,18 @@ export default function QualityTesting() {
                   <span className="text-right max-w-[180px] truncate">{selectedCrop.farm_location}</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <span className="text-slate-400 font-medium">District</span>
+                  <span className="font-semibold">{selectedCrop.district || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <span className="text-slate-400 font-medium">Taluk (Sub-District)</span>
+                  <span className="font-semibold">{selectedCrop.sub_district || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <span className="text-slate-400 font-medium">Village</span>
+                  <span className="font-semibold">{selectedCrop.village || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                   <span className="text-slate-400 font-medium">GPS Coordinates</span>
                   <span className="font-mono text-xs flex flex-col items-end">
                     <span>Lat: {selectedCrop.gps_latitude}</span>
@@ -474,27 +527,75 @@ export default function QualityTesting() {
                   )}
                 </div>
 
-                {/* Remarks Input */}
+                {/* Evidence Documents Section */}
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <span className="text-slate-400 font-medium block mb-2">Evidence Documents</span>
+                  {getDocsList(selectedCrop.evidence_documents).length === 0 ? (
+                    <span className="text-xs text-slate-500 italic">No document evidence submitted.</span>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {getDocsList(selectedCrop.evidence_documents).map((url, i) => (
+                        <a 
+                          href={url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          key={i} 
+                          className="flex items-center gap-2 text-xs font-semibold text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-350 hover:underline"
+                        >
+                          <FileText className="h-4 w-4 shrink-0" />
+                          <span className="truncate">Document Proof #{i + 1}</span>
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Remarks/Inspection Input */}
                 {user?.role !== 'TESTER' ? (
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
-                      Inspector remarks / verification details
-                    </label>
-                    <textarea
-                      rows={3}
-                      placeholder="Enter details on soil test, survey matching, pesticide levels, and verification status..."
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none"
-                    ></textarea>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
+                        Inspection Method
+                      </label>
+                      <select
+                        value={inspectionMethod}
+                        onChange={(e) => setInspectionMethod(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white p-2 text-xs focus:border-emerald-500 focus:outline-none"
+                      >
+                        <option value="PHYSICAL_VISIT">PHYSICAL_VISIT (Physical Visit)</option>
+                        <option value="PHOTO_REVIEW">PHOTO_REVIEW (Photo Review)</option>
+                        <option value="HYBRID">HYBRID (Hybrid)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
+                        Inspector remarks / verification notes
+                      </label>
+                      <textarea
+                        rows={3}
+                        placeholder="Enter details on soil test, survey matching, pesticide levels, and verification status..."
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-950 dark:text-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none"
+                      ></textarea>
+                    </div>
                   </div>
                 ) : (
-                  selectedCrop.tester_remarks && (
-                    <div className="space-y-1.5 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Inspector Remarks</span>
-                      <p className="text-xs text-slate-700 dark:text-slate-300 italic">"{selectedCrop.tester_remarks}"</p>
-                    </div>
-                  )
+                  <div className="space-y-2.5">
+                    {selectedCrop.inspection_method && (
+                      <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2 text-xs">
+                        <span className="text-slate-400 font-medium">Inspection Method</span>
+                        <span className="font-semibold font-mono">{selectedCrop.inspection_method}</span>
+                      </div>
+                    )}
+                    {selectedCrop.tester_remarks && (
+                      <div className="space-y-1.5 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Inspector Remarks</span>
+                        <p className="text-xs text-slate-700 dark:text-slate-300 italic">"{selectedCrop.tester_remarks}"</p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -548,27 +649,37 @@ export default function QualityTesting() {
                   })()}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="space-y-3 pt-2">
                   <button
-                    onClick={() => handleReject(selectedCrop)}
-                    disabled={loading}
-                    className="flex justify-center items-center gap-1 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-950/30 dark:hover:bg-rose-950/20 text-xs font-bold transition disabled:opacity-50"
+                    type="button"
+                    onClick={handleSaveNotes}
+                    disabled={loading || savingNotes}
+                    className="w-full flex justify-center items-center gap-1.5 py-2.5 rounded-xl bg-slate-800 text-white hover:bg-slate-750 dark:bg-slate-700 dark:hover:bg-slate-650 text-xs font-bold transition disabled:opacity-50"
                   >
-                    <XCircle className="h-4 w-4" /> Reject Crop
+                    {savingNotes ? 'Saving...' : 'Save Notes (No MetaMask)'}
                   </button>
-                  <button
-                    onClick={() => handleApprove(selectedCrop)}
-                    disabled={loading}
-                    className="flex justify-center items-center gap-1 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold transition disabled:opacity-50"
-                  >
-                    {loading ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                    ) : (
-                      <>
-                        <CheckCircle className="h-4 w-4" /> Approve Crop
-                      </>
-                    )}
-                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleReject(selectedCrop)}
+                      disabled={loading || savingNotes}
+                      className="flex justify-center items-center gap-1 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-950/30 dark:hover:bg-rose-950/20 text-xs font-bold transition disabled:opacity-50"
+                    >
+                      <XCircle className="h-4 w-4" /> Reject Crop
+                    </button>
+                    <button
+                      onClick={() => handleApprove(selectedCrop)}
+                      disabled={loading || savingNotes}
+                      className="flex justify-center items-center gap-1 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold transition disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4" /> Approve Crop
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

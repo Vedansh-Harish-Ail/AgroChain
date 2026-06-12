@@ -37,13 +37,14 @@ def seed_database(reset=False):
             government_id="GOV1234567",
             ownership_proof_url="https://agrochain-docs.s3.amazonaws.com/proofs/rajesh_land.pdf",
             is_verified_farmer=True,
-            district="Pune",
-            pin_code="411001"
+            district="Ernakulam",
+            sub_district="Kochi",
+            pin_code="682022"
         )
         farmer.set_password("test@123")
         db.session.add(farmer)
         
-        # Inspector
+        # District Inspector (Active)
         inspector = User(
             name="Rajiv Kumar (Agricultural Inspector)", 
             email="inspector@gmail.com", 
@@ -51,11 +52,47 @@ def seed_database(reset=False):
             role="INSPECTOR", 
             is_approved=True,
             wallet_address="0x1111111111111111111111111111111111111111",
-            district="Pune",
-            pin_code="411001"
+            district="Ernakulam",
+            sub_district="Aluva",
+            coverage_level="DISTRICT",
+            status="ACTIVE",
+            must_change_password=False
         )
         inspector.set_password("test@123")
         db.session.add(inspector)
+
+        # Sub-District Inspector (Active)
+        sub_inspector = User(
+            name="Suresh Gopi (Sub-District Inspector)", 
+            email="subinspector@gmail.com", 
+            phone_number="+10000000011",
+            role="INSPECTOR", 
+            is_approved=True,
+            wallet_address="0x2222222222222222222222222222222222222222",
+            district="Ernakulam",
+            sub_district="Kochi",
+            coverage_level="SUB_DISTRICT",
+            status="ACTIVE",
+            must_change_password=False
+        )
+        sub_inspector.set_password("test@123")
+        db.session.add(sub_inspector)
+
+        # New Inspector (Pending Setup)
+        new_inspector = User(
+            name="Hari Kumar (New Inspector)", 
+            email="hari@gmail.com", 
+            phone_number="+10000000012",
+            role="INSPECTOR", 
+            is_approved=True,
+            district="Ernakulam",
+            sub_district="Kochi",
+            coverage_level="SUB_DISTRICT",
+            status="PENDING_SETUP",
+            must_change_password=True
+        )
+        new_inspector.set_password("Temp@1234")
+        db.session.add(new_inspector)
 
         # Tester
         tester = User(
@@ -65,8 +102,9 @@ def seed_database(reset=False):
             role="TESTER", 
             is_approved=True,
             wallet_address="0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", # Hardhat Account #0 (Deployer)
-            district="Pune",
-            pin_code="411001"
+            district="Ernakulam",
+            pin_code="682022",
+            status="ACTIVE"
         )
         tester.set_password("test@123")
         db.session.add(tester)
@@ -123,7 +161,8 @@ def seed_database(reset=False):
         print("Seeding crop projects...")
         crop1 = Farmer(
             user_id=farmer.id,
-            farm_location="Pune, Maharashtra",
+            farm_location="Aluva, Ernakulam, Kerala",
+            farm_address="Aluva, Ernakulam, Kerala",
             farm_size="5 Hectares",
             farming_type="Organic",
             crop_type="Basmati Rice",
@@ -135,23 +174,30 @@ def seed_database(reset=False):
             is_approved=True,
             timeline_status="PRODUCT_AVAILABLE",
             land_survey_no="SUR-BAS-2026-101",
-            gps_latitude=18.5204,
-            gps_longitude=73.8567,
+            gps_latitude=10.1076,
+            gps_longitude=76.3533,
             evidence_photos="[\"https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=600&q=80\"]",
+            evidence_documents="[\"https://agrochain-docs.s3.amazonaws.com/proofs/land_deed_verified.pdf\"]",
             verification_status="VERIFIED",
             tester_remarks="All organic parameters verified. Soil nitrogen levels are excellent. Land survey deed validated.",
-            assigned_inspector_id=3,
-            assigned_tester_id=4,
-            tester_id=4,
-            district="Pune",
-            pin_code="411001",
-            verification_date=datetime.now(timezone.utc) - timedelta(days=40)
+            assigned_inspector_id=3, # Rajiv Kumar
+            assigned_tester_id=6, # Dr. Anita Sharma
+            tester_id=3,
+            district="Ernakulam",
+            sub_district="Aluva",
+            village="Chunangamveli",
+            pin_code="683112",
+            verification_date=datetime.now(timezone.utc) - timedelta(days=40),
+            inspection_date=datetime.now(timezone.utc) - timedelta(days=40),
+            inspection_notes="Physical verification completed. Soil checked for trace chemicals.",
+            inspection_method="PHYSICAL_VISIT"
         )
         db.session.add(crop1)
         
         crop2 = Farmer(
             user_id=farmer.id,
-            farm_location="Nashik, Maharashtra",
+            farm_location="Kalamassery, Kochi, Kerala",
+            farm_address="Kalamassery, Kochi, Kerala",
             farm_size="3 Hectares",
             farming_type="Organic",
             crop_type="Alphonso Mango",
@@ -163,24 +209,31 @@ def seed_database(reset=False):
             is_approved=True,
             timeline_status="TESTER_APPROVED",
             land_survey_no="SUR-MNG-2026-302",
-            gps_latitude=19.9975,
-            gps_longitude=73.7898,
+            gps_latitude=10.0542,
+            gps_longitude=76.3121,
             evidence_photos="[\"https://images.unsplash.com/photo-1553137148-ebb587be616c?auto=format&fit=crop&w=600&q=80\"]",
+            evidence_documents="[\"https://agrochain-docs.s3.amazonaws.com/proofs/tax_receipt_2026.pdf\"]",
             verification_status="VERIFIED",
             tester_remarks="Orchard meets organic standards. Biological control methods for pests are verified. Recommended Grade A.",
-            assigned_inspector_id=3,
-            assigned_tester_id=4,
+            assigned_inspector_id=4, # Suresh Gopi (Sub-District Kochi Inspector)
+            assigned_tester_id=6, # Dr. Anita Sharma
             tester_id=4,
-            district="Nashik",
-            pin_code="422001",
-            verification_date=datetime.now(timezone.utc) - timedelta(days=55)
+            district="Ernakulam",
+            sub_district="Kochi",
+            village="Kalamassery",
+            pin_code="682022",
+            verification_date=datetime.now(timezone.utc) - timedelta(days=55),
+            inspection_date=datetime.now(timezone.utc) - timedelta(days=55),
+            inspection_notes="Reviewed photo evidence and possession certificate.",
+            inspection_method="HYBRID"
         )
         db.session.add(crop2)
         
         # This one is DB_ONLY (Lazy Wallet demonstration)
         crop3 = Farmer(
             user_id=farmer.id,
-            farm_location="Nagpur, Maharashtra",
+            farm_location="Edappally, Kochi, Kerala",
+            farm_address="Edappally, Kochi, Kerala",
             farm_size="4 Hectares",
             farming_type="Non-Organic",
             crop_type="Organic Cotton",
@@ -192,13 +245,16 @@ def seed_database(reset=False):
             is_approved=False, # Pending review
             timeline_status="CROP_REGISTERED",
             land_survey_no="SUR-CTN-2026-409",
-            gps_latitude=21.1458,
-            gps_longitude=79.0882,
+            gps_latitude=10.0261,
+            gps_longitude=76.3088,
             evidence_photos="[\"https://images.unsplash.com/photo-1594751543129-6701ad44e95b?auto=format&fit=crop&w=600&q=80\"]",
-            assigned_inspector_id=3,
-            assigned_tester_id=4,
-            district="Nagpur",
-            pin_code="440001",
+            evidence_documents="[\"https://agrochain-docs.s3.amazonaws.com/proofs/possession_certificate.pdf\"]",
+            assigned_inspector_id=4, # Suresh Gopi
+            assigned_tester_id=6,
+            district="Ernakulam",
+            sub_district="Kochi",
+            village="Edappally",
+            pin_code="682024",
             verification_status="PENDING"
         )
         db.session.add(crop3)
@@ -206,11 +262,12 @@ def seed_database(reset=False):
         # Seed crops for additional farmers
         additional_crops = []
         crop_types = ["Premium Wheat", "Organic Sugarcane", "Yellow Turmeric", "Sweet Corn", "Organic Soybeans"]
-        locations = ["Punjab", "Uttar Pradesh", "Tamil Nadu", "Bihar", "Madhya Pradesh"]
+        locations = ["Thrissur", "Palakkad", "Kottayam", "Alappuzha", "Kollam"]
         for i, f_user in enumerate(additional_farmers):
             crop = Farmer(
                 user_id=f_user.id,
-                farm_location=f"{locations[i]}, India",
+                farm_location=f"{locations[i]}, Kerala, India",
+                farm_address=f"{locations[i]}, Kerala, India",
                 farm_size="4 Hectares",
                 farming_type="Organic",
                 crop_type=crop_types[i],
@@ -222,9 +279,10 @@ def seed_database(reset=False):
                 is_approved=True,
                 timeline_status="PRODUCT_AVAILABLE",
                 land_survey_no=f"SUR-ADD-2026-00{i}",
-                gps_latitude=20.0 + i * 1.5,
-                gps_longitude=75.0 + i * 1.5,
+                gps_latitude=9.5 + i * 0.2,
+                gps_longitude=76.5 + i * 0.1,
                 evidence_photos="[\"https://images.unsplash.com/photo-1594751543129-6701ad44e95b?auto=format&fit=crop&w=600&q=80\"]",
+                evidence_documents="[\"https://agrochain-docs.s3.amazonaws.com/proofs/land_deed_verified.pdf\"]",
                 verification_status="VERIFIED",
                 tester_remarks="Seeded pre-verified additional crop listing.",
                 tester_id=3,

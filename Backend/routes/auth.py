@@ -7,6 +7,8 @@ import base64
 import urllib.request
 import urllib.error
 from datetime import datetime, timedelta, timezone
+from eth_account import Account
+from eth_account.messages import encode_defunct
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -175,6 +177,16 @@ def register():
     district = data.get('district')
     pin_code = data.get('pin_code')
     coverage_pins = data.get('coverage_pins')
+    sub_district = data.get('sub_district')
+    
+    # Quality Lab specific fields
+    lab_name = data.get('lab_name')
+    authorized_person = data.get('authorized_person')
+    lab_license_number = data.get('lab_license_number')
+    accreditation_number = data.get('accreditation_number')
+    gov_reg_number = data.get('gov_reg_number')
+    lab_certificates = data.get('lab_certificates')
+    supporting_documents = data.get('supporting_documents')
     
     if not name or not email or not password or not role or not phone_number or not email_otp or not sms_otp:
         return jsonify({'message': 'Missing required fields, including email OTP and SMS OTP'}), 400
@@ -182,7 +194,7 @@ def register():
     email = email.strip().lower()
     phone_number = phone_number.strip()
     
-    if role not in ['FARMER', 'TESTER', 'CONSUMER', 'INVESTOR', 'ADMIN', 'INSPECTOR']:
+    if role not in ['FARMER', 'TESTER', 'CONSUMER', 'INVESTOR', 'ADMIN']:
         return jsonify({'message': 'Invalid role specified'}), 400
         
     if User.query.filter_by(email=email).first():
@@ -218,6 +230,10 @@ def register():
     db.session.commit()
     
     # Create new user
+    
+    # Handle list to JSON string conversion for documents if needed
+    lab_certs_str = json.dumps(lab_certificates) if isinstance(lab_certificates, list) else lab_certificates
+    supp_docs_str = json.dumps(supporting_documents) if isinstance(supporting_documents, list) else supporting_documents
 
     new_user = User(
         name=name,
@@ -228,8 +244,18 @@ def register():
         district=district,
         pin_code=pin_code,
         coverage_pins=coverage_pins,
+        sub_district=sub_district,
         # Admin is auto-approved, others approved by default or admin
-        is_approved=(role in ['CONSUMER', 'INVESTOR', 'ADMIN'])
+        is_approved=(role in ['CONSUMER', 'INVESTOR', 'ADMIN']),
+        # Lab-specific fields
+        lab_name=lab_name if role == 'TESTER' else None,
+        authorized_person=authorized_person if role == 'TESTER' else None,
+        lab_license_number=lab_license_number if role == 'TESTER' else None,
+        accreditation_number=accreditation_number if role == 'TESTER' else None,
+        gov_reg_number=gov_reg_number if role == 'TESTER' else None,
+        lab_certificates=lab_certs_str if role == 'TESTER' else None,
+        supporting_documents=supp_docs_str if role == 'TESTER' else None,
+        status='PENDING_APPROVAL' if role == 'TESTER' else 'ACTIVE'
     )
     new_user.set_password(password)
     
@@ -244,7 +270,6 @@ def register():
     )
     db.session.add(audit)
     db.session.commit()
-
     
     return jsonify({
         'message': 'User registered successfully!',
@@ -261,6 +286,9 @@ def login():
     if not email or not password:
         return jsonify({'message': 'Missing email or password'}), 400
         
+    email = email.strip().lower()
+    password = password.strip()
+    
     user = User.query.filter_by(email=email).first()
     
     if not user or not user.check_password(password):
@@ -290,11 +318,41 @@ def get_profile(current_user):
     return jsonify(current_user.to_dict()), 200
 
 
+@auth_bp.route('/change-password', methods=['POST'])
+@token_required
+def change_password(current_user):
+    data = request.get_json() or {}
+    new_password = data.get('new_password')
+    
+    if not new_password:
+        return jsonify({'message': 'New password is required'}), 400
+        
+    current_user.set_password(new_password)
+    current_user.must_change_password = False
+    db.session.commit()
+    
+    # Audit log
+    audit = AuditLog(
+        user_id=current_user.id,
+        action='USER_PASSWORD_CHANGED',
+        details=f"User {current_user.name} changed their password."
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Password changed successfully!',
+        'user': current_user.to_dict()
+    }), 200
+
+
 @auth_bp.route('/link-wallet', methods=['POST'])
 @token_required
 def link_wallet(current_user):
     data = request.get_json() or {}
     wallet_address = data.get('wallet_address')
+    message = data.get('message')
+    signature = data.get('signature')
     
     if not wallet_address:
         return jsonify({'message': 'Missing wallet address'}), 400
@@ -306,14 +364,31 @@ def link_wallet(current_user):
     if existing_user and existing_user.id != current_user.id:
         return jsonify({'message': 'Wallet address already linked to another account'}), 400
         
+    # Enforce MetaMask signature ownership verification
+    if current_user.role == 'INSPECTOR':
+        if not message or not signature:
+            return jsonify({'message': 'Message and signature are required for Inspector wallet verification'}), 400
+            
+    if message and signature:
+        try:
+            encoded_message = encode_defunct(text=message)
+            recovered_address = Account.recover_message(encoded_message, signature=signature).lower()
+            if recovered_address != wallet_address:
+                return jsonify({'message': 'Signature verification failed. Recovered address does not match provided address.'}), 400
+        except Exception as e:
+            return jsonify({'message': f'Signature verification error: {str(e)}'}), 400
+            
     current_user.wallet_address = wallet_address
+    if current_user.role == 'INSPECTOR':
+        current_user.status = 'ACTIVE'
+        
     db.session.commit()
     
     # Audit log
     audit = AuditLog(
         user_id=current_user.id,
         action='WALLET_LINKED',
-        details=f"Wallet {wallet_address} linked to user."
+        details=f"Wallet {wallet_address} linked to user (Role: {current_user.role})."
     )
     db.session.add(audit)
     db.session.commit()

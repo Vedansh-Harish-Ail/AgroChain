@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
-import { 
-  UserPlus, User, Mail, Lock, Briefcase, Wallet, 
+import {
+  UserPlus, User, Mail, Lock, Briefcase, Wallet,
   ShieldCheck, ChevronRight, Sparkles, Eye, EyeOff,
-  Phone, KeyRound
+  Phone, KeyRound, Upload, X, FileText, HelpCircle
 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -20,25 +20,78 @@ export default function RegisterPage() {
   const [district, setDistrict] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [coveragePins, setCoveragePins] = useState('');
-  
+  const [labName, setLabName] = useState('');
+  const [authorizedPerson, setAuthorizedPerson] = useState('');
+  const [subDistrict, setSubDistrict] = useState('');
+  const [labLicenseNumber, setLabLicenseNumber] = useState('');
+  const [accreditationNumber, setAccreditationNumber] = useState('');
+  const [govRegNumber, setGovRegNumber] = useState('');
+  const [labCertificates, setLabCertificates] = useState([]);
+  const [supportingDocuments, setSupportingDocuments] = useState([]);
+  const [uploadingCerts, setUploadingCerts] = useState(false);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+
+  const handleCertUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    setUploadingCerts(true);
+    setTimeout(() => {
+      const mockDocUrls = [
+        "https://agrochain-docs.s3.amazonaws.com/proofs/lab_cert_iso17025.pdf",
+        "https://agrochain-docs.s3.amazonaws.com/proofs/quality_standards_compliance.pdf",
+        "https://agrochain-docs.s3.amazonaws.com/proofs/nbl_accreditation.pdf"
+      ];
+      const index = (labCertificates.length) % mockDocUrls.length;
+      setLabCertificates(prev => [...prev, mockDocUrls[index]]);
+      setUploadingCerts(false);
+    }, 1200);
+  };
+
+  const removeCert = (idx) => {
+    setLabCertificates(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleDocUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    setUploadingDocs(true);
+    setTimeout(() => {
+      const mockDocUrls = [
+        "https://agrochain-docs.s3.amazonaws.com/proofs/lab_registration_gov.pdf",
+        "https://agrochain-docs.s3.amazonaws.com/proofs/company_pan_card.pdf",
+        "https://agrochain-docs.s3.amazonaws.com/proofs/utility_bill_verification.pdf"
+      ];
+      const index = (supportingDocuments.length) % mockDocUrls.length;
+      setSupportingDocuments(prev => [...prev, mockDocUrls[index]]);
+      setUploadingDocs(false);
+    }, 1200);
+  };
+
+  const removeDoc = (idx) => {
+    setSupportingDocuments(prev => prev.filter((_, i) => i !== idx));
+  };
+
   // Email OTP States
   const [emailOtp, setEmailOtp] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
   const [emailCountdown, setEmailCountdown] = useState(0);
-  
+
   // SMS OTP States
   const [smsOtp, setSmsOtp] = useState('');
   const [smsOtpSent, setSmsOtpSent] = useState(false);
   const [sendingSmsOtp, setSendingSmsOtp] = useState(false);
   const [smsCountdown, setSmsCountdown] = useState(0);
-  
+
   const [devOtpMessage, setDevOtpMessage] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showWalletHelp, setShowWalletHelp] = useState(false);
+  const [showTesterModal, setShowTesterModal] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const navigate = useNavigate();
 
   // Email Countdown Effect
@@ -58,6 +111,14 @@ export default function RegisterPage() {
     }
     return () => clearTimeout(timer);
   }, [smsCountdown]);
+
+  const handleRoleChange = (e) => {
+    const val = e.target.value;
+    setRole(val);
+    if (val === 'TESTER') {
+      setShowTesterModal(true);
+    }
+  };
 
   const handleWalletLink = async () => {
     if (!isConnected) {
@@ -118,6 +179,11 @@ export default function RegisterPage() {
     setError('');
     setSuccess('');
 
+    if (role === 'TESTER' && !agreeTerms) {
+      setError('You must agree to the terms and conditions to apply as a Quality Lab.');
+      return;
+    }
+
     if (!phoneNumber) {
       setError('Phone number is required.');
       return;
@@ -135,9 +201,24 @@ export default function RegisterPage() {
 
     const activeWallet = customWallet || (isConnected ? walletAddress : '');
 
-    const locationData = ['INSPECTOR', 'TESTER'].includes(role) 
-      ? { district, pin_code: pinCode, coverage_pins: coveragePins } 
-      : {};
+    let locationData = {};
+    if (role === 'INSPECTOR') {
+      locationData = { district, pin_code: pinCode, coverage_pins: coveragePins };
+    } else if (role === 'TESTER') {
+      locationData = {
+        district,
+        pin_code: pinCode,
+        coverage_pins: coveragePins,
+        sub_district: subDistrict,
+        lab_name: labName,
+        authorized_person: authorizedPerson,
+        lab_license_number: labLicenseNumber,
+        accreditation_number: accreditationNumber,
+        gov_reg_number: govRegNumber,
+        lab_certificates: labCertificates,
+        supporting_documents: supportingDocuments
+      };
+    }
 
     const result = await register(name, email, password, role, activeWallet, phoneNumber, emailOtp, smsOtp, locationData);
     setLoading(false);
@@ -156,11 +237,11 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-[75vh] items-center justify-center py-4 px-4">
       <div className="w-full relative max-w-6xl overflow-hidden flex flex-col md:flex-row-reverse bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/60 dark:border-slate-800/60">
-        
+
         {/* Right Content Section (Visual Panel) */}
         <div className="bg-black text-white p-6 md:p-8 md:w-[42%] relative overflow-hidden flex flex-col justify-between min-h-[180px] md:min-h-0">
           {/* Gradients and shapes overlay */}
-          <div 
+          <div
             className="w-full h-full z-[2] absolute inset-0 opacity-90"
             style={{
               background: 'linear-gradient(to top, transparent, rgba(0,0,0,0.95))'
@@ -222,7 +303,7 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-3.5" noValidate>
-            
+
             {/* Full Name & Password Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -402,13 +483,12 @@ export default function RegisterPage() {
                   <select
                     id="role"
                     value={role}
-                    onChange={(e) => setRole(e.target.value)}
+                    onChange={handleRoleChange}
                     className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500"
                   >
-                    <option value="CONSUMER">Consumer / Investor (Legacy)</option>
+                    <option value="CONSUMER">Consumer</option>
                     <option value="INVESTOR">Investor</option>
                     <option value="FARMER">Farmer</option>
-                    <option value="INSPECTOR">Agricultural Inspector</option>
                     <option value="TESTER">Quality Lab</option>
                     <option value="ADMIN">System Admin</option>
                   </select>
@@ -418,26 +498,119 @@ export default function RegisterPage() {
 
             {/* Location Fields for Verifiers */}
             {['INSPECTOR', 'TESTER'].includes(role) && (
-              <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-3 dark:border-blue-950/20 dark:bg-blue-950/10 mb-1">
-                <p className="text-[11px] font-semibold text-blue-800 dark:text-blue-300 mb-2">Location Assignment Details</p>
+              <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-3 dark:border-blue-950/20 dark:bg-blue-950/10 mb-1 space-y-3">
+                <p className="text-[11px] font-semibold text-blue-800 dark:text-blue-300">Location Assignment Details</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">District</label>
-                    <input type="text" value={district} onChange={(e) => setDistrict(e.target.value)} required={['INSPECTOR', 'TESTER'].includes(role)} placeholder="E.g. Pune" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                    <input type="text" value={district} onChange={(e) => setDistrict(e.target.value)} required={['INSPECTOR', 'TESTER'].includes(role)} placeholder="E.g. Ernakulam" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
                   </div>
+                  {role === 'TESTER' && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Sub-District (Taluk)</label>
+                      <input type="text" value={subDistrict} onChange={(e) => setSubDistrict(e.target.value)} required={role === 'TESTER'} placeholder="E.g. Aluva" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Base PIN Code</label>
-                    <input type="text" value={pinCode} onChange={(e) => setPinCode(e.target.value)} required={['INSPECTOR', 'TESTER'].includes(role)} placeholder="E.g. 411001" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                    <input type="text" value={pinCode} onChange={(e) => setPinCode(e.target.value)} required={['INSPECTOR', 'TESTER'].includes(role)} placeholder="E.g. 682022" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
                   </div>
-                  <div>
+                  <div className={role === 'TESTER' ? "sm:col-span-3" : ""}>
                     <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Coverage PINs (Comma sep)</label>
-                    <input type="text" value={coveragePins} onChange={(e) => setCoveragePins(e.target.value)} placeholder="411001, 411002" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                    <input type="text" value={coveragePins} onChange={(e) => setCoveragePins(e.target.value)} placeholder="682022, 682024" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
                   </div>
                 </div>
               </div>
             )}
 
+            {/* Private Quality Lab Registration Fields */}
+            {role === 'TESTER' && (
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/20 p-4 dark:border-emerald-950/20 dark:bg-emerald-950/5 mb-1 space-y-3">
+                <p className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 border-b border-slate-100 dark:border-slate-800 pb-1">Quality Lab Specifications</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Lab Name</label>
+                    <input type="text" value={labName} onChange={(e) => setLabName(e.target.value)} required={role === 'TESTER'} placeholder="E.g. Kerala Food Quality Lab" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Authorized Person Name</label>
+                    <input type="text" value={authorizedPerson} onChange={(e) => setAuthorizedPerson(e.target.value)} required={role === 'TESTER'} placeholder="E.g. Dr. Jane Smith" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Lab License Number</label>
+                    <input type="text" value={labLicenseNumber} onChange={(e) => setLabLicenseNumber(e.target.value)} required={role === 'TESTER'} placeholder="LIC-9876543" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Accreditation Number</label>
+                    <input type="text" value={accreditationNumber} onChange={(e) => setAccreditationNumber(e.target.value)} required={role === 'TESTER'} placeholder="ACR-12345" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Government Registration Number</label>
+                    <input type="text" value={govRegNumber} onChange={(e) => setGovRegNumber(e.target.value)} required={role === 'TESTER'} placeholder="REG-112233" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                  </div>
+                </div>
 
+                {/* Lab Certificates Upload Zone */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">Lab Certificates</label>
+                  <div className="space-y-1.5 mb-2">
+                    {labCertificates.map((url, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 text-[10px]">
+                        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                          <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <span className="truncate max-w-[180px] font-medium">Certificate #{idx + 1}</span>
+                        </div>
+                        <button type="button" onClick={() => removeCert(idx)} className="p-0.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition">
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {uploadingCerts && (
+                      <div className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 text-[10px] text-slate-400">
+                        <div className="h-3 w-3 animate-spin rounded-full border border-emerald-600 border-t-transparent"></div>
+                        <span>Uploading certificate...</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="relative border border-dashed border-slate-300 dark:border-slate-800 hover:border-emerald-500 rounded-xl p-3 transition text-center bg-white dark:bg-slate-955">
+                    <input type="file" multiple accept=".pdf,.doc,.docx" onChange={handleCertUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={uploadingCerts} />
+                    <Upload className="h-5 w-5 text-slate-400 mx-auto mb-1" />
+                    <p className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Drag & Drop files or click to upload certificates</p>
+                  </div>
+                </div>
+
+                {/* Supporting Documents Upload Zone */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">Supporting Documents</label>
+                  <div className="space-y-1.5 mb-2">
+                    {supportingDocuments.map((url, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 text-[10px]">
+                        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                          <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <span className="truncate max-w-[180px] font-medium">Document #{idx + 1}</span>
+                        </div>
+                        <button type="button" onClick={() => removeDoc(idx)} className="p-0.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition">
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {uploadingDocs && (
+                      <div className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 text-[10px] text-slate-400">
+                        <div className="h-3 w-3 animate-spin rounded-full border border-emerald-600 border-t-transparent"></div>
+                        <span>Uploading document...</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="relative border border-dashed border-slate-300 dark:border-slate-800 hover:border-emerald-500 rounded-xl p-3 transition text-center bg-white dark:bg-slate-955">
+                    <input type="file" multiple accept=".pdf,.doc,.docx" onChange={handleDocUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={uploadingDocs} />
+                    <Upload className="h-5 w-5 text-slate-400 mx-auto mb-1" />
+                    <p className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Drag & Drop files or click to upload supporting docs</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {devOtpMessage && (
               <div className="p-2.5 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30 flex items-center justify-between font-mono">
@@ -459,7 +632,40 @@ export default function RegisterPage() {
             {/* Compact Conditional Wallet Section */}
             {['INSPECTOR', 'TESTER', 'ADMIN'].includes(role) && (
               <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-3 dark:border-slate-800 dark:bg-slate-950/30">
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">Recommended: Link your MetaMask wallet now for Web3 features.</p>
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Recommended: Link your MetaMask wallet now for Web3 features.</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowWalletHelp(!showWalletHelp)}
+                    className="text-[10px] text-emerald-600 hover:text-emerald-500 hover:underline font-semibold flex items-center gap-0.5 focus:outline-none"
+                  >
+                    <HelpCircle className="h-3 w-3" /> Need Help?
+                  </button>
+                </div>
+                {showWalletHelp && (
+                  <div className="mb-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150 text-left">
+                    <div>
+                      <h4 className="font-bold text-slate-850 dark:text-slate-200 text-xs mb-1">What is MetaMask?</h4>
+                      <p className="leading-relaxed">MetaMask is a free, secure digital wallet that acts as your <strong>digital signature card</strong> on the blockchain. On AgroBlock (agroblock.in), Agricultural Inspectors and Quality Labs use it to officially sign, verify, and lock crop logs, ensuring records can never be forged or tampered with.</p>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-slate-850 dark:text-slate-200 text-xs mb-1">How do I setup and use it?</h4>
+                      <ol className="list-decimal list-inside space-y-1.5 leading-relaxed">
+                        <li><strong>Install MetaMask</strong>: Download and install the MetaMask extension for your web browser (Chrome, Firefox, Edge) or mobile app from the official site: <a href="https://metamask.io" target="_blank" rel="noopener noreferrer" className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold">metamask.io</a>.</li>
+                        <li><strong>Create Your Wallet Account</strong>: Open the MetaMask extension, click "Create a New Wallet", and follow the setup prompts. 
+                          <span className="block mt-0.5 text-amber-600 dark:text-amber-400 font-semibold">⚠️ Important: Write down your Secret Recovery Phrase on paper and keep it in a safe place. Never share it with anyone!</span>
+                        </li>
+                        <li><strong>Connect to AgroBlock</strong>: Click the <strong>"Connect MetaMask"</strong> button below. A MetaMask popup will appear asking you to authorize connection to <span className="font-semibold text-slate-850 dark:text-slate-250">agroblock.in</span>. Simply click "Next" and "Connect".</li>
+                        <li><strong>Sign Blockchain Actions</strong>: When performing verification or certification duties, AgroBlock will trigger a MetaMask signature or confirmation request. Review the details in the popup and click "Sign" or "Confirm" to write the record permanently to the blockchain.</li>
+                      </ol>
+                    </div>
+
+                    <div className="pt-1 border-t border-slate-200 dark:border-slate-800 text-[9px] text-slate-500">
+                      <strong>Note:</strong> Signing transactions requires a tiny amount of network gas (Ethereum). For testing, you can obtain free test tokens (Sepolia ETH) from a faucet.
+                    </div>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={handleWalletLink}
@@ -491,6 +697,25 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {role === 'TESTER' && (
+               <div className="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 text-xs animate-in fade-in duration-200">
+                 <input
+                   type="checkbox"
+                   id="agreeTerms"
+                   checked={agreeTerms}
+                   onChange={(e) => setAgreeTerms(e.target.checked)}
+                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                 />
+                 <label htmlFor="agreeTerms" className="text-slate-600 dark:text-slate-400 select-none leading-relaxed cursor-pointer">
+                   Ticking the box means accepting all the{' '}
+                   <Link to="/terms" target="_blank" className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
+                     terms and conditions
+                   </Link>{' '}
+                   for applying as a Quality Lab.
+                 </label>
+               </div>
+             )}
+
             <button
               type="submit"
               disabled={loading}
@@ -500,7 +725,7 @@ export default function RegisterPage() {
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
               ) : (
                 <span className="flex items-center gap-1.5 text-xs">
-                  <UserPlus className="h-3.5 w-3.5" /> Create {role.charAt(0) + role.slice(1).toLowerCase()} Account
+                  <UserPlus className="h-3.5 w-3.5" /> {role === 'TESTER' ? 'Apply for Quality Lab Account' : `Create ${role.charAt(0) + role.slice(1).toLowerCase()} Account`}
                 </span>
               )}
             </button>
@@ -514,6 +739,41 @@ export default function RegisterPage() {
           </form>
         </div>
       </div>
+
+      {/* Quality Lab Notice Modal */}
+      {showTesterModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 text-center animate-in zoom-in-95 duration-200">
+            <div className="mx-auto mb-4 bg-emerald-500/10 p-3 rounded-2xl w-fit text-emerald-600 dark:text-emerald-400">
+              <ShieldCheck className="h-8 w-8 animate-bounce" />
+            </div>
+            
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+              Quality Lab Application Notice
+            </h3>
+            
+            <div className="text-slate-600 dark:text-slate-400 text-xs text-left space-y-2 mb-6">
+              <p>
+                Private Quality Labs cannot register instantly. Selecting this role initiates an official **verification application**.
+              </p>
+              <p>
+                You will be required to provide your official lab license, accreditation, and registration details, as well as upload supporting certificates.
+              </p>
+              <p className="font-semibold text-emerald-600 dark:text-emerald-400">
+                After submission, the System Administrator will review your credentials. You will only be authorized to log in once your application is approved and your status becomes ACTIVE.
+              </p>
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => setShowTesterModal(false)}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2.5 px-4 rounded-xl transition shadow-md shadow-emerald-600/10"
+            >
+              I Understand & Proceed
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,6 +12,7 @@ def register_crop(current_user):
     data = request.get_json() or {}
     
     farm_location = data.get('farm_location')
+    farm_address = data.get('farm_address') or farm_location # support both
     farm_size = data.get('farm_size')
     farming_type = data.get('farming_type') # organic / non-organic
     crop_type = data.get('crop_type')
@@ -25,12 +26,15 @@ def register_crop(current_user):
     gps_latitude = data.get('gps_latitude')
     gps_longitude = data.get('gps_longitude')
     evidence_photos_raw = data.get('evidence_photos')
+    evidence_documents_raw = data.get('evidence_documents')
 
     district = data.get('district')
+    sub_district = data.get('sub_district')
+    village = data.get('village')
     pin_code = data.get('pin_code')
     
-    if not farm_location or not farm_size or not farming_type or not crop_type or not expected_yield or not cultivation_date_str or not land_survey_no:
-        return jsonify({'message': 'Missing required fields, including land survey number'}), 400
+    if not farm_location or not farm_size or not farming_type or not crop_type or not expected_yield or not cultivation_date_str or not land_survey_no or not district or not sub_district or not village:
+        return jsonify({'message': 'Missing required fields, including district, sub-district, and village'}), 400
         
     try:
         cultivation_date = datetime.fromisoformat(cultivation_date_str.replace('Z', ''))
@@ -60,31 +64,65 @@ def register_crop(current_user):
         else:
             evidence_photos = str(evidence_photos_raw)
 
+    # Serialize evidence documents
+    evidence_documents = None
+    if evidence_documents_raw:
+        if isinstance(evidence_documents_raw, list):
+            evidence_documents = json.dumps(evidence_documents_raw)
+        else:
+            evidence_documents = str(evidence_documents_raw)
+
     # Determine blockchain status
     blockchain_status = 'VERIFIED' if tx_hash else 'DB_ONLY'
 
-    # Simple Location-Based Matching Algorithm
+    # Kerala-Based Inspector Assignment Logic
     inspector = None
-    tester = None
-    if pin_code:
-        inspector = User.query.filter_by(role='INSPECTOR', pin_code=pin_code).first()
-        tester = User.query.filter_by(role='TESTER', pin_code=pin_code).first()
     
+    # Priority 1: Same Sub-District ACTIVE Inspector
+    if sub_district:
+        inspector = User.query.filter_by(
+            role='INSPECTOR',
+            sub_district=sub_district,
+            status='ACTIVE'
+        ).first()
+
+    # Priority 2: Same District ACTIVE Inspector
     if not inspector and district:
-        inspector = User.query.filter_by(role='INSPECTOR', district=district).first()
-    if not tester and district:
-        tester = User.query.filter_by(role='TESTER', district=district).first()
-        
-    # Fallback to any available if no match found
+        inspector = User.query.filter_by(
+            role='INSPECTOR',
+            district=district,
+            status='ACTIVE'
+        ).first()
+
+    # Priority 3: Any available ACTIVE DISTRICT-level Inspector
     if not inspector:
-        inspector = User.query.filter_by(role='INSPECTOR').first()
+        inspector = User.query.filter_by(
+            role='INSPECTOR',
+            coverage_level='DISTRICT',
+            status='ACTIVE'
+        ).first()
+
+    # Fallback to any ACTIVE inspector in the DB
+    if not inspector:
+        inspector = User.query.filter_by(
+            role='INSPECTOR',
+            status='ACTIVE'
+        ).first()
+
+    # Tester location-based matching: same district, fallback to any tester
+    tester = None
+    if district:
+        tester = User.query.filter_by(role='TESTER', status='ACTIVE', district=district).first()
     if not tester:
-        tester = User.query.filter_by(role='TESTER').first()
+        tester = User.query.filter_by(role='TESTER', status='ACTIVE').first()
 
     new_farmer_project = Farmer(
         user_id=current_user.id,
         farm_location=farm_location,
+        farm_address=farm_address,
         district=district,
+        sub_district=sub_district,
+        village=village,
         pin_code=pin_code,
         farm_size=farm_size,
         farming_type=farming_type,
@@ -94,11 +132,12 @@ def register_crop(current_user):
         tx_hash=tx_hash,
         block_number=block_number,
         blockchain_status=blockchain_status,
-        is_approved=False, # Pending Quality Tester approval
+        is_approved=False, # Pending Quality Inspector approval
         land_survey_no=land_survey_no,
         gps_latitude=gps_latitude,
         gps_longitude=gps_longitude,
         evidence_photos=evidence_photos,
+        evidence_documents=evidence_documents,
         verification_status='PENDING',
         assigned_inspector_id=inspector.id if inspector else None,
         assigned_tester_id=tester.id if tester else None

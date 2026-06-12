@@ -29,13 +29,14 @@ The platform implements strict Role-Based Access Control (RBAC) across six stake
     *   Reviews investor funding proposals and accepts/declines them.
     *   Accesses the **Document Center** to view and print official certificates.
 3.  **Agricultural Inspector (`INSPECTOR`)**:
-    *   Assigned regional crop registrations based on location pin codes.
-    *   Inspects soil parameters, GPS bounds, and land deeds on-site.
-    *   Approves registrations on-chain (contract: `FarmerRegistry.sol`), generating an official **Approval Letter**.
+    *   **Admin-Only Account Creation**: Private signup is disabled; accounts are created exclusively by the Administrator with temporary credentials.
+    *   **Setup Lifecycle (`PENDING_SETUP` $\rightarrow$ `ACTIVE`)**: Forces a password change on first login and requires connecting MetaMask to sign a cryptographic verification message (`personal_sign`), updating the account status to `ACTIVE`. Only `ACTIVE` inspectors receive assignments.
+    *   **Kerala Location Routing Hierarchy**: Automatically assigned crop registrations using a prioritized matching model (Priority 1: same Taluk/Sub-District, Priority 2: same District, Priority 3: DISTRICT-level fallback).
+    *   **Comprehensive Auditing**: Renders separate panels for photos and official evidence documents. Supports saving detailed notes and selecting the inspection method (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`) directly to the database without requiring a MetaMask connection, or approving on-chain.
 4.  **Quality Tester / Lab (`TESTER`)**:
-    *   Assigned harvested crops in their district coverage.
-    *   Performs scientific testing (moisture, purity, heavy metals, pesticide clearance).
-    *   Certifies crop batches on-chain (contract: `ProductRegistry.sol`) with a single-click action, setting grades (e.g., `Grade A+`) and listing prices in Wei.
+    *   **Self-Registration**: Registers via the signup portal, providing details such as lab name, license number, accreditation details, and uploading documents.
+    *   **Onboarding Approval**: Account defaults to `PENDING_APPROVAL` status. The Administrator reviews their credentials and approves them to `ACTIVE` status (`is_approved = True`).
+    *   **Testing & Certification**: Only `ACTIVE` labs receive crop assignments in their district and PIN code coverage. Conducts scientific testing (moisture, purity, heavy metals, pesticide clearance) and certifies crop batches on-chain (`ProductRegistry.sol`) using MetaMask, setting grades (e.g., `Grade A+`) and listing prices in Wei. Displays warning cards if their MetaMask wallet is unlinked.
 5.  **Dedicated Investor (`INVESTOR`)**:
     *   Browses verified crop listings in the **Funding Marketplace** and submits formal proposals (INR returns, yield margin agreements).
     *   Tracks proposals in the **Submitted LOIs Hub** and locks/transfers funding (ETH) using the `MicroFinance.sol` smart contract escrow mechanism.
@@ -43,7 +44,12 @@ The platform implements strict Role-Based Access Control (RBAC) across six stake
     *   Explores the public agricultural directory, traces crop origins (provenance timelines), and submits ratings/reviews on-chain or walletless.
 
 ### 📍 2. Geographical Verifier Allocation
-Crops are automatically routed to inspectors and testers matching their geographical PIN Code / District coverage fields (`coverage_pins` in the database), preventing regional conflicts and automating administrative queues.
+*   **Inspector Priority Routing**: Crop registrations are automatically assigned to verifiers using a prioritized Kerala location matching model:
+    *   **Priority 1**: Same Taluk/Sub-District
+    *   **Priority 2**: Same District
+    *   **Priority 3**: DISTRICT-level coverage fallback
+*   **Active Verifier Queue**: Only inspectors in `ACTIVE` status (after completing setup, password reset, and wallet cryptographic signature link) receive crop assignments, preventing orphaned assignments.
+*   **Quality Tester Assignment**: Harvested crops are matched to labs based on the crop's district and PIN code. Assignments are only routed to Quality Labs that are in `ACTIVE` status (i.e. approved by the Admin).
 
 ### 📄 3. Integrated Document Center & Printing
 *   **Crop Verification Approval Letter**: A formal letterhead outlining GPS verification coordinates, soil chemistry parameters, and inspector sign-offs.

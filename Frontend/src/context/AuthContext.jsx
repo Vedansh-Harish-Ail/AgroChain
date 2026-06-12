@@ -107,10 +107,27 @@ export const AuthProvider = ({ children }) => {
   };
 
 
-  const linkWallet = async (walletAddress) => {
+  const changePassword = async (newPassword) => {
+    try {
+      const res = await axios.post('/api/auth/change-password', {
+        new_password: newPassword
+      });
+      setUser(res.data.user);
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Failed to change password.'
+      };
+    }
+  };
+
+  const linkWallet = async (walletAddress, message = null, signature = null) => {
     try {
       const res = await axios.post('/api/auth/link-wallet', {
-        wallet_address: walletAddress
+        wallet_address: walletAddress,
+        message,
+        signature
       });
       setUser(res.data.user);
       return { success: true };
@@ -130,7 +147,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, linkWallet, sendSmsOtp, sendEmailOtp }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, linkWallet, sendSmsOtp, sendEmailOtp, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

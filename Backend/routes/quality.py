@@ -19,12 +19,17 @@ def approve_crop(current_user, crop_id):
     tx_hash = data.get('tx_hash')
     block_number = data.get('block_number')
     tester_remarks = data.get('tester_remarks')
+    inspection_notes = data.get('inspection_notes') or tester_remarks
+    inspection_method = data.get('inspection_method') or 'PHYSICAL_VISIT'
     
     crop.is_approved = True
     crop.verification_status = 'VERIFIED'
-    crop.tester_remarks = tester_remarks
+    crop.tester_remarks = inspection_notes
     crop.tester_id = current_user.id
     crop.verification_date = datetime.now(timezone.utc)
+    crop.inspection_date = datetime.now(timezone.utc)
+    crop.inspection_notes = inspection_notes
+    crop.inspection_method = inspection_method
     crop.timeline_status = 'TESTER_APPROVED'
     
     if tx_hash:
@@ -39,7 +44,7 @@ def approve_crop(current_user, crop_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='FARMER_CROP_APPROVED',
-        details=f"Agricultural Inspector {current_user.name} verified and approved crop ID {crop_id} with remarks: {tester_remarks}."
+        details=f"Agricultural Inspector {current_user.name} verified and approved crop ID {crop_id} with remarks: {inspection_notes}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -49,10 +54,10 @@ def approve_crop(current_user, crop_id):
     farmer_user = crop.user
     if farmer_user and farmer_user.email:
         subject = "Crop Registration Approved - AgroChain"
-        text_body = f"Hello {farmer_user.name},\n\nYour crop registration for {crop.crop_type} (ID: {crop_id}) has been approved by Inspector {current_user.name}.\n\nRemarks: {tester_remarks}"
+        text_body = f"Hello {farmer_user.name},\n\nYour crop registration for {crop.crop_type} (ID: {crop_id}) has been approved by Inspector {current_user.name}.\n\nRemarks: {inspection_notes}"
         html_body = get_html_template(
             title="Crop Registration Approved!",
-            body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>We are pleased to inform you that Agricultural Inspector <strong>{current_user.name}</strong> has verified and approved your crop registration for <strong>{crop.crop_type} (ID: {crop_id})</strong>.</p><p><strong>Inspector Remarks:</strong><br>{tester_remarks or 'No remarks provided.'}</p><p>You can now update your crop status or prepare for testing.</p>",
+            body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>We are pleased to inform you that Agricultural Inspector <strong>{current_user.name}</strong> has verified and approved your crop registration for <strong>{crop.crop_type} (ID: {crop_id})</strong>.</p><p><strong>Inspector Remarks:</strong><br>{inspection_notes or 'No remarks provided.'}</p><p>You can now update your crop status or prepare for testing.</p>",
             cta_text="View Crop History",
             cta_url="http://localhost:5173/dashboard"
         )
@@ -65,8 +70,8 @@ def approve_crop(current_user, crop_id):
         'message': 'Crop registration approved successfully!',
         'crop': crop.to_dict()
     }), 200
-
-
+ 
+ 
 @quality_bp.route('/reject/<int:crop_id>', methods=['POST'])
 @roles_allowed('INSPECTOR', 'ADMIN')
 def reject_crop(current_user, crop_id):
@@ -80,12 +85,17 @@ def reject_crop(current_user, crop_id):
         
     data = request.get_json() or {}
     tester_remarks = data.get('tester_remarks')
+    inspection_notes = data.get('inspection_notes') or tester_remarks
+    inspection_method = data.get('inspection_method') or 'PHYSICAL_VISIT'
     
     crop.is_approved = False
     crop.verification_status = 'REJECTED'
-    crop.tester_remarks = tester_remarks
+    crop.tester_remarks = inspection_notes
     crop.tester_id = current_user.id
     crop.verification_date = datetime.now(timezone.utc)
+    crop.inspection_date = datetime.now(timezone.utc)
+    crop.inspection_notes = inspection_notes
+    crop.inspection_method = inspection_method
     
     db.session.commit()
     
@@ -93,7 +103,7 @@ def reject_crop(current_user, crop_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='FARMER_CROP_REJECTED',
-        details=f"Agricultural Inspector {current_user.name} rejected crop ID {crop_id} with remarks: {tester_remarks}."
+        details=f"Agricultural Inspector {current_user.name} rejected crop ID {crop_id} with remarks: {inspection_notes}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -103,10 +113,10 @@ def reject_crop(current_user, crop_id):
     farmer_user = crop.user
     if farmer_user and farmer_user.email:
         subject = "Crop Registration Rejected - AgroChain"
-        text_body = f"Hello {farmer_user.name},\n\nYour crop registration for {crop.crop_type} (ID: {crop_id}) has been rejected by Inspector {current_user.name}.\n\nRemarks: {tester_remarks}"
+        text_body = f"Hello {farmer_user.name},\n\nYour crop registration for {crop.crop_type} (ID: {crop_id}) has been rejected by Inspector {current_user.name}.\n\nRemarks: {inspection_notes}"
         html_body = get_html_template(
             title="Crop Registration Rejected",
-            body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>We regret to inform you that Agricultural Inspector <strong>{current_user.name}</strong> has rejected your crop registration for <strong>{crop.crop_type} (ID: {crop_id})</strong>.</p><p><strong>Inspector Remarks:</strong><br>{tester_remarks or 'No remarks provided.'}</p><p>Please review the remarks and resubmit if necessary.</p>",
+            body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>We regret to inform you that Agricultural Inspector <strong>{current_user.name}</strong> has rejected your crop registration for <strong>{crop.crop_type} (ID: {crop_id})</strong>.</p><p><strong>Inspector Remarks:</strong><br>{inspection_notes or 'No remarks provided.'}</p><p>Please review the remarks and resubmit if necessary.</p>",
             cta_text="Go to Dashboard",
             cta_url="http://localhost:5173/dashboard"
         )
@@ -119,8 +129,8 @@ def reject_crop(current_user, crop_id):
         'message': 'Crop registration rejected.',
         'crop': crop.to_dict()
     }), 200
-
-
+ 
+ 
 @quality_bp.route('/pending', methods=['GET'])
 @roles_allowed('INSPECTOR', 'TESTER', 'ADMIN')
 def get_pending_crops(current_user):
@@ -137,3 +147,45 @@ def get_pending_crops(current_user):
     else:
         crops = []
     return jsonify([crop.to_dict() for crop in crops]), 200
+
+
+@quality_bp.route('/save-notes/<int:crop_id>', methods=['POST'])
+@roles_allowed('INSPECTOR', 'ADMIN')
+def save_notes(current_user, crop_id):
+    from datetime import datetime, timezone
+    crop = Farmer.query.get(crop_id)
+    if not crop:
+        return jsonify({'message': 'Crop registration not found'}), 404
+        
+    if current_user.role != 'ADMIN' and crop.assigned_inspector_id != current_user.id:
+        return jsonify({'message': 'Unauthorized. Crop is not assigned to you.'}), 403
+        
+    data = request.get_json() or {}
+    inspection_notes = data.get('inspection_notes')
+    inspection_method = data.get('inspection_method')
+    
+    if not inspection_notes or not inspection_method:
+        return jsonify({'message': 'Missing inspection notes or method'}), 400
+        
+    if inspection_method not in ['PHYSICAL_VISIT', 'PHOTO_REVIEW', 'HYBRID']:
+        return jsonify({'message': 'Invalid inspection method'}), 400
+        
+    crop.tester_remarks = inspection_notes
+    crop.inspection_notes = inspection_notes
+    crop.inspection_method = inspection_method
+    crop.inspection_date = datetime.now(timezone.utc)
+    db.session.commit()
+    
+    # Audit log
+    audit = AuditLog(
+        user_id=current_user.id,
+        action='INSPECTOR_SAVED_NOTES',
+        details=f"Agricultural Inspector {current_user.name} uploaded inspection notes for crop ID {crop_id}."
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Inspection notes saved successfully!',
+        'crop': crop.to_dict()
+    }), 200

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, ShieldAlert, Users, LineChart, FileText, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
+import { Settings, ShieldAlert, Users, LineChart, FileText, CheckCircle2, XCircle, ArrowLeft, UserPlus, Award, X, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 
 export default function AdminDashboard() {
@@ -10,6 +10,22 @@ export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedLabForReview, setSelectedLabForReview] = useState(null);
+
+  const parseJsonList = (jsonStr) => {
+    if (!jsonStr) return [];
+    try {
+      const parsed = JSON.parse(jsonStr);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      if (typeof jsonStr === 'string') {
+        return jsonStr.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+    return [];
+  };
+
+
 
   const renderLogDetails = (details) => {
     if (!details) return null;
@@ -132,6 +148,8 @@ export default function AdminDashboard() {
     }
   };
 
+
+
   return (
     <div className="space-y-8 py-4">
       {/* Admin Panel Header */}
@@ -177,6 +195,10 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Inspectors</span>
+                    <span className="font-bold">{analytics.user_counts.inspectors || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Quality Lab (Testers)</span>
                     <span className="font-bold">{analytics.user_counts.testers}</span>
                   </div>
                   <div className="flex justify-between">
@@ -184,7 +206,7 @@ export default function AdminDashboard() {
                     <span className="font-bold">{analytics.user_counts.consumers}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Investors</span>
+                    <span className="text-slate-505">Investors</span>
                     <span className="font-bold">{analytics.user_counts.investors || 0}</span>
                   </div>
                 </div>
@@ -277,6 +299,13 @@ export default function AdminDashboard() {
                             <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-semibold">
                               <CheckCircle2 className="h-4 w-4" /> Active
                             </span>
+                          ) : user.role === 'TESTER' ? (
+                            <button
+                              onClick={() => setSelectedLabForReview(user)}
+                              className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1 text-[10px] font-bold text-white transition-colors"
+                            >
+                              Review Lab
+                            </button>
                           ) : (
                             <button
                               onClick={() => handleUserApprove(user.id)}
@@ -314,6 +343,149 @@ export default function AdminDashboard() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Modal: Review Lab Documents */}
+      {selectedLabForReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto no-scrollbar">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
+              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Award className="h-5 w-5 text-indigo-600" /> Review Quality Lab Credentials
+              </h3>
+              <button
+                onClick={() => setSelectedLabForReview(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">Lab Name</span>
+                  <span className="font-bold text-sm text-slate-850 dark:text-slate-250">{selectedLabForReview.lab_name || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">Authorized Person</span>
+                  <span className="font-bold text-sm text-slate-850 dark:text-slate-250">{selectedLabForReview.authorized_person || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">Email Address</span>
+                  <span className="font-medium text-slate-750 dark:text-slate-350">{selectedLabForReview.email}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">Contact Phone</span>
+                  <span className="font-medium text-slate-750 dark:text-slate-350">{selectedLabForReview.phone_number}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">District</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedLabForReview.district || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">Sub-District (Taluk)</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedLabForReview.sub_district || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">Base PIN Code</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedLabForReview.pin_code || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">License Number</span>
+                  <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{selectedLabForReview.lab_license_number || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">Accreditation No</span>
+                  <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{selectedLabForReview.accreditation_number || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-0.5">Gov Registration No</span>
+                  <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{selectedLabForReview.gov_reg_number || 'N/A'}</span>
+                </div>
+              </div>
+
+              {/* Certificates & Docs */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-1.5">Lab Certificates</span>
+                  {parseJsonList(selectedLabForReview.lab_certificates).length === 0 ? (
+                    <span className="text-xs text-slate-500 italic">No certificates submitted.</span>
+                  ) : (
+                    <div className="space-y-1.5 max-h-24 overflow-y-auto no-scrollbar">
+                      {parseJsonList(selectedLabForReview.lab_certificates).map((url, i) => (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          key={i}
+                          className="flex items-center gap-1.5 text-xs text-indigo-655 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-350 hover:underline"
+                        >
+                          <FileText className="h-4 w-4 shrink-0" />
+                          <span className="truncate">Certificate Proof #{i + 1}</span>
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-slate-400 font-semibold block uppercase tracking-wider text-[9px] mb-1.5">Supporting Documents</span>
+                  {parseJsonList(selectedLabForReview.supporting_documents).length === 0 ? (
+                    <span className="text-xs text-slate-500 italic">No supporting documents.</span>
+                  ) : (
+                    <div className="space-y-1.5 max-h-24 overflow-y-auto no-scrollbar">
+                      {parseJsonList(selectedLabForReview.supporting_documents).map((url, i) => (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          key={i}
+                          className="flex items-center gap-1.5 text-xs text-indigo-655 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-350 hover:underline"
+                        >
+                          <FileText className="h-4 w-4 shrink-0" />
+                          <span className="truncate">Supporting Doc #{i + 1}</span>
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setSelectedLabForReview(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-350 dark:hover:bg-slate-800 transition"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  handleUserApprove(selectedLabForReview.id);
+                  setSelectedLabForReview(null);
+                }}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 text-xs font-bold transition flex items-center gap-1.5"
+              >
+                Approve & Activate Lab
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

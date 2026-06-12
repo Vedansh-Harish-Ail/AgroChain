@@ -9,6 +9,8 @@ export default function FarmerRegistration() {
   const [formData, setFormData] = useState({
     farm_location: '',
     district: '',
+    sub_district: '',
+    village: '',
     pin_code: '',
     farm_size: '',
     farming_type: 'Organic',
@@ -20,7 +22,9 @@ export default function FarmerRegistration() {
     gps_longitude: ''
   });
   const [evidencePhotos, setEvidencePhotos] = useState([]);
+  const [evidenceDocuments, setEvidenceDocuments] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,6 +90,27 @@ export default function FarmerRegistration() {
     setEvidencePhotos(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const handleDocChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    setUploadingDocs(true);
+    setTimeout(() => {
+      const mockDocUrls = [
+        "https://agrochain-docs.s3.amazonaws.com/proofs/land_deed_verified.pdf",
+        "https://agrochain-docs.s3.amazonaws.com/proofs/tax_receipt_2026.pdf",
+        "https://agrochain-docs.s3.amazonaws.com/proofs/possession_certificate.pdf"
+      ];
+      const index = (evidenceDocuments.length) % mockDocUrls.length;
+      setEvidenceDocuments(prev => [...prev, mockDocUrls[index]]);
+      setUploadingDocs(false);
+    }, 1200);
+  };
+
+  const removeDoc = (idx) => {
+    setEvidenceDocuments(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -103,10 +128,17 @@ export default function FarmerRegistration() {
       return;
     }
 
+    if (evidenceDocuments.length === 0) {
+      setError('Please upload at least one evidence document (e.g. land deed or tax receipt).');
+      setLoading(false);
+      return;
+    }
+
     try {
       await axios.post('/api/farmer/register', {
         ...formData,
         evidence_photos: evidencePhotos,
+        evidence_documents: evidenceDocuments,
         tx_hash: null,
         block_number: null
       });
@@ -288,7 +320,7 @@ export default function FarmerRegistration() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 District
@@ -300,22 +332,37 @@ export default function FarmerRegistration() {
                 value={formData.district}
                 onChange={handleInputChange}
                 className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                placeholder="e.g. Pune"
+                placeholder="e.g. Ernakulam"
               />
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                PIN Code
+                Taluk (Sub-District)
               </label>
               <input
                 type="text"
-                name="pin_code"
+                name="sub_district"
                 required
-                value={formData.pin_code}
+                value={formData.sub_district}
                 onChange={handleInputChange}
                 className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                placeholder="e.g. 411001"
+                placeholder="e.g. Aluva"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Village
+              </label>
+              <input
+                type="text"
+                name="village"
+                required
+                value={formData.village}
+                onChange={handleInputChange}
+                className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-955 dark:text-white sm:text-sm"
+                placeholder="e.g. Keezhmad"
               />
             </div>
           </div>
@@ -369,7 +416,7 @@ export default function FarmerRegistration() {
 
           <div>
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              Evidence Photos (Soil report, land deeds, crop photos)
+              Evidence Photos (Crop / land photos)
             </label>
             
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
@@ -405,7 +452,52 @@ export default function FarmerRegistration() {
               />
               <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Drag & Drop files or click to upload</p>
-              <p className="text-xs text-slate-400 mt-1">PNG, JPG, PDF up to 10MB</p>
+              <p className="text-xs text-slate-400 mt-1">PNG, JPG up to 10MB</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+              Evidence Documents (Soil reports, land deeds, tax receipts)
+            </label>
+            
+            <div className="space-y-2 mb-4">
+              {evidenceDocuments.map((url, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs">
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <FileText className="h-4 w-4 text-emerald-600" />
+                    <span className="truncate max-w-[200px] font-medium">Document Proof #{idx + 1}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeDoc(idx)}
+                    className="p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              
+              {uploadingDocs && (
+                <div className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-400">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent"></div>
+                  <span>Uploading document...</span>
+                </div>
+              )}
+            </div>
+
+            <div className="relative border-2 border-dashed border-slate-250 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-2xl p-6 transition text-center bg-slate-50/50 dark:bg-slate-900/30">
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.xls,.xlsx"
+                onChange={handleDocChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={uploadingDocs}
+              />
+              <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Drag & Drop files or click to upload</p>
+              <p className="text-xs text-slate-400 mt-1">PDF, DOC, XLS up to 10MB</p>
             </div>
           </div>
 

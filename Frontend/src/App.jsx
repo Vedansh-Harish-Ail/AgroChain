@@ -21,6 +21,7 @@ import BlockchainExplorer from './pages/BlockchainExplorer';
 import AdminDashboard from './pages/AdminDashboard';
 import CropHistory from './pages/CropHistory';
 import SubmittedLOIs from './pages/SubmittedLOIs';
+import TermsPage from './pages/TermsPage';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, roles }) => {
@@ -241,6 +242,7 @@ const MainLayout = ({ theme, toggleTheme }) => {
   const location = useLocation();
   const isLanding = location.pathname === '/';
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const isExplorer = location.pathname === '/explorer';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -253,10 +255,11 @@ const MainLayout = ({ theme, toggleTheme }) => {
           <Route path="/" element={<LandingPage theme={theme} toggleTheme={toggleTheme} />} />
         </Routes>
       ) : (
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 ${isExplorer ? 'max-w-[1600px]' : 'max-w-7xl'}`}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/explorer" element={<BlockchainExplorer />} />
             <Route path="/consumer/track" element={<ConsumerTracking />} />
             <Route path="/dashboard" element={
