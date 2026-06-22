@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Settings, ShieldAlert, Users, LineChart, FileText, CheckCircle2, XCircle, ArrowLeft, UserPlus, Award, X, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 
@@ -11,6 +11,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedLabForReview, setSelectedLabForReview] = useState(null);
+  const [activeTab, setActiveTab] = useState('farmers');
 
   const parseJsonList = (jsonStr) => {
     if (!jsonStr) return [];
@@ -147,8 +148,12 @@ export default function AdminDashboard() {
       setError('User approval operation failed.');
     }
   };
-
-
+  
+  const location = useLocation();
+  const isApprovalsView = location.pathname === '/admin/approvals';
+  const pendingFarmers = users.filter(u => u.role === 'FARMER' && !u.is_approved);
+  const pendingLabs = users.filter(u => u.role === 'TESTER' && !u.is_approved);
+  const activeUsers = users.filter(u => u.is_approved);
 
   return (
     <div className="space-y-8 py-4">
@@ -161,10 +166,21 @@ export default function AdminDashboard() {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Settings className="h-6 w-6 text-purple-600 dark:text-purple-400" /> Admin Management Panel
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Control role assignments, audit activity trails, verify inspectors, and manage system metrics.</p>
+          {isApprovalsView ? (
+            <>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <CheckCircle2 className="h-6 w-6 text-purple-600 dark:text-purple-400" /> User Authority Verification
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Review and approve credentials for new farmer accounts and quality testing laboratories.</p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Settings className="h-6 w-6 text-purple-600 dark:text-purple-400" /> Admin Management Panel
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Control role assignments, audit activity trails, verify inspectors, and manage system metrics.</p>
+            </>
+          )}
         </div>
       </div>
 
@@ -180,168 +196,305 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <>
-          {/* Analytics Block */}
-          {analytics && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* User Roles */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Users className="h-4 w-4 text-purple-500" /> System Users
-                </h4>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Farmers</span>
-                    <span className="font-bold">{analytics.user_counts.farmers}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Inspectors</span>
-                    <span className="font-bold">{analytics.user_counts.inspectors || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Quality Lab (Testers)</span>
-                    <span className="font-bold">{analytics.user_counts.testers}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Consumers</span>
-                    <span className="font-bold">{analytics.user_counts.consumers}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-505">Investors</span>
-                    <span className="font-bold">{analytics.user_counts.investors || 0}</span>
-                  </div>
+          {isApprovalsView ? (
+            /* Approvals View: User Authority Verification ONLY */
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h3 className="font-bold text-slate-900 dark:text-white">User Authority Verification</h3>
+                {/* Tabs Switcher */}
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+                  <button
+                    onClick={() => setActiveTab('farmers')}
+                    className={`px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                      activeTab === 'farmers'
+                        ? 'bg-white text-emerald-600 shadow-sm dark:bg-slate-900 dark:text-emerald-400'
+                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <span>Pending Farmers</span>
+                    {pendingFarmers.length > 0 && (
+                      <span className="bg-rose-500 text-white rounded-full px-1.5 py-0.5 text-[10px] font-bold animate-pulse">
+                        {pendingFarmers.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('labs')}
+                    className={`px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                      activeTab === 'labs'
+                        ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
+                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <span>Pending Labs</span>
+                    {pendingLabs.length > 0 && (
+                      <span className="bg-rose-500 text-white rounded-full px-1.5 py-0.5 text-[10px] font-bold animate-pulse">
+                        {pendingLabs.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('active')}
+                    className={`px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                      activeTab === 'active'
+                        ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white'
+                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <span>Active Users</span>
+                    <span className="bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
+                      {activeUsers.length}
+                    </span>
+                  </button>
                 </div>
               </div>
 
-              {/* Quality Certifications */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Inspections Audit
-                </h4>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Approved Lots</span>
-                    <span className="font-bold text-emerald-600">{analytics.quality_stats.approved}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Rejected Lots</span>
-                    <span className="font-bold text-rose-600">{analytics.quality_stats.rejected}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Crop Distributions */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <LineChart className="h-4 w-4 text-blue-500" /> Crop Distribution
-                </h4>
-                <div className="space-y-2 text-xs max-h-20 overflow-y-auto no-scrollbar">
-                  {Object.entries(analytics.crop_categories).length === 0 ? (
-                    <p className="text-slate-400 italic">No crops logged</p>
+              {/* Tab Contents */}
+              {activeTab === 'farmers' && (
+                <div className="space-y-4">
+                  {pendingFarmers.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">
+                      No pending farmer registrations awaiting approval.
+                    </div>
                   ) : (
-                    Object.entries(analytics.crop_categories).map(([crop, count]) => (
-                      <div key={crop} className="flex justify-between">
-                        <span className="text-slate-500 truncate max-w-[100px]">{crop}</span>
-                        <span className="font-bold">{count}</span>
-                      </div>
-                    ))
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
+                            <th className="py-3 px-4">Name</th>
+                            <th className="py-3 px-4">Email</th>
+                            <th className="py-3 px-4">District / Taluk</th>
+                            <th className="py-3 px-4 text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingFarmers.map((user) => (
+                            <tr key={user.id} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50">
+                              <td className="py-3.5 px-4 font-semibold">{user.name}</td>
+                              <td className="py-3.5 px-4 text-slate-500">{user.email}</td>
+                              <td className="py-3.5 px-4 text-slate-500">
+                                {user.district ? `${user.district} / ${user.sub_district || 'N/A'}` : 'Not Specified'}
+                              </td>
+                              <td className="py-3.5 px-4 text-center">
+                                <button
+                                  onClick={() => handleUserApprove(user.id)}
+                                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-emerald-500 shadow-sm transition"
+                                >
+                                  Approve Farmer
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
-              </div>
+              )}
 
-              {/* Fraud Monitoring Alerts */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldAlert className="h-4 w-4 text-amber-500" /> Fraud Monitor
-                </h4>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Threat Alerts</span>
-                    <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                      analytics.fraud_warnings.length > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
-                    }`}>
-                      {analytics.fraud_warnings.length} Active
-                    </span>
+              {activeTab === 'labs' && (
+                <div className="space-y-4">
+                  {pendingLabs.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">
+                      No pending quality lab credentials awaiting review.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
+                            <th className="py-3 px-4">Lab Name</th>
+                            <th className="py-3 px-4">Authorized Person</th>
+                            <th className="py-3 px-4">License Number</th>
+                            <th className="py-3 px-4 text-center">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingLabs.map((user) => (
+                            <tr key={user.id} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50">
+                              <td className="py-3.5 px-4 font-semibold">{user.lab_name || 'N/A'}</td>
+                              <td className="py-3.5 px-4 text-slate-500">{user.name}</td>
+                              <td className="py-3.5 px-4 font-mono text-xs">{user.lab_license_number || 'N/A'}</td>
+                              <td className="py-3.5 px-4 text-center">
+                                <button
+                                  onClick={() => setSelectedLabForReview(user)}
+                                  className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 text-[10px] font-bold text-white transition shadow-sm"
+                                >
+                                  Review Lab
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'active' && (
+                <div className="space-y-4">
+                  {activeUsers.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">
+                      No active users registered on the platform.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
+                            <th className="py-3 px-4">Name</th>
+                            <th className="py-3 px-4">Email</th>
+                            <th className="py-3 px-4">Role</th>
+                            <th className="py-3 px-4">Wallet</th>
+                            <th className="py-3 px-4 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {activeUsers.map((user) => (
+                            <tr key={user.id} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50">
+                              <td className="py-3.5 px-4 font-semibold">{user.name}</td>
+                              <td className="py-3.5 px-4 text-slate-500">{user.email}</td>
+                              <td className="py-3.5 px-4 font-mono text-xs">
+                                <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                  user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400' :
+                                  user.role === 'FARMER' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' :
+                                  user.role === 'TESTER' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-450' :
+                                  'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                }`}>
+                                  {user.role}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 font-mono text-xs text-slate-400 truncate max-w-[120px]">
+                                {user.wallet_address || 'Not Connected'}
+                              </td>
+                              <td className="py-3.5 px-4 text-center">
+                                <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-semibold">
+                                  <CheckCircle2 className="h-4 w-4" /> Active
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Admin Console View: Analytics & Audit Trail */
+            <div className="space-y-8">
+              {analytics && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {/* User Roles */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Users className="h-4 w-4 text-purple-500" /> System Users
+                    </h4>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Farmers</span>
+                        <span className="font-bold">{analytics.user_counts.farmers}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Inspectors</span>
+                        <span className="font-bold">{analytics.user_counts.inspectors || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Quality Lab (Testers)</span>
+                        <span className="font-bold">{analytics.user_counts.testers}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Consumers</span>
+                        <span className="font-bold">{analytics.user_counts.consumers}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Investors</span>
+                        <span className="font-bold">{analytics.user_counts.investors || 0}</span>
+                      </div>
+                    </div>
                   </div>
-                  {analytics.fraud_warnings.map((f, i) => (
-                    <p key={i} className="text-[10px] text-rose-500 leading-tight truncate">{f.details}</p>
+
+                  {/* Quality Certifications */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Inspections Audit
+                    </h4>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Approved Lots</span>
+                        <span className="font-bold text-emerald-600">{analytics.quality_stats.approved}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Rejected Lots</span>
+                        <span className="font-bold text-rose-600">{analytics.quality_stats.rejected}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Crop Distributions */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <LineChart className="h-4 w-4 text-blue-500" /> Crop Distribution
+                    </h4>
+                    <div className="space-y-2 text-xs max-h-20 overflow-y-auto no-scrollbar">
+                      {Object.entries(analytics.crop_categories).length === 0 ? (
+                        <p className="text-slate-400 italic">No crops logged</p>
+                      ) : (
+                        Object.entries(analytics.crop_categories).map(([crop, count]) => (
+                          <div key={crop} className="flex justify-between">
+                            <span className="text-slate-500 truncate max-w-[100px]">{crop}</span>
+                            <span className="font-bold">{count}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Fraud Monitoring Alerts */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldAlert className="h-4 w-4 text-amber-500" /> Fraud Monitor
+                    </h4>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Threat Alerts</span>
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                          analytics.fraud_warnings.length > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                        }`}>
+                          {analytics.fraud_warnings.length} Active
+                        </span>
+                      </div>
+                      {analytics.fraud_warnings.map((f, i) => (
+                        <p key={i} className="text-[10px] text-rose-500 leading-tight truncate">{f.details}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Audit Trail */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <FileText className="h-5 w-5 text-purple-600" /> System Audit Trail
+                </h3>
+                
+                <div className="space-y-4 max-h-[500px] overflow-y-auto no-scrollbar pr-1">
+                  {logs.map((log) => (
+                    <div key={log.id} className="border-b border-slate-100 dark:border-slate-800 pb-3 text-xs space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-purple-600 dark:text-purple-400">{log.action}</span>
+                        <span className="text-[10px] text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                      <p className="text-slate-600 dark:text-slate-455 leading-tight">{renderLogDetails(log.details)}</p>
+                      <p className="text-[9px] text-slate-400">Trigger: {log.user_name}</p>
+                    </div>
                   ))}
                 </div>
               </div>
             </div>
           )}
-
-          {/* User Management & Approvals */}
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <h3 className="font-bold text-slate-900 dark:text-white mb-4">User Authority Verification</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
-                      <th className="py-3 px-4">Name</th>
-                      <th className="py-3 px-4">Email</th>
-                      <th className="py-3 px-4">Role</th>
-                      <th className="py-3 px-4">Wallet</th>
-                      <th className="py-3 px-4 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((user) => (
-                      <tr key={user.id} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50">
-                        <td className="py-3.5 px-4 font-semibold">{user.name}</td>
-                        <td className="py-3.5 px-4 text-slate-500">{user.email}</td>
-                        <td className="py-3.5 px-4 font-mono text-xs">{user.role}</td>
-                        <td className="py-3.5 px-4 font-mono text-xs text-slate-400 truncate max-w-[120px]">
-                          {user.wallet_address || 'Not Connected'}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          {user.is_approved ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-semibold">
-                              <CheckCircle2 className="h-4 w-4" /> Active
-                            </span>
-                          ) : user.role === 'TESTER' ? (
-                            <button
-                              onClick={() => setSelectedLabForReview(user)}
-                              className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1 text-[10px] font-bold text-white transition-colors"
-                            >
-                              Review Lab
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleUserApprove(user.id)}
-                              className="rounded-lg bg-emerald-600 px-3 py-1 text-[10px] font-bold text-white hover:bg-emerald-500"
-                            >
-                              Approve
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Audit Trail */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                <FileText className="h-5 w-5 text-purple-600" /> System Audit Trail
-              </h3>
-              
-              <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar pr-1">
-                {logs.map((log) => (
-                  <div key={log.id} className="border-b border-slate-100 dark:border-slate-800 pb-3 text-xs space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-purple-600 dark:text-purple-400">{log.action}</span>
-                      <span className="text-[10px] text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                    </div>
-                    <p className="text-slate-600 dark:text-slate-455 leading-tight">{renderLogDetails(log.details)}</p>
-                    <p className="text-[9px] text-slate-400">Trigger: {log.user_name}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </>
       )}
 

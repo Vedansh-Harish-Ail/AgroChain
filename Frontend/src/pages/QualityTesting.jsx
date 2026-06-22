@@ -324,6 +324,21 @@ export default function QualityTesting() {
     return [];
   };
 
+  const getFileTypeLabel = (url, index) => {
+    if (url.startsWith('data:')) {
+      const match = url.match(/data:([^;]+);/);
+      if (match && match[1]) {
+        const mime = match[1];
+        if (mime === 'application/pdf') return `Document Proof #${index + 1} (PDF)`;
+        if (mime.includes('image/')) return `Document Proof #${index + 1} (Image)`;
+        if (mime.includes('word') || mime.includes('officedocument.wordprocessingml')) return `Document Proof #${index + 1} (Word)`;
+        if (mime.includes('excel') || mime.includes('officedocument.spreadsheetml')) return `Document Proof #${index + 1} (Excel)`;
+        if (mime.includes('zip') || mime.includes('x-zip-compressed')) return `Document Proof #${index + 1} (ZIP)`;
+      }
+    }
+    return `Document Proof #${index + 1}`;
+  };
+
   return (
     <div className="space-y-8 py-4">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -543,7 +558,7 @@ export default function QualityTesting() {
                           className="flex items-center gap-2 text-xs font-semibold text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-350 hover:underline"
                         >
                           <FileText className="h-4 w-4 shrink-0" />
-                          <span className="truncate">Document Proof #{i + 1}</span>
+                          <span className="truncate">{getFileTypeLabel(url, i)}</span>
                           <ExternalLink className="h-3 w-3 shrink-0" />
                         </a>
                       ))}

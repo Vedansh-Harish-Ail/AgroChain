@@ -245,8 +245,8 @@ def register():
         pin_code=pin_code,
         coverage_pins=coverage_pins,
         sub_district=sub_district,
-        # Admin is auto-approved, others approved by default or admin
-        is_approved=(role in ['CONSUMER', 'INVESTOR', 'ADMIN']),
+        # Admin and Farmers are auto-approved, others approved by default or admin
+        is_approved=(role in ['CONSUMER', 'INVESTOR', 'ADMIN', 'FARMER']),
         # Lab-specific fields
         lab_name=lab_name if role == 'TESTER' else None,
         authorized_person=authorized_person if role == 'TESTER' else None,

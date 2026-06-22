@@ -286,6 +286,9 @@ const MainLayout = ({ theme, toggleTheme }) => {
             <Route path="/admin" element={
               <ProtectedRoute roles={['ADMIN']}><AdminDashboard /></ProtectedRoute>
             } />
+            <Route path="/admin/approvals" element={
+              <ProtectedRoute roles={['ADMIN']}><AdminDashboard /></ProtectedRoute>
+            } />
           </Routes>
         </main>
       )}

@@ -41,6 +41,10 @@ def register_crop(current_user):
     except ValueError:
         return jsonify({'message': 'Invalid date format (ISO format expected)'}), 400
         
+    # Prevent future cultivation start dates
+    if cultivation_date.date() > datetime.utcnow().date():
+        return jsonify({'message': 'Cultivation Start Date cannot be in the future'}), 400
+        
     try:
         expected_yield = int(expected_yield)
     except ValueError:

@@ -28,10 +28,12 @@ export default function Dashboard() {
   const [unreadPendingCerts, setUnreadPendingCerts] = useState(0);
   const [unreadMyCropUpdates, setUnreadMyCropUpdates] = useState(0);
   const [unreadProposals, setUnreadProposals] = useState(0);
+  const [unreadUserApprovals, setUnreadUserApprovals] = useState(0);
 
   const [currentPendingApprovalIds, setCurrentPendingApprovalIds] = useState([]);
   const [currentPendingCertIds, setCurrentPendingCertIds] = useState([]);
   const [currentFarmerCropStatuses, setCurrentFarmerCropStatuses] = useState({});
+  const [currentPendingUserIds, setCurrentPendingUserIds] = useState([]);
 
   // Password reset state
   const [newPassword, setNewPassword] = useState('');
@@ -303,6 +305,26 @@ export default function Dashboard() {
         } else if (user?.role === 'INVESTOR') {
           fetchSubmittedLOIs();
         }
+
+        if (user?.role === 'ADMIN') {
+          try {
+            const usersRes = await axios.get('/api/admin/users');
+            const pendingUsers = usersRes.data.filter(u => !u.is_approved);
+            const seenUserApprovals = JSON.parse(localStorage.getItem('admin_seen_user_approvals') || '[]');
+            let newUserApprovals = 0;
+            const pUserIds = [];
+            pendingUsers.forEach(u => {
+              pUserIds.push(u.id);
+              if (!seenUserApprovals.includes(u.id)) {
+                newUserApprovals++;
+              }
+            });
+            setUnreadUserApprovals(newUserApprovals);
+            setCurrentPendingUserIds(pUserIds);
+          } catch (usersErr) {
+            console.error("Failed to load admin users for notifications:", usersErr);
+          }
+        }
       } catch (err) {
         console.error("Failed to load dashboard metrics:", err);
       } finally {
@@ -326,6 +348,11 @@ export default function Dashboard() {
   const handleClearFarmerCrops = () => {
     localStorage.setItem('farmer_seen_crop_statuses', JSON.stringify(currentFarmerCropStatuses));
     setUnreadMyCropUpdates(0);
+  };
+
+  const handleClearUserApprovals = () => {
+    localStorage.setItem('admin_seen_user_approvals', JSON.stringify(currentPendingUserIds));
+    setUnreadUserApprovals(0);
   };
 
   const getRoleBadge = (role) => {
@@ -711,6 +738,28 @@ export default function Dashboard() {
               <div className="space-y-1">
                 <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Admin Console</h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">ADMIN: View audit logs, oversee active registrations, and analyze fraud.</p>
+              </div>
+            </Link>
+          )}
+
+          {/* Admin Specific Action: User Approvals */}
+          {user?.role === 'ADMIN' && (
+            <Link 
+              to="/admin/approvals" 
+              onClick={handleClearUserApprovals}
+              className="relative group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4"
+            >
+              {unreadUserApprovals > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-[11px] font-extrabold text-white shadow-md ring-2 ring-white dark:ring-slate-900 animate-pulse z-10">
+                  {unreadUserApprovals}
+                </span>
+              )}
+              <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-xl text-purple-600 group-hover:scale-105 transition-transform shrink-0">
+                <UserCheck className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">User Approvals</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">ADMIN: Review and approve new farmer registrations and quality laboratory credentials.</p>
               </div>
             </Link>
           )}
