@@ -47,6 +47,10 @@ const PulseStyle = () => (
       background-color: rgba(6, 78, 59, 0.4);
     }
     .nav-shadow { box-shadow: 0 1px 8px 0 rgba(0,0,0,.06); }
+    .card-dots {
+      background-image: radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0);
+      background-size: 16px 16px;
+    }
   `}</style>
 );
 
@@ -55,57 +59,87 @@ const roles = [
   {
     cols: 'md:col-span-3 lg:col-span-4',
     Icon: Sprout,
-    iconBg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
+    iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/30',
+    glowColor: 'from-emerald-500/10 to-transparent',
+    badgeBg: 'bg-emerald-50 dark:bg-emerald-950/50',
+    badgeText: 'text-emerald-700 dark:text-emerald-400',
+    roleBadgeText: 'Production',
+    hoverBorder: 'hover:border-emerald-300 dark:hover:border-emerald-500/50',
+    hoverShadow: 'hover:shadow-emerald-500/5',
     title: 'Farmers',
-    desc: 'List your crops, record lab quality reports, and sell directly to wholesale buyers without middleman cuts.',
-    cta: 'Register Your Crop',
+    desc: 'List your crops, apply for safety testing, and sell directly to bulk buyers for a fair price.',
+    cta: 'Start a Listing',
     link: '/farmer/register',
   },
   {
     cols: 'md:col-span-3 lg:col-span-4',
     Icon: FlaskConical,
-    iconBg: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+    iconBg: 'bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/30',
+    glowColor: 'from-blue-500/10 to-transparent',
+    badgeBg: 'bg-blue-50 dark:bg-blue-950/50',
+    badgeText: 'text-blue-700 dark:text-blue-400',
+    roleBadgeText: 'Quality Control',
+    hoverBorder: 'hover:border-blue-300 dark:hover:border-blue-500/50',
+    hoverShadow: 'hover:shadow-blue-500/5',
     title: 'Testing Labs',
-    desc: 'Perform chemical analyses on crop and soil samples to verify safety metrics and issue certificates.',
-    cta: 'Log Test Results',
+    desc: 'Analyze crop and soil samples, record chemical metrics, and issue safety certificates.',
+    cta: 'Log Lab Tests',
     link: '/tester/approve',
   },
   {
     cols: 'md:col-span-6 lg:col-span-4',
     Icon: Coins,
-    iconBg: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
+    iconBg: 'bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/30',
+    glowColor: 'from-amber-500/10 to-transparent',
+    badgeBg: 'bg-amber-50 dark:bg-amber-950/50',
+    badgeText: 'text-amber-700 dark:text-amber-400',
+    roleBadgeText: 'Capital',
+    hoverBorder: 'hover:border-amber-300 dark:hover:border-amber-500/50',
+    hoverShadow: 'hover:shadow-amber-500/5',
     title: 'Buyers & Investors',
-    desc: 'Purchase crop options early to fund seasonal harvests or buy certified batches directly from local farms.',
-    cta: 'Find Harvests',
+    desc: 'Fund farm harvests early to secure priority contract prices and buy verified batches directly.',
+    cta: 'Browse Harvests',
     link: '/finance',
   },
   {
     cols: 'md:col-span-3 lg:col-span-6',
     Icon: QrCode,
-    iconBg: 'bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400',
+    iconBg: 'bg-teal-50 text-teal-600 border border-teal-100 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-900/30',
+    glowColor: 'from-teal-500/10 to-transparent',
+    badgeBg: 'bg-teal-50 dark:bg-teal-950/50',
+    badgeText: 'text-teal-700 dark:text-teal-400',
+    roleBadgeText: 'Transparency',
+    hoverBorder: 'hover:border-teal-300 dark:hover:border-teal-500/50',
+    hoverShadow: 'hover:shadow-teal-500/5',
     title: 'Consumers',
-    desc: 'Scan QR codes on food packaging to trace the product back to its farm and view its lab certificate.',
+    desc: 'Scan packaging QR codes to see exactly where your food grew and read its lab safety report.',
     cta: 'Trace Your Food',
     link: '/consumer/track',
   },
   {
     cols: 'md:col-span-3 lg:col-span-6',
     Icon: ShieldCheck,
-    iconBg: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+    iconBg: 'bg-slate-50 text-slate-600 border border-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700/50',
+    glowColor: 'from-slate-400/10 to-transparent',
+    badgeBg: 'bg-slate-100 dark:bg-slate-800',
+    badgeText: 'text-slate-700 dark:text-slate-300',
+    roleBadgeText: 'Network Safety',
+    hoverBorder: 'hover:border-slate-300 dark:hover:border-slate-500/50',
+    hoverShadow: 'hover:shadow-slate-500/5',
     title: 'Governance',
-    desc: 'Manage licensed laboratory credentials and audit validator nodes to keep the marketplace reliable.',
-    cta: 'Open Admin Portal',
+    desc: 'Verify lab credentials and approve field inspectors to keep the marketplace safe and fair.',
+    cta: 'Admin Console',
     link: '/admin',
   },
 ];
 
 /* ── Lifecycle steps ── */
 const lifecycle = [
-  { Icon: ClipboardList, step: '1. Sowing & Listing', desc: 'Farmers list expected crop types and location coordinates before harvest.' },
-  { Icon: FlaskConical, step: '2. Chemical Analysis', desc: 'Soil and crop purity is tested for pesticide levels by authorized labs.' },
-  { Icon: Link2, step: '3. Digital Twin Log', desc: 'Laboratory certificates and batch details are signed on the public ledger.' },
-  { Icon: Banknote, step: '4. Capital Funding', desc: 'Buyers purchase option contracts early, funding the farm upfront.' },
-  { Icon: ScanBarcode, step: '5. Retail Traceability', desc: 'Consumers scan packaging QR codes to view chemical safety certificates.' },
+  { Icon: ClipboardList, step: '1. Post Harvest Plan', desc: 'Farmers list details about what they are sowing and where they are located.' },
+  { Icon: FlaskConical, step: '2. Lab Testing', desc: 'Independent certified labs test soil and crop samples for pesticide residue.' },
+  { Icon: Link2, step: '3. Record Verification', desc: 'Lab certificates are cryptographically signed and saved to prevent tampering.' },
+  { Icon: Banknote, step: '4. Direct Funding', desc: 'Buyers purchase crop contracts early, giving farmers direct capital before harvest.' },
+  { Icon: ScanBarcode, step: '5. Scan & Trace', desc: 'Shoppers scan on-pack QR codes to view the complete history of their food.' },
 ];
 
 /* ── Marketplace items ── */
@@ -118,7 +152,7 @@ const marketplaceItems = [
     location: 'Nashik, MH',
     price: '₹40 / kg',
     sowed: 'Sown: Apr 10',
-    rating: '98% Chem-Free',
+    rating: 'Grade A / Pesticide-Free',
   },
   {
     img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBPw-B3iiDUqUWe-FqFnPs-1fU6g0OIQWY8-lHcB2O-W46zyNDk2bNTe-kAEcm8wezhBpQv3w4LL-EY2X6kAHC7qnO1IvAnizEofClBIHlhkH0xElbWJkTp5ZNuNg19yMpNCBq_U1aTtr6IIrZlug_UrJ_x6GXA2UhoIXgvly3XZMEucH2Fzxg8gQwTCvG8XEByg75XZoE2w_dm1C1Ibt6SN-kq4ldeVJD6Fzs6ixrUBDBYAnTYxV5i8XmlmbPskZnUeKf1EAe78uc',
@@ -128,7 +162,7 @@ const marketplaceItems = [
     location: 'Amritsar, PB',
     price: '₹60,000 / ton',
     sowed: 'Sown: May 02',
-    rating: '99% Chem-Free',
+    rating: 'Grade A+ / Pesticide-Free',
   },
   {
     img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBmVnpoDcmu5hYJrEIrUVi555IGtBZL2PkjjsnNhobauMKqLVJaD1xuOvh_IOl42P-kcEeEPlb6932johAomyY_mOOAqO4dqnMhy4wquD9w_PZx5h_HxQE4lzm72cyyo05Nss_IFE1Oo1oBfGtrnLIgA_YOmZFZkU5LvYdqRrq5w482HE6-1f3pFWPa5j0ua5MJ99fIoqxIJhRZoNjzK2qL50E3gy_XVj3QlKRta3QF15FFlLdih3ozBkHW0QJzmB3qN3kVhSwKyj0',
@@ -138,7 +172,7 @@ const marketplaceItems = [
     location: 'Nagpur, MH',
     price: '₹35,000 / ton',
     sowed: 'Sown: Mar 20',
-    rating: '97% Chem-Free',
+    rating: 'Grade A / Chemical-Free',
   },
   {
     img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAp_M47RIRkIBAuR87atc_9Wg2mCfvqNe2l9m_Z0ozXqCKm_CtGQYraIYrp2UDBKOjG94HJTylkD9TFEv2d9CIhi9o-9WDXhEymMYGwk8-ZvNquWH1NvdJwMOaKJTqYiKKxTzsTvutit5H0Q1jH54eOkExGex9MfJyHCGyCcPKjXIKjlDdr4nUV_ySeDOHIHzRoFaU6Sqjuy9ZQvruTFJ3EtZdqmMdOqM3CGNwuOf7wHUmySifoy8spxg8AhoW7MTnCTKdu-65QOQU',
@@ -148,7 +182,7 @@ const marketplaceItems = [
     location: 'Chikmagalur, KA',
     price: '₹350 / kg',
     sowed: 'Sown: Feb 15',
-    rating: '96% Chem-Free',
+    rating: 'Grade A / Premium Quality',
   },
 ];
 
@@ -156,18 +190,18 @@ const marketplaceItems = [
 const trustFeatures = [
   {
     Icon: ShieldAlert,
-    title: 'Lab-Certified Cleanliness',
-    desc: 'Every crop listed goes through soil and water chemical analysis to guarantee food quality guidelines are actually met.',
+    title: 'Pesticide & Safety Testing',
+    desc: 'No guesswork. Every batch is tested by accredited regional labs to ensure it matches strict food safety guidelines.',
   },
   {
     Icon: Lock,
-    title: 'Unalterable Crop Records',
-    desc: 'Once lab reports and crop weights are signed, they cannot be backdated or modified to hide defects.',
+    title: 'Tamper-Proof Records',
+    desc: 'Once lab results and farm details are verified, they are locked on the blockchain so they cannot be altered or falsified.',
   },
   {
     Icon: Eye,
-    title: 'Direct Wholesale Access',
-    desc: 'Ditching middle brokers allows buyers to support farms directly and secure crops at harvest options prices.',
+    title: 'Fair Wholesale Deals',
+    desc: 'Dealing directly with farmers eliminates broker fees, ensuring lower prices for buyers and better pay for growers.',
   },
 ];
 
@@ -186,8 +220,8 @@ export default function LandingPage({ theme, toggleTheme }) {
       <PulseStyle />
 
       {/* ── Top Navbar ── */}
-      <nav className={`fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-all duration-300 ${scrolled ? 'nav-shadow' : ''}`}>
-        <div className="flex justify-between items-center h-20 px-6 md:px-16 max-w-screen-xl mx-auto">
+      <nav className={`fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-6xl z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-800/60 rounded-2xl transition-all duration-300 shadow-md ${scrolled ? 'nav-shadow' : ''}`}>
+        <div className="flex justify-between items-center h-16 px-6 md:px-10">
           <Link to="/" className="text-xl font-bold text-emerald-700 dark:text-emerald-400 tracking-tight flex items-center gap-2">
             <Sprout className="h-6 w-6" />
             AgroChain
@@ -225,36 +259,58 @@ export default function LandingPage({ theme, toggleTheme }) {
         </div>
       </nav>
 
-      <main className="pt-20">
+      <main className="w-full">
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden pt-20 pb-16 bg-white dark:bg-slate-950">
+        <section className="relative overflow-hidden pt-28 pb-16 bg-white dark:bg-slate-950">
+          {/* Translucent Background Image Overlay */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center opacity-35 dark:opacity-50 pointer-events-none"
+            style={{ backgroundImage: "url('/hero_background.png')" }}
+          />
+          {/* Gradient Overlay for Text Readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white via-white/95 to-white/70 lg:bg-gradient-to-r lg:from-white lg:via-white/92 lg:to-transparent dark:from-slate-950 dark:via-slate-950/92 dark:to-transparent pointer-events-none" />
+          
           <div className="max-w-screen-xl mx-auto px-6 md:px-16 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="z-10">
-              <div className="inline-flex items-center gap-2 bg-emerald-700 text-emerald-100 px-4 py-1.5 rounded-full mb-6">
-                <span className="w-2 h-2 rounded-full bg-emerald-300 ac-pulse" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Direct & Verified</span>
+              <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-4 py-1.5 rounded-full mb-6">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 ac-pulse" />
+                <span className="text-xs font-bold uppercase tracking-wider">Active on Localhost Node</span>
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-6 leading-tight">
-                From Seed to Table.<br />
-                Verified on the <span className="text-emerald-700 dark:text-emerald-400">Ledger</span>.
+              <h1 className="text-4xl md:text-5.5xl font-extrabold text-slate-900 dark:text-white mb-6 leading-tight tracking-tight">
+                Sell Your Harvest.<br />
+                <span className="text-emerald-600 dark:text-emerald-400">Get Funded. No Middlemen.</span>
               </h1>
-              <p className="text-lg text-slate-500 dark:text-slate-400 mb-10 max-w-xl leading-relaxed">
-                AgroChain helps farmers secure upfront capital, prove lab quality standards, and connect directly with buyers through an honest, unalterable supply chain.
+              <p className="text-lg text-slate-700 dark:text-slate-200 mb-10 max-w-xl leading-relaxed font-medium">
+                Farmers list certified cultivations, buyers fund harvests through secure smart contract escrows, and money releases only after independent laboratory safety check approvals.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/register" className="bg-emerald-700 dark:bg-emerald-600 text-white px-8 py-3.5 rounded-lg text-sm font-semibold hover:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-700/20 dark:shadow-emerald-950/20 text-center">
-                  Get Started
+              <div className="flex flex-col sm:flex-row gap-4 mb-10">
+                <Link to="/register" className="bg-emerald-700 dark:bg-emerald-600 text-white px-8 py-3.5 rounded-xl text-sm font-semibold hover:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-700/20 dark:shadow-emerald-950/20 text-center flex items-center justify-center gap-2">
+                  <span>Start Listing Crops</span> <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link to="/consumer/track" className="border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-8 py-3.5 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-900 transition-all text-center">
-                  Browse Crops
+                <Link to="/consumer/track" className="border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-900/80 px-8 py-3.5 rounded-xl text-sm font-bold transition-all text-center flex items-center justify-center gap-2">
+                  <span>Browse Marketplace</span>
                 </Link>
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-3 pt-6 border-t border-slate-200/60 dark:border-slate-800/60">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Escrow Protected</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Accredited Labs Only</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <Coins className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Zero Platform Fees</span>
+                </div>
               </div>
             </div>
 
             <div className="relative">
               <div className="relative z-10 glass-card rounded-2xl overflow-hidden shadow-2xl border border-slate-200/40 dark:border-slate-800/40">
                 <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqaLSTU7CuymiyJ3a3xxVhAN40oN2iAjqDE-ClMcsMXLWiJtV6Xnf0urOconhLwimioYcciy1SoC2fH9ejOCkiO9XOujffonpdEjaF-Qcg945BMpWPDd95BdzfK8XPztqrB6LCJq027jNu_KeqzX75JjqQOI5IxksxTCFpotNVynug6_Vl-S_-ccde0TZLC-_m6K7EEjF7nGYQ-uE6uRaPrEkhYvBnza3e8pz_r9MIl5vpXYyBxxOi4rjqwG66POIx44jCjtkg8lY"
+                  src="/landing_page.png"
                   alt="AgroChain Dashboard"
                   className="w-full h-auto"
                 />
@@ -270,26 +326,50 @@ export default function LandingPage({ theme, toggleTheme }) {
           <div className="max-w-screen-xl mx-auto px-6 md:px-16">
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-3">
-                Who is on AgroChain?
+                Built for the entire food community
               </h2>
               <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
-                Connecting farmers, laboratories, and buyers in a single transparent network.
+                Bringing farmers, laboratories, and buyers together in a single open network.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-6">
-              {roles.map(({ cols, Icon, iconBg, title, desc, cta, link }) => (
-                <Link
+              {roles.map(({ cols, Icon, iconBg, glowColor, badgeBg, badgeText, roleBadgeText, hoverBorder, hoverShadow, title, desc, cta }) => (
+                <div
                   key={title}
-                  to={link}
-                  className={`${cols} bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200/60 dark:border-slate-800/50 hover:border-emerald-300 dark:hover:border-emerald-500/50 transition-all group block`}
+                  className={`${cols} relative overflow-hidden bg-white/70 dark:bg-slate-950/40 backdrop-blur-md p-8 rounded-3xl border border-slate-200/50 dark:border-slate-800/40 hover:-translate-y-1.5 transition-all duration-300 group flex flex-col justify-between ${hoverBorder} ${hoverShadow}`}
+                  style={{
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.01)',
+                  }}
                 >
-                  <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
-                    <Icon className="h-6 w-6" />
+                  {/* Hover glow background */}
+                  <div className={`absolute -right-16 -top-16 w-40 h-40 rounded-full bg-gradient-to-br ${glowColor} blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`} />
+
+                  {/* Subtle dot pattern background */}
+                  <div className="absolute inset-0 card-dots text-slate-900/5 dark:text-white/5 opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className={`w-14 h-14 rounded-2xl ${iconBg} flex items-center justify-center shadow-inner transition-transform duration-300 group-hover:scale-110`}>
+                        <Icon className="h-7 w-7" />
+                      </div>
+                      <span className={`text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full ${badgeBg} ${badgeText}`}>
+                        {roleBadgeText}
+                      </span>
+                    </div>
+
+                    <h3 className="text-2xl font-bold mb-3 text-slate-900 dark:text-white tracking-tight">
+                      {title}
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+                      {desc}
+                    </p>
                   </div>
-                  <h3 className="text-xl font-bold mb-2 text-slate-900 dark:text-white">{title}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">{desc}</p>
-                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">{cta}</span>
-                </Link>
+
+                  <div className="relative z-10 flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors uppercase tracking-widest">
+                    <span>{cta}</span>
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1.5" />
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -300,10 +380,10 @@ export default function LandingPage({ theme, toggleTheme }) {
           <div className="max-w-screen-xl mx-auto px-6 md:px-16">
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-3">
-                How It Works
+                How it works
               </h2>
               <p className="text-lg text-slate-500 dark:text-slate-400">
-                Simple, step-by-step verification process to trace crops and secure funding.
+                A simple, certified flow that tracks crops from the field to your shopping cart.
               </p>
             </div>
             <div className="relative">
@@ -329,10 +409,10 @@ export default function LandingPage({ theme, toggleTheme }) {
             <div className="flex flex-col md:flex-row justify-between items-end mb-12">
               <div>
                 <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2">
-                  Verified Crop Batches
+                  Certified Crop Batches
                 </h2>
                 <p className="text-lg text-slate-500 dark:text-slate-400">
-                  Browse laboratory-certified crop listings directly from our partner farms.
+                  Shop certified, pesticide-tested crop listings straight from local partner farms.
                 </p>
               </div>
               <Link to="/consumer/track" className="text-emerald-700 dark:text-emerald-400 text-sm font-semibold flex items-center gap-1 mt-6 md:mt-0 hover:underline">
@@ -394,10 +474,10 @@ export default function LandingPage({ theme, toggleTheme }) {
                 <div className="absolute -bottom-6 -right-6 p-4 glass-card rounded-xl border border-emerald-200/50 dark:border-emerald-800/30 max-w-xs shadow-xl">
                   <div className="flex items-center gap-2 mb-1">
                     <ShieldCheck className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
-                    <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400">Immutable Ledger</span>
+                    <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400">On-Chain Verification</span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    TX: 0x82f...a12c verified by 12 independent testers in 4 minutes.
+                    Certificate recorded permanently. Verified by regional inspectors and testing laboratories.
                   </p>
                 </div>
               </div>
@@ -405,7 +485,7 @@ export default function LandingPage({ theme, toggleTheme }) {
               {/* Text */}
               <div className="order-1 lg:order-2">
                 <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-8">
-                  Clean Food, Proven Origins.
+                  Know exactly where your food comes from
                 </h2>
                 <div className="space-y-6">
                   {trustFeatures.map(({ Icon, title, desc }) => (
@@ -433,10 +513,10 @@ export default function LandingPage({ theme, toggleTheme }) {
             >
               <div className="relative z-10">
                 <h2 className="text-3xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
-                  Let's Build an Honest Food Chain
+                  Ready to source food differently?
                 </h2>
                 <p className="text-lg text-slate-600 dark:text-slate-300 mb-10 max-w-2xl mx-auto">
-                  Connect directly with local farms, verify lab quality results, and secure wholesale agreements.
+                  Partner directly with local farms, inspect laboratory chemical safety reports, and agree on fair pricing.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link to="/register" className="bg-emerald-700 dark:bg-emerald-600 text-white px-8 py-3.5 rounded-lg text-sm font-semibold hover:bg-emerald-600 dark:hover:bg-emerald-500 transition-all text-center">

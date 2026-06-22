@@ -177,3 +177,45 @@ def update_investment_status(current_user, investment_id):
         'investment': investment.to_dict()
     }), 200
 
+
+@finance_bp.route('/update-tx/<int:investment_id>', methods=['POST'])
+@token_required
+def update_investment_tx(current_user, investment_id):
+    investment = Investment.query.get(investment_id)
+    if not investment:
+        return jsonify({'message': 'Investment record not found'}), 404
+        
+    # Check if the investor is the one who is updating it
+    if current_user.id != investment.investor_id and current_user.role != 'ADMIN':
+        return jsonify({'message': 'Unauthorized to modify this investment transaction'}), 403
+        
+    data = request.get_json() or {}
+    tx_hash = data.get('tx_hash')
+    block_number = data.get('block_number')
+    
+    if not tx_hash:
+        return jsonify({'message': 'Missing tx_hash'}), 400
+        
+    investment.tx_hash = tx_hash
+    if block_number:
+        try:
+            investment.block_number = int(block_number)
+        except ValueError:
+            pass
+            
+    db.session.commit()
+    
+    # Also record audit log
+    audit = AuditLog(
+        user_id=current_user.id,
+        action='INVESTMENT_TX_UPDATED',
+        details=f"Investment ID {investment_id} transaction hash set to {tx_hash} by Investor {current_user.name}."
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Investment transaction details updated successfully!',
+        'investment': investment.to_dict()
+    }), 200
+

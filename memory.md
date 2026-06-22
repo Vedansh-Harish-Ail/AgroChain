@@ -1,6 +1,6 @@
 # AgroChain (Modernized) — Complete Project Memory
 
-**Last Updated:** *June 12, 2026, 05:00 PM IST (UTC+5:30)*
+**Last Updated:** *June 22, 2026, 05:50 PM IST (UTC+5:30)*
 
 This document is the master documentation of the **AgroChain** (Modernized) project. It contains a detailed breakdown of the project’s purpose, features, security models, data structures, backend routes, contract details, frontend screens, and step-by-step developer checklists.
 
@@ -245,7 +245,7 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 Managed via React Router inside `Frontend/src/App.jsx`.
 
 ### Navigation Pages
-1. **Landing Page (`/`)** *(Updated: May 30, 2026, 03:45 PM)*: Main presentation dashboard, display metrics, role explanations.
+1. **Landing Page (`/`)** *(Updated: June 22, 2026)*: Main presentation dashboard with active system counters and metrics. Features a responsive gradient backdrop overlay behind the hero text to guarantee contrast readability against the leaf background image. Roles are showcased in a premium, interactive bento grid of static informational cards styled with spotlight glows, micro-pattern dot layers, and hover transition arrows (no redirection).
 2. **Login/Signup (`/login`, `/register`)** *(Updated: June 11, 2026, 01:00 AM)*: Signup role selection has `INSPECTOR` role removed (only Admin can create inspectors). Support username and password authentication (MetaMask optional for login).
 3. **Control Dashboard (`/dashboard`)** *(Updated: June 11, 2026, 01:10 AM)*: Role-specific consoles with notification badges.
    - **For Inspectors**: Blocks page with a fullscreen **First Login Change Password Modal** if `must_change_password` is enabled. Shows a **MetaMask Wallet Connection Card** requiring inspectors to connect their wallet and sign a verification message to activate their account (transitioning status from `PENDING_SETUP` to `ACTIVE`).
@@ -403,6 +403,12 @@ Here is a comprehensive index of all key files in the AgroChain workspace:
 ---
 
 ## 9. Chronological Change Log
+
+* **June 22, 2026** (Roles Bento Grid Redesign & Readability Adjustments):
+  * **Hero Contrast Backdrop**: Added a responsive gradient overlay and updated hero text classes (`text-slate-700 dark:text-slate-200 font-medium`), trust badges (`text-slate-700 dark:text-slate-300`), and the secondary marketplace button to resolve text readability issues over the agricultural leafy background image.
+  * **Static Bento Cards**: Converted the roles grid items in [LandingPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/LandingPage.jsx) from Router `Link` components to standard `div` containers to prevent browser redirection on click.
+  * **Visual Bento Styling**: Styled cards with custom color-coded spotlight glows on hover, a subtle dot grid overlay (`.card-dots`), colored context badges (e.g. Production, Quality Control), card lift hover translations, and interactive transition arrow CTAs.
+  * **Compilation**: Verified and completed the frontend production build with zero errors.
 
 * **June 12, 2026** (Quality Lab Tester Model & Onboarding Flow):
   * **Private Lab self-registration**: Extended registration forms to allow Quality Labs (`TESTER`) to input lab name, license number, accreditation details, and upload credentials.
