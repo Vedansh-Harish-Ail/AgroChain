@@ -411,6 +411,7 @@ Here is a comprehensive index of all key files in the AgroChain workspace:
   * **SMS Gateway Configuration**: Setup backend credentials (`SMS_GATEWAY_URL`, `SMS_GATEWAY_USER`, and `SMS_GATEWAY_PASSWORD`) in [Backend/.env](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/.env) to connect local SMS gateways for OTP code delivery.
   * **Floating Navigation Bars**: Converted default headers to premium floating navigation bars in both [LandingPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/LandingPage.jsx) and [App.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/App.jsx). Shifted padding-top properties from the main wrapper to individual content sections to prevent any white gap rendering behind the translucent floating navbar.
   * **Agricultural Hero Background**: Configured and applied a sharp agricultural backdrop overlay (`hero_background.png`) behind the hero text columns.
+  * **Corrected Lifecycle Timeline**: Updated the "How it works" timeline steps to accurately portray the real platform roles workflow: Farmer Registration, Inspector Verification, Lab Certification, Direct Funding, and Consumer Tracing.
   * **Compilation**: Verified and completed the frontend production build with zero errors.
 
 * **June 12, 2026** (Quality Lab Tester Model & Onboarding Flow):

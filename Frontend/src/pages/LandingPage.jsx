@@ -135,11 +135,11 @@ const roles = [
 
 /* ── Lifecycle steps ── */
 const lifecycle = [
-  { Icon: ClipboardList, step: '1. Post Harvest Plan', desc: 'Farmers list details about what they are sowing and where they are located.' },
-  { Icon: FlaskConical, step: '2. Lab Testing', desc: 'Independent certified labs test soil and crop samples for pesticide residue.' },
-  { Icon: Link2, step: '3. Record Verification', desc: 'Lab certificates are cryptographically signed and saved to prevent tampering.' },
-  { Icon: Banknote, step: '4. Direct Funding', desc: 'Buyers purchase crop contracts early, giving farmers direct capital before harvest.' },
-  { Icon: ScanBarcode, step: '5. Scan & Trace', desc: 'Shoppers scan on-pack QR codes to view the complete history of their food.' },
+  { Icon: ClipboardList, step: '1. Farmer Registration', desc: 'Farmers list expected crop yields, GPS locations, land survey records, and cultivation details.' },
+  { Icon: ShieldCheck, step: '2. Inspector Verification', desc: 'Government-approved field inspectors verify land deeds and perform physical or photo reviews.' },
+  { Icon: FlaskConical, step: '3. Lab Certification', desc: 'Accredited laboratories test crop chemical metrics to sign safety certificates and award grades on-chain.' },
+  { Icon: Banknote, step: '4. Direct Funding', desc: 'Investors propose contract pricing and fund harvests early using secure smart contract escrows.' },
+  { Icon: ScanBarcode, step: '5. Consumer Tracing', desc: 'Consumers scan product QR codes to trace the complete chain of custody and chemical safety logs.' },
 ];
 
 /* ── Marketplace items ── */
