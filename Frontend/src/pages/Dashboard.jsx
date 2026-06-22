@@ -9,6 +9,51 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
+const KERALA_LOCATIONS = {
+  "Thiruvananthapuram": {
+    "Thiruvananthapuram": [], "Chirayinkeezhu": [], "Nedumangad": [], "Neyyattinkara": [], "Varkala": []
+  },
+  "Kollam": {
+    "Kollam": [], "Karunagappally": [], "Kunnathur": [], "Punalur": [], "Pathanapuram": [], "Kottarakkara": []
+  },
+  "Pathanamthitta": {
+    "Pathanamthitta": [], "Adoor": [], "Ranni": [], "Konni": [], "Kozhencherry": []
+  },
+  "Alappuzha": {
+    "Alappuzha": [], "Ambalappuzha": [], "Chengannur": [], "Kuttanad": [], "Mavelikkara": []
+  },
+  "Kottayam": {
+    "Kottayam": [], "Changanassery": [], "Vaikom": [], "Meenachil": []
+  },
+  "Idukki": {
+    "Devikulam": [], "Udumbanchola": [], "Idukki": [], "Thodupuzha": []
+  },
+  "Ernakulam": {
+    "Ernakulam": [], "Aluva": [], "Kothamangalam": [], "Muvattupuzha": []
+  },
+  "Thrissur": {
+    "Thrissur": [], "Chavakkad": [], "Kunnamkulam": [], "Irinjalakuda": [], "Mukundapuram": []
+  },
+  "Palakkad": {
+    "Palakkad": [], "Chittur": [], "Alathur": [], "Ottapalam": [], "Mannarkkad": []
+  },
+  "Malappuram": {
+    "Malappuram": [], "Perinthalmanna": [], "Tirur": [], "Nilambur": [], "Ponnani": []
+  },
+  "Kozhikode": {
+    "Kozhikode": [], "Vatakara": [], "Koyilandy": [], "Thamarassery": []
+  },
+  "Wayanad": {
+    "Mananthavady": [], "Sulthan Bathery": [], "Vythiri": []
+  },
+  "Kannur": {
+    "Kannur": [], "Taliparamba": [], "Thalassery": [], "Iritty": []
+  },
+  "Kasaragod": {
+    "Kasaragod": [], "Hosdurg": [], "Manjeshwaram": []
+  }
+};
+
 export default function Dashboard() {
   const { user, linkWallet, changePassword } = useAuth();
   const { walletAddress, isConnected, connectWallet, contracts } = useWallet();
@@ -968,25 +1013,32 @@ export default function Dashboard() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">District</label>
-                <input 
-                  type="text" 
+                <select 
                   value={inspectorDistrict} 
-                  onChange={(e) => setInspectorDistrict(e.target.value)} 
+                  onChange={(e) => { setInspectorDistrict(e.target.value); setInspectorSubDistrict(''); }} 
                   required 
-                  placeholder="Ernakulam" 
-                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
-                />
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500 appearance-none cursor-pointer"
+                >
+                  <option value="">Select District</option>
+                  {Object.keys(KERALA_LOCATIONS).map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Sub-District (Taluk)</label>
-                <input 
-                  type="text" 
+                <select 
                   value={inspectorSubDistrict} 
                   onChange={(e) => setInspectorSubDistrict(e.target.value)} 
                   required 
-                  placeholder="Aluva" 
-                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
-                />
+                  disabled={!inspectorDistrict}
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">{inspectorDistrict ? 'Select Taluk' : 'Select District first'}</option>
+                  {inspectorDistrict && KERALA_LOCATIONS[inspectorDistrict] && Object.keys(KERALA_LOCATIONS[inspectorDistrict]).map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Coverage Level</label>

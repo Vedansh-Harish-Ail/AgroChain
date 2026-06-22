@@ -82,15 +82,25 @@ def register_crop(current_user):
     # Kerala-Based Inspector Assignment Logic
     inspector = None
     
-    # Priority 1: Same Sub-District ACTIVE Inspector
+    # Priority 1: SUB_DISTRICT-level Inspector in the SAME Sub-District
     if sub_district:
         inspector = User.query.filter_by(
             role='INSPECTOR',
             sub_district=sub_district,
+            coverage_level='SUB_DISTRICT',
             status='ACTIVE'
         ).first()
 
-    # Priority 2: Same District ACTIVE Inspector
+    # Priority 2: DISTRICT-level Inspector in the SAME District
+    if not inspector and district:
+        inspector = User.query.filter_by(
+            role='INSPECTOR',
+            district=district,
+            coverage_level='DISTRICT',
+            status='ACTIVE'
+        ).first()
+
+    # Priority 3: Any Inspector in the SAME District (regardless of coverage_level)
     if not inspector and district:
         inspector = User.query.filter_by(
             role='INSPECTOR',
@@ -98,15 +108,7 @@ def register_crop(current_user):
             status='ACTIVE'
         ).first()
 
-    # Priority 3: Any available ACTIVE DISTRICT-level Inspector
-    if not inspector:
-        inspector = User.query.filter_by(
-            role='INSPECTOR',
-            coverage_level='DISTRICT',
-            status='ACTIVE'
-        ).first()
-
-    # Fallback to any ACTIVE inspector in the DB
+    # Fallback: Any ACTIVE inspector in the system (no district match possible)
     if not inspector:
         inspector = User.query.filter_by(
             role='INSPECTOR',

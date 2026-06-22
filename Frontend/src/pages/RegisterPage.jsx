@@ -8,6 +8,99 @@ import {
   Phone, KeyRound, Upload, X, FileText, HelpCircle
 } from 'lucide-react';
 
+const KERALA_LOCATIONS = {
+  "Thiruvananthapuram": {
+    "Thiruvananthapuram": ["Trivandrum City", "Pattom", "Palayam", "Vattiyoorkavu"],
+    "Chirayinkeezhu": ["Chirayinkeezhu Town", "Attingal", "Kadakkavoor"],
+    "Nedumangad": ["Nedumangad Town", "Aruvikkara", "Vellanad"],
+    "Neyyattinkara": ["Neyyattinkara Town", "Balaramapuram", "Parasala"],
+    "Varkala": ["Varkala Town", "Edava", "Elakamon"]
+  },
+  "Kollam": {
+    "Kollam": ["Kollam Town", "Thrikkadavoor", "Eravipuram"],
+    "Karunagappally": ["Karunagappally Town", "Oachira", "Clappana"],
+    "Kunnathur": ["Sasthamcotta", "Kunnathur Town", "Sooranad"],
+    "Punalur": ["Punalur Town", "Anchal", "Thenmala"],
+    "Pathanapuram": ["Pathanapuram Town", "Pidavoor", "Pattazhy"],
+    "Kottarakkara": ["Kottarakkara Town", "Veliyam", "Ezhukone"]
+  },
+  "Pathanamthitta": {
+    "Pathanamthitta": ["Pathanamthitta Town", "Malayalappuzha", "Mylapra"],
+    "Adoor": ["Adoor Town", "Pandalam", "Enathu"],
+    "Ranni": ["Ranni Town", "Angadi", "Vadasserikkara"],
+    "Konni": ["Konni Town", "Koodal", "Pramadom"],
+    "Kozhencherry": ["Kozhencherry Town", "Elanthoor", "Aranmula"]
+  },
+  "Alappuzha": {
+    "Alappuzha": ["Alappuzha Town", "Aryad", "Mararikulam"],
+    "Ambalappuzha": ["Punnapra", "Ambalappuzha North", "Ambalappuzha South"],
+    "Chengannur": ["Chengannur Town", "Mulakuzha", "Mannar"],
+    "Kuttanad": ["Pulincunnu", "Champakulam", "Edathua"],
+    "Mavelikkara": ["Mavelikkara Town", "Kayamkulam", "Harippad"]
+  },
+  "Kottayam": {
+    "Kottayam": ["Kottayam Town", "Vijayapuram", "Panachikkad"],
+    "Changanassery": ["Changanassery Town", "Kurichy", "Madappally"],
+    "Vaikom": ["Vaikom Town", "Thalayolaparambu", "Kaduthuruthy"],
+    "Meenachil": ["Pala", "Erattupetta", "Bharananganam"]
+  },
+  "Idukki": {
+    "Devikulam": ["Munnar", "Devikulam Town", "Adimaly"],
+    "Udumbanchola": ["Nedumkandam", "Kattappana", "Cumbummettu"],
+    "Idukki": ["Painavu", "Cheruthoni", "Kanjikuzhy"],
+    "Thodupuzha": ["Thodupuzha Town", "Karimannoor", "Vannappuram"]
+  },
+  "Ernakulam": {
+    "Ernakulam": ["Kochi (Urban)", "Kalamassery", "Edappally", "Palluruthy"],
+    "Aluva": ["Chunangamveli", "Keezhmad", "Aluva West", "Chengamanad"],
+    "Kothamangalam": ["Kothamangalam Town", "Keerampara", "Pindimana"],
+    "Muvattupuzha": ["Muvattupuzha Town", "Marady", "Valakom"]
+  },
+  "Thrissur": {
+    "Thrissur": ["Olarikkara", "Ayyanthole", "Ramavarmapuram"],
+    "Chavakkad": ["Chavakkad Town", "Guruvayur", "Punnayur"],
+    "Kunnamkulam": ["Kunnamkulam Town", "Vadakkekad", "Choondal"],
+    "Irinjalakuda": ["Irinjalakuda Town", "Aloor", "Padiyoor"],
+    "Mukundapuram": ["Chalakkudy West", "Kodungallur North", "Pudukkad"]
+  },
+  "Palakkad": {
+    "Palakkad": ["Palakkad Town", "Pirayiri", "Puduppariyaram"],
+    "Chittur": ["Chittur-Thathamangalam", "Koduvayur", "Kozhinjampara"],
+    "Alathur": ["Alathur Town", "Kavassery", "Tarur"],
+    "Ottapalam": ["Ottapalam Town", "Shoranur", "Cherpulassery"],
+    "Mannarkkad": ["Mannarkkad Town", "Attappady", "Alanallur"]
+  },
+  "Malappuram": {
+    "Malappuram": ["Malappuram Town", "Manjeri", "Kondotty"],
+    "Perinthalmanna": ["Perinthalmanna Town", "Melattur", "Aliparamba"],
+    "Tirur": ["Tirur Town", "Tanur", "Kottakkal"],
+    "Nilambur": ["Nilambur Town", "Wandoor", "Edakkara"],
+    "Ponnani": ["Ponnani Town", "Edapal", "Tavanur"]
+  },
+  "Kozhikode": {
+    "Kozhikode": ["Kozhikode City", "Beypore", "Elathur"],
+    "Vatakara": ["Vatakara Town", "Chorode", "Maniyur"],
+    "Koyilandy": ["Koyilandy Town", "Atholi", "Balussery"],
+    "Thamarassery": ["Thamarassery Town", "Koduvally", "Thiruvambady"]
+  },
+  "Wayanad": {
+    "Mananthavady": ["Mananthavady Town", "Thirunelly", "Vellamunda"],
+    "Sulthan Bathery": ["Sulthan Bathery Town", "Ambalavayal", "Noolpuzha"],
+    "Vythiri": ["Kalpetta", "Vythiri Town", "Meppadi"]
+  },
+  "Kannur": {
+    "Kannur": ["Kannur Town", "Edakkad", "Puzhathi"],
+    "Taliparamba": ["Taliparamba Town", "Payyannur", "Alakode"],
+    "Thalassery": ["Thalassery Town", "Dharmadom", "Panoor"],
+    "Iritty": ["Iritty Town", "Mattannur", "Peravoor"]
+  },
+  "Kasaragod": {
+    "Kasaragod": ["Kasaragod Town", "Kumbla", "Badiadka"],
+    "Hosdurg": ["Kanhangad", "Nileshwar", "Cheruvathur"],
+    "Manjeshwaram": ["Manjeshwar Town", "Uppala", "Mangalpady"]
+  }
+};
+
 export default function RegisterPage() {
   const { register, sendSmsOtp, sendEmailOtp } = useAuth();
   const { walletAddress, isConnected, connectWallet } = useWallet();
@@ -546,12 +639,22 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">District</label>
-                    <input type="text" value={district} onChange={(e) => setDistrict(e.target.value)} required={['INSPECTOR', 'TESTER'].includes(role)} placeholder="E.g. Ernakulam" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                    <select value={district} onChange={(e) => { setDistrict(e.target.value); setSubDistrict(''); }} required={['INSPECTOR', 'TESTER'].includes(role)} className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 appearance-none cursor-pointer">
+                      <option value="">Select District</option>
+                      {Object.keys(KERALA_LOCATIONS).map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
                   </div>
                   {role === 'TESTER' && (
                     <div>
                       <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">Sub-District (Taluk)</label>
-                      <input type="text" value={subDistrict} onChange={(e) => setSubDistrict(e.target.value)} required={role === 'TESTER'} placeholder="E.g. Aluva" className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500" />
+                      <select value={subDistrict} onChange={(e) => setSubDistrict(e.target.value)} required={role === 'TESTER'} disabled={!district} className="text-xs w-full py-1.5 px-2 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <option value="">{district ? 'Select Taluk' : 'Select District first'}</option>
+                        {district && KERALA_LOCATIONS[district] && Object.keys(KERALA_LOCATIONS[district]).map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
                     </div>
                   )}
                   <div>
