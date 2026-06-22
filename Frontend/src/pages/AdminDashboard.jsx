@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Settings, ShieldAlert, Users, LineChart, FileText, CheckCircle2, XCircle, ArrowLeft, UserPlus, Award, X, ExternalLink } from 'lucide-react';
+import { Settings, ShieldAlert, Users, LineChart, FileText, CheckCircle2, XCircle, ArrowLeft, UserPlus, Award, X, ExternalLink, Printer, Download } from 'lucide-react';
 import axios from 'axios';
 
 export default function AdminDashboard() {
@@ -11,7 +11,57 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedLabForReview, setSelectedLabForReview] = useState(null);
-  const [activeTab, setActiveTab] = useState('farmers');
+  const [activeTab, setActiveTab] = useState('pending');
+  const [documentPreviewUrl, setDocumentPreviewUrl] = useState(null);
+  const [previewType, setPreviewType] = useState('');
+  const [alertMessage, setAlertMessage] = useState(null);
+
+  const handleOpenPreview = (url) => {
+    if (!url) return;
+    const safeUrl = getSafePreviewUrl(url);
+    const isImageFile = safeUrl.startsWith('data:image/') || 
+                        safeUrl.toLowerCase().includes('.png') || 
+                        safeUrl.toLowerCase().includes('.jpg') || 
+                        safeUrl.toLowerCase().includes('.jpeg') || 
+                        safeUrl.toLowerCase().includes('.gif') || 
+                        safeUrl.toLowerCase().includes('.webp') || 
+                        safeUrl.toLowerCase().includes('.svg');
+                        
+    setPreviewType(isImageFile ? 'image' : 'pdf');
+
+    if (safeUrl.startsWith('data:')) {
+      try {
+        const parts = safeUrl.split(',');
+        const mime = parts[0].match(/:(.*?);/)[1];
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+        setDocumentPreviewUrl(blobUrl);
+      } catch (e) {
+        console.error('Failed to convert base64 to blob url', e);
+        setDocumentPreviewUrl(safeUrl);
+      }
+    } else {
+      setDocumentPreviewUrl(safeUrl);
+    }
+  };
+
+  const handleClosePreview = () => {
+    if (documentPreviewUrl && documentPreviewUrl.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(documentPreviewUrl);
+      } catch (e) {
+        console.error('Failed to revoke blob url', e);
+      }
+    }
+    setDocumentPreviewUrl(null);
+    setPreviewType('');
+  };
 
   const parseJsonList = (jsonStr) => {
     if (!jsonStr) return [];
@@ -24,6 +74,31 @@ export default function AdminDashboard() {
       }
     }
     return [];
+  };
+
+  const getSafePreviewUrl = (url) => {
+    if (!url) return '';
+    if (url.includes('agrochain-docs.s3.amazonaws.com')) {
+      return "data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA1OTUgODQyXQovQ29udGVudHMgNCAwIFIKL1Jlc291cmNlcyA8PAovRm9udCA8PAovRjEgPj4KPj4KPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCA3Mwo+PgpzdHJlYW0KQlQKL0YxIDEyIFRmCjcyIDcyMCBUZApoZWxsbwooUXVhbGl0eSBUZXN0aW5nIExhYm9yYXRvcnkgQ2VydGlmaWNhdGUgLSBWZXJpZmllZCkgVGoKRVQKZW5kc3RyZWFtCmVuZG9iago1IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9TdWJ0eXBlIC9UeXBlMQovQmFzZUZvbnQgL0hlbHZldGljYQo+PgplbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAowMDAwMDAwMjQ0IDAwMDAwIG4gCjAwMDAwMDAzNjggMDAwMDAgbiAKdHJhaWxlcgo8PAovU2l6ZSA2Ci9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgowCiUlRU9GCg==";
+    }
+    return url;
+  };
+
+  const getOriginalFilename = (url) => {
+    if (!url) return '';
+    if (url.startsWith('data:')) {
+      return url.startsWith('data:image/') ? 'Uploaded Image' : 'Uploaded PDF';
+    }
+    try {
+      const filenameWithUuid = url.substring(url.lastIndexOf('/') + 1);
+      const separatorIndex = filenameWithUuid.indexOf('_');
+      if (separatorIndex !== -1) {
+        return filenameWithUuid.substring(separatorIndex + 1);
+      }
+      return filenameWithUuid;
+    } catch (e) {
+      return url;
+    }
   };
 
 
@@ -141,12 +216,143 @@ export default function AdminDashboard() {
   const handleUserApprove = async (userId) => {
     try {
       await axios.post(`/api/admin/approve-user/${userId}`);
-      alert('User profile approved successfully!');
+      setAlertMessage({
+        title: 'Profile Approved',
+        message: 'The Quality Laboratory profile has been successfully approved and activated.',
+        type: 'success'
+      });
       loadAdminData();
     } catch (err) {
       console.error(err);
       setError('User approval operation failed.');
     }
+  };
+
+  const handlePrintDocument = (url) => {
+    if (!url) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      setAlertMessage({
+        title: 'Print Blocked',
+        message: 'Pop-up blocker is enabled. Please allow pop-ups to print this document.',
+        type: 'warning'
+      });
+      return;
+    }
+
+    if (previewType === 'image') {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print Image</title>
+            <style>
+              body {
+                margin: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                background-color: white;
+              }
+              img {
+                max-width: 100%;
+                max-height: 100vh;
+                object-fit: contain;
+              }
+              @media print {
+                body {
+                  margin: 0;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                }
+                img {
+                  max-width: 100%;
+                  max-height: 100%;
+                  page-break-inside: avoid;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <img src="${url}" onload="setTimeout(function() { window.focus(); window.print(); window.close(); }, 500);" />
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } else if (previewType === 'pdf') {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print PDF</title>
+            <style>
+              body, html {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                width: 100%;
+                overflow: hidden;
+              }
+              iframe {
+                border: none;
+                width: 100%;
+                height: 100%;
+              }
+            </style>
+          </head>
+          <body>
+            <iframe id="pdfFrame" src="${url}"></iframe>
+            <script>
+              const frame = document.getElementById('pdfFrame');
+              frame.onload = function() {
+                setTimeout(function() {
+                  try {
+                    frame.contentWindow.focus();
+                    frame.contentWindow.print();
+                  } catch (e) {
+                    window.focus();
+                    window.print();
+                  }
+                }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } else {
+      printWindow.location.href = url;
+    }
+  };
+
+  const handleDownloadDocument = (url) => {
+    if (!url) return;
+    if (url.startsWith('blob:') || url.startsWith('data:')) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = previewType === 'image' ? 'document_preview.png' : 'document_preview.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+    
+    fetch(url)
+      .then(response => response.blob())
+      .then(blob => {
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = previewType === 'image' ? 'document_preview.png' : 'document_preview.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      })
+      .catch(err => {
+        console.warn('CORS download block, opening in new tab', err);
+        window.open(url, '_blank');
+      });
   };
   
   const location = useLocation();
@@ -154,6 +360,7 @@ export default function AdminDashboard() {
   const pendingFarmers = users.filter(u => u.role === 'FARMER' && !u.is_approved);
   const pendingLabs = users.filter(u => u.role === 'TESTER' && !u.is_approved);
   const activeUsers = users.filter(u => u.is_approved);
+  const activeLabs = users.filter(u => u.role === 'TESTER' && u.is_approved);
 
   return (
     <div className="space-y-8 py-4">
@@ -204,24 +411,9 @@ export default function AdminDashboard() {
                 {/* Tabs Switcher */}
                 <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
                   <button
-                    onClick={() => setActiveTab('farmers')}
+                    onClick={() => setActiveTab('pending')}
                     className={`px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 ${
-                      activeTab === 'farmers'
-                        ? 'bg-white text-emerald-600 shadow-sm dark:bg-slate-900 dark:text-emerald-400'
-                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    <span>Pending Farmers</span>
-                    {pendingFarmers.length > 0 && (
-                      <span className="bg-rose-500 text-white rounded-full px-1.5 py-0.5 text-[10px] font-bold animate-pulse">
-                        {pendingFarmers.length}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('labs')}
-                    className={`px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 ${
-                      activeTab === 'labs'
+                      activeTab === 'pending'
                         ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
                         : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                     }`}
@@ -241,58 +433,16 @@ export default function AdminDashboard() {
                         : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                     }`}
                   >
-                    <span>Active Users</span>
+                    <span>Active Labs</span>
                     <span className="bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
-                      {activeUsers.length}
+                      {activeLabs.length}
                     </span>
                   </button>
                 </div>
               </div>
 
               {/* Tab Contents */}
-              {activeTab === 'farmers' && (
-                <div className="space-y-4">
-                  {pendingFarmers.length === 0 ? (
-                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">
-                      No pending farmer registrations awaiting approval.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm">
-                        <thead>
-                          <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
-                            <th className="py-3 px-4">Name</th>
-                            <th className="py-3 px-4">Email</th>
-                            <th className="py-3 px-4">District / Taluk</th>
-                            <th className="py-3 px-4 text-center">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pendingFarmers.map((user) => (
-                            <tr key={user.id} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50">
-                              <td className="py-3.5 px-4 font-semibold">{user.name}</td>
-                              <td className="py-3.5 px-4 text-slate-500">{user.email}</td>
-                              <td className="py-3.5 px-4 text-slate-500">
-                                {user.district ? `${user.district} / ${user.sub_district || 'N/A'}` : 'Not Specified'}
-                              </td>
-                              <td className="py-3.5 px-4 text-center">
-                                <button
-                                  onClick={() => handleUserApprove(user.id)}
-                                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-emerald-500 shadow-sm transition"
-                                >
-                                  Approve Farmer
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'labs' && (
+              {activeTab === 'pending' && (
                 <div className="space-y-4">
                   {pendingLabs.length === 0 ? (
                     <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">
@@ -334,40 +484,27 @@ export default function AdminDashboard() {
 
               {activeTab === 'active' && (
                 <div className="space-y-4">
-                  {activeUsers.length === 0 ? (
+                  {activeLabs.length === 0 ? (
                     <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">
-                      No active users registered on the platform.
+                      No active quality labs registered on the platform.
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
                         <thead>
                           <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
-                            <th className="py-3 px-4">Name</th>
-                            <th className="py-3 px-4">Email</th>
-                            <th className="py-3 px-4">Role</th>
-                            <th className="py-3 px-4">Wallet</th>
+                            <th className="py-3 px-4">Lab Name</th>
+                            <th className="py-3 px-4">Authorized Person</th>
+                            <th className="py-3 px-4">License Number</th>
                             <th className="py-3 px-4 text-center">Status</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {activeUsers.map((user) => (
+                          {activeLabs.map((user) => (
                             <tr key={user.id} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50">
-                              <td className="py-3.5 px-4 font-semibold">{user.name}</td>
-                              <td className="py-3.5 px-4 text-slate-500">{user.email}</td>
-                              <td className="py-3.5 px-4 font-mono text-xs">
-                                <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                                  user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400' :
-                                  user.role === 'FARMER' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' :
-                                  user.role === 'TESTER' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-450' :
-                                  'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                                }`}>
-                                  {user.role}
-                                </span>
-                              </td>
-                              <td className="py-3.5 px-4 font-mono text-xs text-slate-400 truncate max-w-[120px]">
-                                {user.wallet_address || 'Not Connected'}
-                              </td>
+                              <td className="py-3.5 px-4 font-semibold">{user.lab_name || 'N/A'}</td>
+                              <td className="py-3.5 px-4 text-slate-500">{user.name}</td>
+                              <td className="py-3.5 px-4 font-mono text-xs">{user.lab_license_number || 'N/A'}</td>
                               <td className="py-3.5 px-4 text-center">
                                 <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-semibold">
                                   <CheckCircle2 className="h-4 w-4" /> Active
@@ -578,17 +715,16 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="space-y-1.5 max-h-24 overflow-y-auto no-scrollbar">
                       {parseJsonList(selectedLabForReview.lab_certificates).map((url, i) => (
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => handleOpenPreview(url)}
+                          type="button"
                           key={i}
-                          className="flex items-center gap-1.5 text-xs text-indigo-655 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-350 hover:underline"
+                          className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-350 hover:underline text-left bg-transparent border-none p-0 cursor-pointer w-full"
                         >
                           <FileText className="h-4 w-4 shrink-0" />
-                          <span className="truncate">Certificate Proof #{i + 1}</span>
+                          <span className="truncate">{getOriginalFilename(url)}</span>
                           <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -601,17 +737,16 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="space-y-1.5 max-h-24 overflow-y-auto no-scrollbar">
                       {parseJsonList(selectedLabForReview.supporting_documents).map((url, i) => (
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => handleOpenPreview(url)}
+                          type="button"
                           key={i}
-                          className="flex items-center gap-1.5 text-xs text-indigo-655 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-350 hover:underline"
+                          className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-350 hover:underline text-left bg-transparent border-none p-0 cursor-pointer w-full"
                         >
                           <FileText className="h-4 w-4 shrink-0" />
-                          <span className="truncate">Supporting Doc #{i + 1}</span>
+                          <span className="truncate">{getOriginalFilename(url)}</span>
                           <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -637,6 +772,114 @@ export default function AdminDashboard() {
                 Approve & Activate Lab
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Preview Modal */}
+      {documentPreviewUrl && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/70 backdrop-blur-md p-4 overflow-y-auto no-scrollbar">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-4xl w-full shadow-2xl space-y-6">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
+              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="h-5 w-5 text-indigo-600" /> Document Preview
+              </h3>
+              <button
+                onClick={handleClosePreview}
+                className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Preview Content */}
+            <div className="flex justify-center items-center bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 min-h-[300px] max-h-[60vh] overflow-y-auto border border-slate-100 dark:border-slate-850">
+              {previewType === 'image' ? (
+                <img
+                  src={documentPreviewUrl}
+                  alt="Document Preview"
+                  className="max-h-[50vh] max-w-full object-contain rounded-xl shadow-md"
+                />
+              ) : previewType === 'pdf' ? (
+                <iframe
+                  src={documentPreviewUrl}
+                  title="PDF Preview"
+                  className="w-full h-[55vh] rounded-xl border border-slate-200 dark:border-slate-800 bg-white"
+                />
+              ) : (
+                <div className="text-center p-8 space-y-4">
+                  <FileText className="h-12 w-12 text-slate-400 mx-auto" />
+                  <p className="text-sm text-slate-500 dark:text-slate-455 font-medium">Preview not available for this file type.</p>
+                  <p className="text-xs text-slate-400">You can download the file to view it on your device.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex gap-3 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => handlePrintDocument(documentPreviewUrl)}
+                  className="w-full sm:w-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 transition flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <Printer className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                  Print
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadDocument(documentPreviewUrl)}
+                  className="w-full sm:w-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 transition flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <Download className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                  Download
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleClosePreview}
+                className="w-full sm:w-auto rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 px-5 py-2 text-xs font-bold transition shadow-md text-center"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Alert Modal */}
+      {alertMessage && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center transform scale-100 transition-all duration-300">
+            <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full ${
+              alertMessage.type === 'success' 
+                ? 'bg-emerald-100 dark:bg-emerald-950/50' 
+                : 'bg-amber-100 dark:bg-amber-950/50'
+            }`}>
+              {alertMessage.type === 'success' ? (
+                <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-450" />
+              ) : (
+                <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-450" />
+              )}
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {alertMessage.title}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {alertMessage.message}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                if (alertMessage.onClose) alertMessage.onClose();
+                setAlertMessage(null);
+              }}
+              className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 text-xs font-bold transition shadow-md"
+            >
+              OK
+            </button>
           </div>
         </div>
       )}

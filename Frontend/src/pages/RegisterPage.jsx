@@ -31,40 +31,83 @@ export default function RegisterPage() {
   const [uploadingCerts, setUploadingCerts] = useState(false);
   const [uploadingDocs, setUploadingDocs] = useState(false);
 
-  const handleCertUpload = (e) => {
+  const getOriginalFilename = (url) => {
+    if (!url) return '';
+    if (url.startsWith('data:')) {
+      return url.startsWith('data:image/') ? 'Uploaded Image' : 'Uploaded PDF';
+    }
+    try {
+      const filenameWithUuid = url.substring(url.lastIndexOf('/') + 1);
+      const separatorIndex = filenameWithUuid.indexOf('_');
+      if (separatorIndex !== -1) {
+        return filenameWithUuid.substring(separatorIndex + 1);
+      }
+      return filenameWithUuid;
+    } catch (e) {
+      return url;
+    }
+  };
+
+  const handleCertUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
     setUploadingCerts(true);
-    setTimeout(() => {
-      const mockDocUrls = [
-        "https://agrochain-docs.s3.amazonaws.com/proofs/lab_cert_iso17025.pdf",
-        "https://agrochain-docs.s3.amazonaws.com/proofs/quality_standards_compliance.pdf",
-        "https://agrochain-docs.s3.amazonaws.com/proofs/nbl_accreditation.pdf"
-      ];
-      const index = (labCertificates.length) % mockDocUrls.length;
-      setLabCertificates(prev => [...prev, mockDocUrls[index]]);
+    setError('');
+
+    const file = files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/auth/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.url) {
+        setLabCertificates(prev => [...prev, data.url]);
+      } else {
+        setError('Failed to upload certificate.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Error uploading certificate: ' + err.message);
+    } finally {
       setUploadingCerts(false);
-    }, 1200);
+    }
   };
 
   const removeCert = (idx) => {
     setLabCertificates(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const handleDocUpload = (e) => {
+  const handleDocUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
     setUploadingDocs(true);
-    setTimeout(() => {
-      const mockDocUrls = [
-        "https://agrochain-docs.s3.amazonaws.com/proofs/lab_registration_gov.pdf",
-        "https://agrochain-docs.s3.amazonaws.com/proofs/company_pan_card.pdf",
-        "https://agrochain-docs.s3.amazonaws.com/proofs/utility_bill_verification.pdf"
-      ];
-      const index = (supportingDocuments.length) % mockDocUrls.length;
-      setSupportingDocuments(prev => [...prev, mockDocUrls[index]]);
+    setError('');
+
+    const file = files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/auth/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.url) {
+        setSupportingDocuments(prev => [...prev, data.url]);
+      } else {
+        setError('Failed to upload document.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Error uploading document: ' + err.message);
+    } finally {
       setUploadingDocs(false);
-    }, 1200);
+    }
   };
 
   const removeDoc = (idx) => {
@@ -560,7 +603,7 @@ export default function RegisterPage() {
                       <div key={idx} className="flex items-center justify-between p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 text-[10px]">
                         <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
                           <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                          <span className="truncate max-w-[180px] font-medium">Certificate #{idx + 1}</span>
+                          <span className="truncate max-w-[180px] font-medium">{getOriginalFilename(url)}</span>
                         </div>
                         <button type="button" onClick={() => removeCert(idx)} className="p-0.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition">
                           <X className="h-2.5 w-2.5" />
@@ -589,7 +632,7 @@ export default function RegisterPage() {
                       <div key={idx} className="flex items-center justify-between p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955 text-[10px]">
                         <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
                           <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                          <span className="truncate max-w-[180px] font-medium">Document #{idx + 1}</span>
+                          <span className="truncate max-w-[180px] font-medium">{getOriginalFilename(url)}</span>
                         </div>
                         <button type="button" onClick={() => removeDoc(idx)} className="p-0.5 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition">
                           <X className="h-2.5 w-2.5" />

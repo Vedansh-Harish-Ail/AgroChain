@@ -397,3 +397,37 @@ def link_wallet(current_user):
         'message': 'Wallet address linked successfully',
         'user': current_user.to_dict()
     }), 200
+
+@auth_bp.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'message': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'message': 'No selected file'}), 400
+    
+    import os
+    from werkzeug.utils import secure_filename
+    import uuid
+    
+    filename = secure_filename(file.filename)
+    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+    
+    # Store uploads in a folder under the project base directory
+    upload_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+        
+    file.save(os.path.join(upload_folder, unique_filename))
+    
+    return jsonify({
+        'success': True,
+        'url': f"/api/auth/uploads/{unique_filename}"
+    }), 200
+
+@auth_bp.route('/uploads/<filename>', methods=['GET'])
+def get_upload(filename):
+    import os
+    from flask import send_from_directory
+    upload_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
+    return send_from_directory(upload_folder, filename)

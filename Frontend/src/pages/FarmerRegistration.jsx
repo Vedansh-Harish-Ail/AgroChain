@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Sprout, FileText, Calendar, Compass, ShieldCheck, Database, Info, ArrowLeft, MapPin, Upload, X, Check, Search } from 'lucide-react';
+import { Sprout, FileText, Calendar, Compass, ShieldCheck, Database, Info, ArrowLeft, MapPin, Upload, X, Check, Search, CheckCircle2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
 const KERALA_LOCATIONS = {
@@ -138,6 +138,7 @@ export default function FarmerRegistration() {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [alertMessage, setAlertMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const navigate = useNavigate();
@@ -339,12 +340,20 @@ export default function FarmerRegistration() {
             updateSelectedLocation(lat, lon);
           }
         } else {
-          alert("Location not found. Please try a different search term.");
+          setAlertMessage({
+            title: 'Location Not Found',
+            message: 'Please try a different search term.',
+            type: 'warning'
+          });
         }
       }
     } catch (err) {
       console.error("Search geocoding failed:", err);
-      alert("Failed to search location.");
+      setAlertMessage({
+        title: 'Search Error',
+        message: 'Failed to search location.',
+        type: 'error'
+      });
     } finally {
       setSearchLoading(false);
     }
@@ -529,8 +538,12 @@ export default function FarmerRegistration() {
       });
 
       setLoading(false);
-      alert('Crop details registered successfully! State officials / Quality testers will inspect this and log it on the blockchain.');
-      navigate('/dashboard');
+      setAlertMessage({
+        title: 'Crop Registered Successfully',
+        message: 'State officials / Quality testers will inspect this and log it on the blockchain.',
+        type: 'success',
+        onClose: () => navigate('/dashboard')
+      });
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || 'Failed to save crop details.');
@@ -930,6 +943,42 @@ export default function FarmerRegistration() {
           </div>
         </form>
       </div>
+
+      {/* Custom Alert Modal */}
+      {alertMessage && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center transform scale-100 transition-all duration-300">
+            <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full ${
+              alertMessage.type === 'success' 
+                ? 'bg-emerald-100 dark:bg-emerald-950/50' 
+                : 'bg-amber-100 dark:bg-amber-950/50'
+            }`}>
+              {alertMessage.type === 'success' ? (
+                <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-450" />
+              ) : (
+                <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-450" />
+              )}
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {alertMessage.title}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {alertMessage.message}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                if (alertMessage.onClose) alertMessage.onClose();
+                setAlertMessage(null);
+              }}
+              className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 text-xs font-bold transition shadow-md"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

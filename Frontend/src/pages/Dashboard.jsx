@@ -309,7 +309,7 @@ export default function Dashboard() {
         if (user?.role === 'ADMIN') {
           try {
             const usersRes = await axios.get('/api/admin/users');
-            const pendingUsers = usersRes.data.filter(u => !u.is_approved);
+            const pendingUsers = usersRes.data.filter(u => u.role === 'TESTER' && !u.is_approved);
             const seenUserApprovals = JSON.parse(localStorage.getItem('admin_seen_user_approvals') || '[]');
             let newUserApprovals = 0;
             const pUserIds = [];
@@ -759,7 +759,7 @@ export default function Dashboard() {
               </div>
               <div className="space-y-1">
                 <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">User Approvals</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">ADMIN: Review and approve new farmer registrations and quality laboratory credentials.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">ADMIN: Review and approve quality laboratory credentials.</p>
               </div>
             </Link>
           )}
