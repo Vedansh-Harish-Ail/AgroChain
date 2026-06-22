@@ -404,10 +404,13 @@ Here is a comprehensive index of all key files in the AgroChain workspace:
 
 ## 9. Chronological Change Log
 
-* **June 22, 2026** (Roles Bento Grid Redesign & Readability Adjustments):
+* **June 22, 2026** (Roles Bento Grid Redesign, Contrast fixes, SMS Gateway & Floating Navbars):
   * **Hero Contrast Backdrop**: Added a responsive gradient overlay and updated hero text classes (`text-slate-700 dark:text-slate-200 font-medium`), trust badges (`text-slate-700 dark:text-slate-300`), and the secondary marketplace button to resolve text readability issues over the agricultural leafy background image.
   * **Static Bento Cards**: Converted the roles grid items in [LandingPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/LandingPage.jsx) from Router `Link` components to standard `div` containers to prevent browser redirection on click.
   * **Visual Bento Styling**: Styled cards with custom color-coded spotlight glows on hover, a subtle dot grid overlay (`.card-dots`), colored context badges (e.g. Production, Quality Control), card lift hover translations, and interactive transition arrow CTAs.
+  * **SMS Gateway Configuration**: Setup backend credentials (`SMS_GATEWAY_URL`, `SMS_GATEWAY_USER`, and `SMS_GATEWAY_PASSWORD`) in [Backend/.env](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/.env) to connect local SMS gateways for OTP code delivery.
+  * **Floating Navigation Bars**: Converted default headers to premium floating navigation bars in both [LandingPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/LandingPage.jsx) and [App.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/App.jsx). Shifted padding-top properties from the main wrapper to individual content sections to prevent any white gap rendering behind the translucent floating navbar.
+  * **Agricultural Hero Background**: Configured and applied a sharp agricultural backdrop overlay (`hero_background.png`) behind the hero text columns.
   * **Compilation**: Verified and completed the frontend production build with zero errors.
 
 * **June 12, 2026** (Quality Lab Tester Model & Onboarding Flow):
