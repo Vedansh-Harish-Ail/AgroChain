@@ -1,17 +1,126 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
 import { 
   Search, CheckCircle, XCircle, ShieldAlert, Cpu, UserCheck, ArrowLeft, 
-  MapPin, ExternalLink, Image, FileText, Award, Download, Clock, ShieldCheck 
+  MapPin, ExternalLink, Image, FileText, Award, Download, Clock, ShieldCheck,
+  Sprout, Wallet, AlertTriangle, Info, CheckCircle2, X as XIcon
 } from 'lucide-react';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
 import { ethers } from 'ethers';
 
+// ─── Custom Toast Notification Component ─────────────────────────────────────
+function Toast({ toasts, removeToast }) {
+  return (
+    <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-3 pointer-events-none">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`pointer-events-auto flex items-start gap-3 rounded-2xl border shadow-2xl px-4 py-3.5 min-w-[280px] max-w-[380px] backdrop-blur-sm animate-in slide-in-from-right-4 fade-in duration-300 ${
+            t.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/80 dark:border-emerald-800'
+              : t.type === 'error'
+              ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/80 dark:border-rose-800'
+              : t.type === 'warning'
+              ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/80 dark:border-amber-800'
+              : 'bg-blue-50 border-blue-200 dark:bg-blue-950/80 dark:border-blue-800'
+          }`}
+        >
+          <div className={`mt-0.5 shrink-0 ${
+            t.type === 'success' ? 'text-emerald-600 dark:text-emerald-400'
+            : t.type === 'error' ? 'text-rose-600 dark:text-rose-400'
+            : t.type === 'warning' ? 'text-amber-600 dark:text-amber-400'
+            : 'text-blue-600 dark:text-blue-400'
+          }`}>
+            {t.type === 'success' ? <CheckCircle2 className="h-5 w-5" /> 
+            : t.type === 'error' ? <XCircle className="h-5 w-5" />
+            : t.type === 'warning' ? <AlertTriangle className="h-5 w-5" />
+            : <Info className="h-5 w-5" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            {t.title && (
+              <p className={`text-xs font-bold mb-0.5 ${
+                t.type === 'success' ? 'text-emerald-800 dark:text-emerald-300'
+                : t.type === 'error' ? 'text-rose-800 dark:text-rose-300'
+                : t.type === 'warning' ? 'text-amber-800 dark:text-amber-300'
+                : 'text-blue-800 dark:text-blue-300'
+              }`}>{t.title}</p>
+            )}
+            <p className={`text-xs leading-relaxed ${
+              t.type === 'success' ? 'text-emerald-700 dark:text-emerald-400'
+              : t.type === 'error' ? 'text-rose-700 dark:text-rose-400'
+              : t.type === 'warning' ? 'text-amber-700 dark:text-amber-400'
+              : 'text-blue-700 dark:text-blue-400'
+            }`}>{t.message}</p>
+          </div>
+          <button
+            onClick={() => removeToast(t.id)}
+            className={`shrink-0 rounded-lg p-1 transition hover:bg-black/10 dark:hover:bg-white/10 ${
+              t.type === 'success' ? 'text-emerald-500'
+              : t.type === 'error' ? 'text-rose-500'
+              : t.type === 'warning' ? 'text-amber-500'
+              : 'text-blue-500'
+            }`}
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Custom Confirm Dialog Component ─────────────────────────────────────────
+function ConfirmDialog({ dialog, onConfirm, onCancel }) {
+  if (!dialog) return null;
+  return (
+    <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 fade-in duration-200">
+        {/* Icon */}
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto ${
+          dialog.variant === 'danger' 
+            ? 'bg-rose-100 dark:bg-rose-950/50' 
+            : 'bg-amber-100 dark:bg-amber-950/50'
+        }`}>
+          <AlertTriangle className={`h-6 w-6 ${
+            dialog.variant === 'danger' 
+              ? 'text-rose-600 dark:text-rose-400' 
+              : 'text-amber-600 dark:text-amber-400'
+          }`} />
+        </div>
+        {/* Title */}
+        <div className="text-center space-y-1">
+          <h3 className="font-bold text-slate-900 dark:text-white text-base">{dialog.title || 'Are you sure?'}</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{dialog.message}</p>
+        </div>
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition shadow-md ${
+              dialog.variant === 'danger'
+                ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20'
+                : 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20'
+            }`}
+          >
+            {dialog.confirmText || 'Confirm'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function QualityTesting() {
-  const { isConnected, connectWallet, contracts } = useWallet();
+  const { isConnected, connectWallet, contracts, walletAddress } = useWallet();
   const { user } = useAuth();
   const [crops, setCrops] = useState([]);
   const [products, setProducts] = useState([]);
@@ -26,7 +135,39 @@ export default function QualityTesting() {
   const [error, setError] = useState('');
   const [selectedCropForLetter, setSelectedCropForLetter] = useState(null);
   const [selectedCropForCertificate, setSelectedCropForCertificate] = useState(null);
+
+  // ─── Toast notification state ───────────────────────────────────────────────
+  const [toasts, setToasts] = useState([]);
+  const addToast = useCallback((message, type = 'info', title = '') => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, message, type, title }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4500);
+  }, []);
+  const removeToast = useCallback((id) => setToasts(prev => prev.filter(t => t.id !== id)), []);
+
+  // ─── Confirm dialog state ────────────────────────────────────────────────────
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const showConfirm = useCallback((config) => {
+    return new Promise((resolve) => {
+      setConfirmDialog({ ...config, resolve });
+    });
+  }, []);
+  const handleConfirmOk = () => {
+    if (confirmDialog?.resolve) confirmDialog.resolve(true);
+    setConfirmDialog(null);
+  };
+  const handleConfirmCancel = () => {
+    if (confirmDialog?.resolve) confirmDialog.resolve(false);
+    setConfirmDialog(null);
+  };
+
   const navigate = useNavigate();
+
+  const isWalletMismatched = isConnected && user?.wallet_address && walletAddress && (walletAddress.toLowerCase() !== user.wallet_address.toLowerCase());
+  const isWalletNotConnected = !isConnected && user?.wallet_address;
+  const isActionDisabled = isWalletMismatched || isWalletNotConnected;
+
+
 
   const fetchPendingCrops = async () => {
     try {
@@ -84,37 +225,43 @@ export default function QualityTesting() {
     }
 
     if (!isConnected) {
-      setError('Please connect MetaMask to continue.');
-      setLoading(false);
-      return;
+      const address = await connectWallet();
+      if (!address) {
+        setError('Please connect your MetaMask wallet to execute approvals.');
+        setLoading(false);
+        return;
+      }
     }
 
     try {
-      let tx;
-      // 1. Call Smart Contract
-      if (crop.blockchain_status === 'DB_ONLY') {
-        const cultivationTimestamp = Math.floor(new Date(crop.cultivation_date).getTime() / 1000);
-        const farmerWallet = crop.wallet_address || "0x0000000000000000000000000000000000000000";
+      const cropId = crop.id;
+      const farmerName = crop.farmer_name || 'Unknown Farmer';
+      const farmLocation = crop.farm_location || '';
+      const farmSize = crop.farm_size || '0';
+      const farmingType = crop.farming_type || 'Organic';
+      const cropType = crop.crop_type || '';
+      const expectedYield = crop.expected_yield || 0;
+      const cultivationTimestamp = Math.floor(new Date(crop.cultivation_date).getTime() / 1000) || 0;
+      const farmerWallet = crop.wallet_address || ethers.ZeroAddress;
 
-        tx = await contracts.farmerRegistry["approveFarmer(uint256,string,string,string,string,string,uint256,uint256,address)"](
-          crop.id,
-          crop.farmer_name || "Unknown Farmer",
-          crop.farm_location || "",
-          crop.farm_size || "",
-          crop.farming_type || "Organic",
-          crop.crop_type || "",
-          parseInt(crop.expected_yield || 0),
-          cultivationTimestamp,
-          farmerWallet
-        );
-      } else {
-        tx = await contracts.farmerRegistry["approveFarmer(uint256)"](crop.id);
-      }
+      // 1. Call Smart Contract `approveFarmer` (the 9-parameter overload)
+      const tx = await contracts.farmerRegistry.approveFarmer(
+        cropId,
+        farmerName,
+        farmLocation,
+        farmSize,
+        farmingType,
+        cropType,
+        expectedYield,
+        cultivationTimestamp,
+        farmerWallet
+      );
 
       setTxDetails({ step: 'broadcasting', hash: tx.hash });
 
       const receipt = await tx.wait();
       const blockNumber = receipt.blockNumber;
+
       setTxDetails({ step: 'confirmed', hash: tx.hash, block: blockNumber });
 
       // 2. Log transaction to Explorer Index
@@ -126,24 +273,23 @@ export default function QualityTesting() {
         amount: 0,
         method_name: 'approveFarmer',
         event_data: JSON.stringify({
-          farmerId: crop.id,
-          farmerName: crop.farmer_name,
-          verifier: tx.from,
-          surveyNo: crop.land_survey_no
+          farmerId: cropId,
+          farmerName,
+          cropType
         })
       });
 
       // 3. Update status in Database
       await axios.post(`/api/quality/approve/${crop.id}`, {
-        tx_hash: tx.hash,
-        block_number: blockNumber,
         tester_remarks: remarks,
         inspection_notes: remarks,
-        inspection_method: inspectionMethod
+        inspection_method: inspectionMethod,
+        tx_hash: tx.hash,
+        block_number: blockNumber
       });
 
       setLoading(false);
-      alert(`Farmer crop ID ${crop.id} has been verified and registered on-chain successfully!`);
+      addToast(`Farmer crop ID ${crop.id} has been verified and approved on-chain successfully!`, 'success', 'Approved On-Chain ✓');
       setSelectedCrop(null);
       setRemarks('');
       setInspectionMethod('PHYSICAL_VISIT');
@@ -151,7 +297,7 @@ export default function QualityTesting() {
 
     } catch (err) {
       console.error(err);
-      setError(err.reason || err.message || 'Transaction failed. Check MetaMask logs.');
+      setError(err.reason || err.message || 'Approval failed. Please try again.');
       setLoading(false);
     }
   };
@@ -161,7 +307,13 @@ export default function QualityTesting() {
       setError('Please add inspection remarks detailing the reason for rejection.');
       return;
     }
-    if (!window.confirm("Are you sure you want to reject this crop registration?")) return;
+    const confirmed = await showConfirm({
+      title: 'Reject Crop Registration?',
+      message: 'This will permanently reject the crop registration. The farmer will be notified. This action cannot be undone.',
+      confirmText: 'Yes, Reject',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
     setLoading(true);
     try {
       await axios.post(`/api/quality/reject/${crop.id}`, {
@@ -169,7 +321,7 @@ export default function QualityTesting() {
         inspection_notes: remarks,
         inspection_method: inspectionMethod
       });
-      alert("Crop rejected.");
+      addToast('The crop registration has been rejected successfully.', 'warning', 'Crop Rejected');
       setSelectedCrop(null);
       setRemarks('');
       setInspectionMethod('PHYSICAL_VISIT');
@@ -194,7 +346,7 @@ export default function QualityTesting() {
         inspection_notes: remarks,
         inspection_method: inspectionMethod
       });
-      alert('Inspection notes saved successfully!');
+      addToast('Inspection notes saved successfully!', 'info', 'Notes Saved');
       fetchPendingCrops();
     } catch (err) {
       console.error(err);
@@ -283,7 +435,109 @@ export default function QualityTesting() {
       });
 
       setLoading(false);
-      alert(`Product Lot ${lotNumber} certified and registered on the blockchain successfully!`);
+      addToast(`Product Lot ${lotNumber} certified and registered on the blockchain successfully!`, 'success', 'Lot Certified ✓');
+      
+      // Refresh list
+      await fetchPendingCrops();
+      await fetchProducts();
+
+    } catch (err) {
+      console.error(err);
+      setError(err.reason || err.message || 'Transaction failed. Check MetaMask logs.');
+      setLoading(false);
+    }
+  };
+
+  const handleCertifyReject = async (crop) => {
+    setError('');
+    setTxDetails(null);
+    setLoading(true);
+
+    if (!isConnected) {
+      const address = await connectWallet();
+      if (!address) {
+        setError('Please connect your MetaMask wallet to execute approvals and certification.');
+        setLoading(false);
+        return;
+      }
+    }
+
+    const lotConfirmed = await showConfirm({
+      title: 'Reject Crop Lot Certification?',
+      message: 'This will log a FAILED/REJECTED product lot on the blockchain. This action cannot be undone.',
+      confirmText: 'Yes, Reject Lot',
+      variant: 'danger'
+    });
+    if (!lotConfirmed) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const lotNumber = Math.floor(1000 + Math.random() * 9000);
+      const cropId = crop.id;
+      const cropName = crop.crop_type;
+      const qualityGrade = 'Failed / Rejected';
+      const priceWei = 0n;
+      
+      const today = new Date().toISOString().split('T')[0];
+      const expiry = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const testTimestamp = Math.floor(new Date(today).getTime() / 1000);
+      const expiryTimestamp = Math.floor(new Date(expiry).getTime() / 1000);
+
+      // 1. Call Smart Contract `registerProduct`
+      const tx = await contracts.productRegistry.registerProduct(
+        lotNumber,
+        cropId,
+        cropName,
+        qualityGrade,
+        priceWei,
+        testTimestamp,
+        expiryTimestamp,
+        'REJECTED'
+      );
+
+      setTxDetails({ step: 'broadcasting', hash: tx.hash });
+
+      const receipt = await tx.wait();
+      const blockNumber = receipt.blockNumber;
+
+      setTxDetails({ step: 'confirmed', hash: tx.hash, block: blockNumber });
+
+      // 2. Log transaction to Explorer Index
+      await axios.post('/api/explorer/log-tx', {
+        tx_hash: tx.hash,
+        block_number: blockNumber,
+        from_address: tx.from,
+        to_address: tx.to,
+        amount: 0,
+        method_name: 'registerProduct',
+        event_data: JSON.stringify({
+          lotNumber,
+          farmerId: cropId,
+          cropName,
+          qualityGrade,
+          price: '0'
+        })
+      });
+
+      // 3. Save to database
+      await axios.post('/api/product/register', {
+        lot_number: lotNumber,
+        farmer_id: cropId,
+        crop_name: cropName,
+        quality_grade: qualityGrade,
+        price: '0',
+        test_date: today,
+        expiry_date: expiry,
+        certification_status: 'REJECTED',
+        tx_hash: tx.hash,
+        block_number: blockNumber
+      });
+
+      setLoading(false);
+      addToast(`Product Lot ${lotNumber} has been rejected and logged on the blockchain.`, 'warning', 'Lot Rejected');
       
       // Refresh list
       await fetchPendingCrops();
@@ -324,6 +578,20 @@ export default function QualityTesting() {
     return [];
   };
 
+  const handleDownloadLetterPDF = () => {
+    if (!selectedCropForLetter) return;
+    const element = document.getElementById('approval-letter-print-area');
+    if (!element) return;
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `Approval_Letter_Crop_${selectedCropForLetter.id}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+  };
+
   const getFileTypeLabel = (url, index) => {
     if (url.startsWith('data:')) {
       const match = url.match(/data:([^;]+);/);
@@ -335,12 +603,24 @@ export default function QualityTesting() {
         if (mime.includes('excel') || mime.includes('officedocument.spreadsheetml')) return `Document Proof #${index + 1} (Excel)`;
         if (mime.includes('zip') || mime.includes('x-zip-compressed')) return `Document Proof #${index + 1} (ZIP)`;
       }
+    } else {
+      const parts = url.split('/');
+      const rawFilename = parts[parts.length - 1];
+      const underscoreIndex = rawFilename.indexOf('_');
+      if (underscoreIndex !== -1 && underscoreIndex === 32) {
+        return rawFilename.substring(underscoreIndex + 1);
+      }
+      return rawFilename;
     }
     return `Document Proof #${index + 1}`;
   };
 
   return (
     <div className="space-y-8 py-4">
+      {/* ─── Toast Notifications ─── */}
+      <Toast toasts={toasts} removeToast={removeToast} />
+      {/* ─── Confirm Dialog ─── */}
+      <ConfirmDialog dialog={confirmDialog} onConfirm={handleConfirmOk} onCancel={handleConfirmCancel} />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-3">
           <button
@@ -381,6 +661,25 @@ export default function QualityTesting() {
           </button>
         </form>
       </div>
+
+      {isWalletMismatched && (
+        <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-800 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40 font-medium flex items-center gap-2 mb-4">
+          <ShieldAlert className="h-5 w-5 text-rose-600 animate-pulse shrink-0" />
+          <div>
+            <strong>Wallet Mismatch:</strong> Your connected MetaMask wallet address (<span className="font-mono text-xs">{walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.slice(-4)}` : ''}</span>) does not match your registered wallet address (<span className="font-mono text-xs">{user.wallet_address ? `${user.wallet_address.substring(0, 6)}...${user.wallet_address.slice(-4)}` : ''}</span>).
+            Please switch to your registered account in MetaMask to perform actions.
+          </div>
+        </div>
+      )}
+
+      {isWalletNotConnected && (
+        <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40 font-medium flex items-center gap-2 mb-4">
+          <Wallet className="h-5 w-5 text-amber-600 animate-pulse shrink-0" />
+          <div>
+            <strong>MetaMask Disconnected:</strong> Please connect your registered MetaMask wallet (<span className="font-mono text-xs">{user.wallet_address ? `${user.wallet_address.substring(0, 6)}...${user.wallet_address.slice(-4)}` : ''}</span>) to perform actions on this page.
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-xl bg-rose-50 p-4 text-sm text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 font-medium">
@@ -535,7 +834,10 @@ export default function QualityTesting() {
                     <div className="grid grid-cols-3 gap-2">
                       {getPhotosList(selectedCrop.evidence_photos).map((url, i) => (
                         <a href={url} target="_blank" rel="noopener noreferrer" key={i} className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 aspect-square hover:opacity-80 transition block">
-                          <img src={url} alt="Crop Evidence" className="h-full w-full object-cover" />
+                          <img src={url} alt="Crop Evidence" className="absolute inset-0 h-full w-full object-cover" />
+                          <div className="absolute inset-x-0 bottom-0 bg-slate-900/60 backdrop-blur-[1px] px-2 py-1 text-[9px] text-white font-medium truncate select-none">
+                            {getFileTypeLabel(url, i)}
+                          </div>
                         </a>
                       ))}
                     </div>
@@ -621,11 +923,17 @@ export default function QualityTesting() {
                     return (
                       <div className="space-y-3">
                         {matchedProduct ? (
-                          <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-950">
-                            <ShieldCheck className="h-4 w-4" /> Certified Lot: #{matchedProduct.lot_number}
-                          </div>
+                          matchedProduct.certification_status === 'REJECTED' ? (
+                            <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-955/30 px-3 py-2.5 rounded-xl border border-rose-100 dark:border-rose-900/30">
+                              <XCircle className="h-4 w-4" /> Rejected Lot: #{matchedProduct.lot_number}
+                            </div>
+                          ) : (
+                            <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-95/30 px-3 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-950">
+                              <ShieldCheck className="h-4 w-4" /> Certified Lot: #{matchedProduct.lot_number}
+                            </div>
+                          )
                         ) : (
-                          <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2.5 rounded-xl border border-amber-100 dark:border-amber-950">
+                          <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-95/30 px-3 py-2.5 rounded-xl border border-amber-100 dark:border-amber-950">
                             <Clock className="h-4 w-4 animate-pulse" /> Awaiting Certification
                           </div>
                         )}
@@ -638,37 +946,67 @@ export default function QualityTesting() {
                         </button>
 
                         {matchedProduct ? (
-                          <button
-                            onClick={() => setSelectedCropForCertificate({ crop: selectedCrop, product: matchedProduct })}
-                            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 py-2.5 rounded-xl transition"
-                          >
-                            <Award className="h-4 w-4" /> Print Certificate & QR
-                          </button>
+                          matchedProduct.certification_status !== 'REJECTED' && (
+                            <button
+                              onClick={() => setSelectedCropForCertificate({ crop: selectedCrop, product: matchedProduct })}
+                              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60 hover:bg-amber-50/50 dark:hover:bg-amber-955/30 py-2.5 rounded-xl transition"
+                            >
+                              <Award className="h-4 w-4" /> Print Certificate & QR
+                            </button>
+                          )
                         ) : (
-                          <button
-                            onClick={() => handleCertifyAuto(selectedCrop)}
-                            disabled={loading}
-                            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 py-2.5 rounded-xl transition disabled:opacity-50"
-                          >
-                            {loading ? (
-                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                            ) : (
-                              <>
-                                <CheckCircle className="h-4 w-4" /> Approve & Certify Crop
-                              </>
-                            )}
-                          </button>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              onClick={() => handleCertifyReject(selectedCrop)}
+                              disabled={loading || isActionDisabled}
+                              className="flex justify-center items-center gap-1.5 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-955/30 dark:hover:bg-rose-950/20 text-xs font-bold transition disabled:opacity-50"
+                            >
+                              {loading ? (
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-rose-600 border-t-transparent"></div>
+                              ) : (
+                                <>
+                                  <XCircle className="h-4 w-4" /> Reject Lot
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleCertifyAuto(selectedCrop)}
+                              disabled={loading || isActionDisabled}
+                              className="flex justify-center items-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold transition disabled:opacity-50"
+                            >
+                              {loading ? (
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-4 w-4" /> Approve Lot
+                                </>
+                              )}
+                            </button>
+                          </div>
                         )}
                       </div>
                     );
                   })()}
+                </div>
+
+              ) : selectedCrop.is_approved ? (
+                <div className="space-y-3 pt-2">
+                  <div className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                    <ShieldCheck className="h-4.5 w-4.5" /> Cultivation Verified & Approved
+                  </div>
+                </div>
+              ) : selectedCrop.verification_status === 'REJECTED' ? (
+                <div className="space-y-3 pt-2">
+                  <div className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-455 bg-rose-50 dark:bg-rose-950/20 px-3 py-3 rounded-xl border border-rose-100 dark:border-rose-900/30">
+                    <XCircle className="h-4.5 w-4.5" /> Cultivation Rejected
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3 pt-2">
                   <button
                     type="button"
                     onClick={handleSaveNotes}
-                    disabled={loading || savingNotes}
+                    disabled={loading || savingNotes || isActionDisabled}
                     className="w-full flex justify-center items-center gap-1.5 py-2.5 rounded-xl bg-slate-800 text-white hover:bg-slate-750 dark:bg-slate-700 dark:hover:bg-slate-650 text-xs font-bold transition disabled:opacity-50"
                   >
                     {savingNotes ? 'Saving...' : 'Save Notes (No MetaMask)'}
@@ -676,14 +1014,14 @@ export default function QualityTesting() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => handleReject(selectedCrop)}
-                      disabled={loading || savingNotes}
+                      disabled={loading || savingNotes || isActionDisabled}
                       className="flex justify-center items-center gap-1 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-950/30 dark:hover:bg-rose-950/20 text-xs font-bold transition disabled:opacity-50"
                     >
                       <XCircle className="h-4 w-4" /> Reject Crop
                     </button>
                     <button
                       onClick={() => handleApprove(selectedCrop)}
-                      disabled={loading || savingNotes}
+                      disabled={loading || savingNotes || isActionDisabled}
                       className="flex justify-center items-center gap-1 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold transition disabled:opacity-50"
                     >
                       {loading ? (
@@ -749,8 +1087,8 @@ export default function QualityTesting() {
 
       {/* Modal 1: Approval Letter */}
       {selectedCropForLetter && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto no-scrollbar print:p-0 print:bg-transparent print:relative">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 print:border-none print:shadow-none print:p-0 print:m-0">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto no-scrollbar print:p-0 print:bg-transparent print:relative">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 my-auto print:border-none print:shadow-none print:p-0 print:m-0">
             {/* Header */}
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4 print:hidden">
               <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">

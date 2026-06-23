@@ -468,10 +468,7 @@ export default function BlockchainExplorer() {
                               Rs. {Math.round(parseFloat(ethers.formatEther(product.price.toString())) * 250000).toLocaleString('en-IN')}
                             </span>
                           </div>
-                          <div>
-                            <span className="text-slate-405 block mb-0.5">Valuation (ETH)</span>
-                            <span className="font-mono text-slate-800 dark:text-slate-200 font-bold print:text-black">{ethers.formatEther(product.price.toString())} ETH</span>
-                          </div>
+
                           <div>
                             <span className="text-slate-405 block mb-0.5">Inspection Date</span>
                             <span className="font-semibold text-slate-800 dark:text-slate-200 print:text-black">{new Date(product.test_date).toLocaleDateString()}</span>

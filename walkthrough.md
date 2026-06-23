@@ -51,22 +51,29 @@ graph TB
 ### Key Architectural Enhancements
 
 1. **Role Separation (Inspector vs. Tester) & Access Control**
-   - **Agricultural Inspector (`INSPECTOR`)**: Government officers. Private signup disabled. Created strictly by the Administrator with a generated temporary password. Must change password on first login. Performs field checks of cultivations.
-   - **Quality Lab Tester (`TESTER`)**: Private laboratories. Can self-register via the signup portal. On registration, their account is set to `PENDING_APPROVAL` status and `is_approved = False`. The Administrator reviews their details (Accreditation Number, License Number, Government Registration, Certificates, and Supporting Documents) using a review modal on the Admin Dashboard, and activates them. Once approved (`is_approved = True` and status becomes `ACTIVE`), they can receive region-specific crop assignments, conduct post-harvest scientific lab checks, and certify crop batches on-chain.
-2. **Inspector & Quality Lab Activation Flows**
-   - **Inspectors**: Progress through states: `PENDING_SETUP` (upon creation) $\rightarrow$ (Password Changed) $\rightarrow$ (MetaMask linked via signature verification) $\rightarrow$ `ACTIVE`. Wallet ownership is verified using message signature verification (`personal_sign`). Only `ACTIVE` inspectors receive assignments.
-   - **Quality Labs**: Self-register and start in `PENDING_APPROVAL` status. Must be approved by the Admin to become `ACTIVE`. MetaMask is not required for logging in, but is required for issuing quality certificates, final quality approvals, and blockchain-backed certifications. A MetaMask warning card is shown on the dashboard if their wallet is not linked.
-3. **Location Assignment & Routing Algorithms**
-   - **Agricultural Inspector Priority Routing**: Replaces geodesic calculations with Kerala administrative level priority assignment (Taluk/Sub-district $\rightarrow$ District $\rightarrow$ District-level fallback). Only `ACTIVE` inspectors receive assignments.
-   - **Quality Lab Region Matching**: Harvested crops are automatically routed to the tester queue of Quality Labs covering that crop's district and PIN code, provided the lab's status is `ACTIVE` and approved.
-4. **Separate Evidence Storage & Detailed Metadata**
+   - **Agricultural Inspector (`INSPECTOR`)**: Government officers. Private signup disabled. Created strictly by the Administrator with a generated temporary password. Must change password and link/verify their wallet via cryptographic signature on first login. Performs field checks of cultivations. Holds the **`AGRICULTURE_ROLE`** on-chain for crop approvals.
+   - **Quality Lab Tester (`TESTER`)**: Laboratory personnel. Can either self-register (enters `PENDING_APPROVAL` status requiring admin activation) or be directly created by the Administrator (enters `PENDING_SETUP` status requiring password reset + wallet linking on first login). Holds the **`QUALITY_TESTOR_ROLE`** on-chain for certifying product lots. Approved and active testers receive post-harvest crop assignments, conduct quality testing, and certify crop batches.
+2. **Forced Onboarding & Combined Setup Modal**
+   - Both Inspectors and Testers created by the Admin start in `PENDING_SETUP` status. Upon first login, they are greeted by a mandatory setup wizard requiring them to reset their password and connect/verify their MetaMask wallet via message signature (`personal_sign`). Once verified, their account status transitions to `ACTIVE` and they become eligible for regional crop assignments.
+3. **Kerala Priority Location Assignment Hierarchy**
+   - Cultivated crops are routed automatically based on a 4-tier location assignment algorithm:
+     - **Priority 1**: Verifier (Inspector/Tester) in the same Taluk (Sub-district) & District.
+     - **Priority 2**: Verifier in the same District.
+     - **Priority 3**: Verifier in a neighboring/adjacent district (using a static Kerala district adjacency map).
+     - **Priority 4**: Any active system fallback verifier.
+4. **Separate Reject Flows for Stakeholders**
+   - **Inspectors**: Can approve or reject crop registration.
+   - **Testers**: Can reject a crop lot certificate. Rejecting a lot executes `registerProduct` on the `ProductRegistry` smart contract with status `'REJECTED'` and a price of `0` in Wei, logs the transaction, marks the database cultivation timeline status as `'REJECTED'`, and hides the printable certificate/QR actions.
+5. **On-Chain Role Pre-checks & Warning Banners**
+   - Both Agricultural Inspectors and Quality Lab Testers have on-chain role checks performed reactive to wallet connections. If their MetaMask wallet address lacks `AGRICULTURE_ROLE` or `QUALITY_TESTOR_ROLE` respectively, a warning banner is shown prompting them to get authorized by the Administrator.
+6. **Separate Evidence Storage & Detailed Metadata**
    - Crop evidence is split into `evidence_photos` (visual proofs) and `evidence_documents` (PDF deeds, tax receipts, and soil tests).
    - Stores rich inspection metadata: `inspection_date`, `inspection_notes`, and `inspection_method` (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, or `HYBRID`).
-5. **Walletless Web2 Ratings for Consumers**
+7. **Walletless Web2 Ratings for Consumers**
    - Consumers and farmers remain completely walletless. Consumers can rate farmers via SQLite (`DB_ONLY`) or on-chain using MetaMask if they choose.
-6. **Investor Letters of Intent (LOI) Portal**
+8. **Investor Letters of Intent (LOI) Portal**
    - Investors can propose funding and returns share on certified product lots, unlocking contact info upon farmer approval.
-7. **Printable Document Center**
+9. **Printable Document Center**
    - Direct downloads for **Crop Verification Letters** and **Quality Certificates** as PDFs using `html2pdf.js` with forced light-mode formatting.
 
 ---
@@ -222,13 +229,14 @@ The complete stakeholder verification workflow functions as follows:
 | Smart contracts compile and test successfully | ✅ |
 | Contracts deploy to local hardhat network | ✅ |
 | Database seeds with users, crop history, and product lots | ✅ |
-| Kerala Priority matching routes inspectors correctly (Priority 1 $\rightarrow$ 2 $\rightarrow$ 3) | ✅ |
-| Admin-only inspector creation with temporary password generation | ✅ |
-| Forced password change on first login for PENDING_SETUP inspectors | ✅ |
-| MetaMask wallet signature verification for inspector activation | ✅ |
+| Kerala Priority location matching routes inspectors and testers correctly (Taluk -> District -> Neighboring -> Fallback) | ✅ |
+| Admin-only verifier creation (Inspector and Tester) with temporary password generation | ✅ |
+| Forced password change and wallet connection on first login for PENDING_SETUP inspectors & testers | ✅ |
+| MetaMask wallet signature verification for both inspector and tester activation | ✅ |
 | Quality Lab self-registration with specific credentials (license, accreditation, certificates) | ✅ |
-| Admin credentials review modal and approval flow for Quality Labs | ✅ |
-| Crop assignments routed only to active Quality Labs | ✅ |
+| Admin credentials review modal and approval flow for self-registered Quality Labs | ✅ |
+| Crop assignments routed only to active, active-approved Quality Labs | ✅ |
+| Separate Approve / Reject Lot options for Quality Lab Testers | ✅ |
 | MetaMask wallet warnings displayed for active Quality Labs lacking linked wallets | ✅ |
 | Separate evidence storage for photos (`evidence_photos`) and PDF docs (`evidence_documents`) | ✅ |
 | Inspector notes and method saved directly to database without MetaMask | ✅ |
@@ -238,3 +246,5 @@ The complete stakeholder verification workflow functions as follows:
 | Direct PDF downloads with forced light-mode layouts | ✅ |
 | Dark/light mode theme toggle rendering properly | ✅ |
 | Role-based protected routes verified in React Router | ✅ |
+| Role-based on-chain authorization separated (`AGRICULTURE_ROLE` & `QUALITY_TESTOR_ROLE`) | ✅ |
+| Warnings displayed reactively for inspectors and testers lacking on-chain authorization | ✅ |

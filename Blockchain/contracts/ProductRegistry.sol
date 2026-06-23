@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./FarmerRegistry.sol";
 
 contract ProductRegistry is AccessControl {
-    bytes32 public constant TESTER_ROLE = keccak256("TESTER_ROLE");
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     struct Product {
@@ -35,10 +34,17 @@ contract ProductRegistry is AccessControl {
         address indexed tester
     );
 
+    mapping(address => bool) public authorizedTesters;
+
     constructor(address _farmerRegistryAddress) {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADMIN_ROLE, msg.sender);
         farmerRegistry = FarmerRegistry(_farmerRegistryAddress);
+    }
+
+    function authorizeTester(address _tester, bool _status) public {
+        require(hasRole(ADMIN_ROLE, msg.sender), "Caller is not an admin");
+        authorizedTesters[_tester] = _status;
     }
 
     function registerProduct(
@@ -51,7 +57,7 @@ contract ProductRegistry is AccessControl {
         uint256 _expiryDate,
         string memory _certificationStatus
     ) public {
-        require(hasRole(TESTER_ROLE, msg.sender) || hasRole(ADMIN_ROLE, msg.sender), "Caller is not an authorized tester or admin");
+        require(authorizedTesters[msg.sender] || hasRole(ADMIN_ROLE, msg.sender), "Caller is not an authorized tester or admin");
         require(!products[_lotNumber].exists, "Lot number already registered");
         require(farmerRegistry.isFarmerApproved(_farmerId), "Farmer is not approved by Quality Authority");
 

@@ -33,15 +33,20 @@ async function main() {
   const ratingSystemAddress = await ratingSystem.getAddress();
   console.log(`RatingSystem deployed to: ${ratingSystemAddress}`);
 
-  // Set up standard Tester role for the deployer for convenience in testing
+  // Set up standard roles for the deployer for convenience in testing
   const [deployer] = await hre.ethers.getSigners();
   const TESTER_ROLE = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("TESTER_ROLE"));
+  const INSPECTOR_ROLE = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("INSPECTOR_ROLE"));
+  const AGRICULTURE_ROLE = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("AGRICULTURE_ROLE"));
+  const QUALITY_TESTOR_ROLE = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("QUALITY_TESTOR_ROLE"));
   
-  await farmerRegistry.grantRole(TESTER_ROLE, deployer.address);
-  console.log(`Granted TESTER_ROLE to deployer: ${deployer.address}`);
+  await farmerRegistry.grantRole(AGRICULTURE_ROLE, deployer.address);
+  await farmerRegistry.grantRole(INSPECTOR_ROLE, deployer.address);
+  console.log(`Granted AGRICULTURE_ROLE and INSPECTOR_ROLE to deployer: ${deployer.address}`);
   
+  await productRegistry.grantRole(QUALITY_TESTOR_ROLE, deployer.address);
   await productRegistry.grantRole(TESTER_ROLE, deployer.address);
-  console.log(`Granted TESTER_ROLE to deployer: ${deployer.address}`);
+  console.log(`Granted QUALITY_TESTOR_ROLE and TESTER_ROLE to deployer: ${deployer.address}`);
 
   // Prepare directories for Frontend export
   const frontendContractsDir = path.join(__dirname, "..", "..", "Frontend", "src", "contracts");

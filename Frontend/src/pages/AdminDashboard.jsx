@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Settings, ShieldAlert, Users, LineChart, FileText, CheckCircle2, XCircle, ArrowLeft, UserPlus, Award, X, ExternalLink, Printer, Download } from 'lucide-react';
+import { Settings, ShieldAlert, Users, LineChart, FileText, CheckCircle2, XCircle, ArrowLeft, UserPlus, Award, X, ExternalLink, Printer, Download, AlertCircle } from 'lucide-react';
 import axios from 'axios';
+import { useWallet } from '../context/WalletContext';
+import { ethers } from 'ethers';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { walletAddress: adminWallet, isConnected, connectWallet, contracts } = useWallet();
+  const [onChainRoles, setOnChainRoles] = useState({});
+  const [checkingRoles, setCheckingRoles] = useState(false);
+  const [grantingRoleMap, setGrantingRoleMap] = useState({});
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -213,6 +219,111 @@ export default function AdminDashboard() {
     loadAdminData();
   }, []);
 
+  const checkAllOnChainRoles = async () => {
+    if (!isConnected || !contracts.farmerRegistry || !contracts.productRegistry) return;
+    setCheckingRoles(true);
+    try {
+      const QUALITY_TESTOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("QUALITY_TESTOR_ROLE"));
+      const AGRICULTURE_ROLE = ethers.keccak256(ethers.toUtf8Bytes("AGRICULTURE_ROLE"));
+      const newRoles = {};
+      
+      const listToCheck = users.filter(u => u.wallet_address && (u.role === 'TESTER' || u.role === 'INSPECTOR'));
+      
+      for (const u of listToCheck) {
+        const addr = u.wallet_address.toLowerCase();
+        try {
+          if (u.role === 'INSPECTOR') {
+            const hasRole = await contracts.farmerRegistry.hasRole(AGRICULTURE_ROLE, addr);
+            newRoles[addr] = hasRole;
+          } else if (u.role === 'TESTER') {
+            const hasRole = await contracts.productRegistry.hasRole(QUALITY_TESTOR_ROLE, addr);
+            newRoles[addr] = hasRole;
+          }
+        } catch (e) {
+          console.error("Error checking role for", addr, e);
+        }
+      }
+      setOnChainRoles(newRoles);
+    } catch (err) {
+      console.error("Error checking on-chain roles:", err);
+    } finally {
+      setCheckingRoles(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isConnected && contracts.farmerRegistry && contracts.productRegistry && users.length > 0) {
+      checkAllOnChainRoles();
+    }
+  }, [isConnected, contracts, users]);
+
+  const handleGrantBlockchainRole = async (user) => {
+    if (!isConnected) {
+      setAlertMessage({
+        title: 'MetaMask Disconnected',
+        message: 'Please connect your admin MetaMask wallet to grant on-chain roles.',
+        type: 'warning'
+      });
+      return;
+    }
+    
+    const walletAddress = user.wallet_address;
+    if (!walletAddress) return;
+    
+    setGrantingRoleMap(prev => ({ ...prev, [walletAddress.toLowerCase()]: true }));
+    setError('');
+    
+    try {
+      if (user.role === 'INSPECTOR') {
+        const AGRICULTURE_ROLE = ethers.keccak256(ethers.toUtf8Bytes("AGRICULTURE_ROLE"));
+        
+        setAlertMessage({
+          title: 'Granting Agriculture Role',
+          message: 'Please approve the transaction in MetaMask to grant AGRICULTURE_ROLE on FarmerRegistry.',
+          type: 'info'
+        });
+        
+        const tx = await contracts.farmerRegistry.grantRole(AGRICULTURE_ROLE, walletAddress);
+        await tx.wait();
+        
+        setAlertMessage({
+          title: 'Agriculture Role Granted',
+          message: `Successfully granted AGRICULTURE_ROLE to ${walletAddress} on the blockchain.`,
+          type: 'success'
+        });
+      } else if (user.role === 'TESTER') {
+        const QUALITY_TESTOR_ROLE = ethers.keccak256(ethers.toUtf8Bytes("QUALITY_TESTOR_ROLE"));
+        
+        setAlertMessage({
+          title: 'Granting Quality Testor Role',
+          message: 'Please approve the transaction in MetaMask to grant QUALITY_TESTOR_ROLE on ProductRegistry.',
+          type: 'info'
+        });
+        
+        const tx = await contracts.productRegistry.grantRole(QUALITY_TESTOR_ROLE, walletAddress);
+        await tx.wait();
+        
+        setAlertMessage({
+          title: 'Quality Testor Role Granted',
+          message: `Successfully granted QUALITY_TESTOR_ROLE to ${walletAddress} on the blockchain.`,
+          type: 'success'
+        });
+      }
+      
+      // Refresh role status
+      checkAllOnChainRoles();
+    } catch (err) {
+      console.error(err);
+      setAlertMessage({
+        title: 'Transaction Failed',
+        message: err.reason || err.message || 'MetaMask transaction failed.',
+        type: 'warning'
+      });
+    } finally {
+      setGrantingRoleMap(prev => ({ ...prev, [walletAddress.toLowerCase()]: false }));
+    }
+  };
+
   const handleUserApprove = async (userId) => {
     try {
       await axios.post(`/api/admin/approve-user/${userId}`);
@@ -355,12 +466,62 @@ export default function AdminDashboard() {
       });
   };
   
+  const renderBlockchainRoleCell = (user) => {
+    if (!user.wallet_address) {
+      return <span className="text-slate-400 dark:text-slate-500 italic">Wallet not linked</span>;
+    }
+    
+    const addr = user.wallet_address.toLowerCase();
+    const hasRole = onChainRoles[addr];
+    const isGranting = grantingRoleMap[addr];
+    
+    if (hasRole === true) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 uppercase tracking-wider">
+          Authorized
+        </span>
+      );
+    }
+    
+    if (hasRole === false) {
+      return (
+        <div className="flex items-center justify-center gap-2">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-955 dark:text-rose-455 uppercase tracking-wider">
+            Not Authorized
+          </span>
+          <button
+            onClick={() => handleGrantBlockchainRole(user)}
+            disabled={isGranting}
+            className="px-2.5 py-1 text-[9px] font-extrabold bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition disabled:opacity-50 flex items-center gap-1"
+          >
+            {isGranting ? (
+              <div className="h-2 w-2 animate-spin rounded-full border border-white border-t-transparent"></div>
+            ) : null}
+            <span>{user.role === 'INSPECTOR' ? 'Grant Agriculture Role' : 'Grant Quality Testor Role'}</span>
+          </button>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
+        {checkingRoles ? (
+          <div className="h-3 w-3 animate-spin rounded-full border border-slate-400 border-t-transparent"></div>
+        ) : (
+          <span className="text-[10px] italic">Pending Check</span>
+        )}
+      </div>
+    );
+  };
+
   const location = useLocation();
   const isApprovalsView = location.pathname === '/admin/approvals';
   const pendingFarmers = users.filter(u => u.role === 'FARMER' && !u.is_approved);
   const pendingLabs = users.filter(u => u.role === 'TESTER' && !u.is_approved);
   const activeUsers = users.filter(u => u.is_approved);
   const activeLabs = users.filter(u => u.role === 'TESTER' && u.is_approved);
+  const activeInspectors = users.filter(u => u.role === 'INSPECTOR' && u.status === 'ACTIVE');
+  const pendingInspectors = users.filter(u => u.role === 'INSPECTOR' && u.status === 'PENDING_SETUP');
 
   return (
     <div className="space-y-8 py-4">
@@ -406,16 +567,47 @@ export default function AdminDashboard() {
           {isApprovalsView ? (
             /* Approvals View: User Authority Verification ONLY */
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              
+              {/* MetaMask Connection Banner for Admin Role Management */}
+              {!isConnected ? (
+                <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-955/20 border border-amber-200 dark:border-amber-900/40 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
+                  <div className="space-y-1">
+                    <p className="font-bold text-amber-900 dark:text-amber-100 text-sm flex items-center gap-1.5">
+                      <AlertCircle className="h-4 w-4 text-amber-650 animate-pulse" /> Admin MetaMask Wallet Disconnected
+                    </p>
+                    <p className="text-slate-500 dark:text-slate-400">Connect your admin MetaMask wallet to verify, manage, and grant on-chain verifier roles (Inspectors and Quality Labs).</p>
+                  </div>
+                  <button
+                    onClick={connectWallet}
+                    className="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs shrink-0"
+                  >
+                    Connect Wallet
+                  </button>
+                </div>
+              ) : (
+                <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-955/25 border border-emerald-200/50 dark:border-emerald-950/50 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
+                  <div className="space-y-1">
+                    <p className="font-bold text-emerald-900 dark:text-emerald-100 text-sm flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Admin MetaMask Connected
+                    </p>
+                    <p className="text-slate-500 dark:text-slate-400 font-mono text-[10px]">Address: {adminWallet}</p>
+                  </div>
+                  <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-450 rounded-full font-bold uppercase tracking-wider text-[9px]">
+                    Ready
+                  </span>
+                </div>
+              )}
+
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
                 <h3 className="font-bold text-slate-900 dark:text-white">User Authority Verification</h3>
                 {/* Tabs Switcher */}
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+                <div className="flex flex-wrap bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold gap-1">
                   <button
                     onClick={() => setActiveTab('pending')}
-                    className={`px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                    className={`px-3 py-1.5 rounded-lg transition-all duration-205 flex items-center gap-2 ${
                       activeTab === 'pending'
-                        ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
-                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                        ? 'bg-white text-indigo-650 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
+                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-450 dark:hover:text-slate-200'
                     }`}
                   >
                     <span>Pending Labs</span>
@@ -427,16 +619,44 @@ export default function AdminDashboard() {
                   </button>
                   <button
                     onClick={() => setActiveTab('active')}
-                    className={`px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                    className={`px-3 py-1.5 rounded-lg transition-all duration-205 flex items-center gap-2 ${
                       activeTab === 'active'
-                        ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white'
-                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                        ? 'bg-white text-indigo-650 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
+                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-450 dark:hover:text-slate-200'
                     }`}
                   >
                     <span>Active Labs</span>
                     <span className="bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
                       {activeLabs.length}
                     </span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('inspectors')}
+                    className={`px-3 py-1.5 rounded-lg transition-all duration-205 flex items-center gap-2 ${
+                      activeTab === 'inspectors'
+                        ? 'bg-white text-indigo-650 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
+                        : 'text-slate-500 hover:text-slate-805 dark:text-slate-450 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <span>Active Inspectors</span>
+                    <span className="bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
+                      {activeInspectors.length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('pendingInspectors')}
+                    className={`px-3 py-1.5 rounded-lg transition-all duration-205 flex items-center gap-2 ${
+                      activeTab === 'pendingInspectors'
+                        ? 'bg-white text-indigo-650 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
+                        : 'text-slate-500 hover:text-slate-805 dark:text-slate-450 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <span>Pending Inspectors</span>
+                    {pendingInspectors.length > 0 && (
+                      <span className="bg-amber-500 text-white rounded-full px-1.5 py-0.5 text-[10px] font-bold animate-pulse">
+                        {pendingInspectors.length}
+                      </span>
+                    )}
                   </button>
                 </div>
               </div>
@@ -463,7 +683,7 @@ export default function AdminDashboard() {
                           {pendingLabs.map((user) => (
                             <tr key={user.id} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50">
                               <td className="py-3.5 px-4 font-semibold">{user.lab_name || 'N/A'}</td>
-                              <td className="py-3.5 px-4 text-slate-500">{user.name}</td>
+                              <td className="py-3.5 px-4 text-slate-505">{user.name}</td>
                               <td className="py-3.5 px-4 font-mono text-xs">{user.lab_license_number || 'N/A'}</td>
                               <td className="py-3.5 px-4 text-center">
                                 <button
@@ -495,7 +715,7 @@ export default function AdminDashboard() {
                           <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
                             <th className="py-3 px-4">Lab Name</th>
                             <th className="py-3 px-4">Authorized Person</th>
-                            <th className="py-3 px-4">License Number</th>
+                            <th className="py-3 px-4 font-mono text-xs">Wallet Address</th>
                             <th className="py-3 px-4 text-center">Status</th>
                           </tr>
                         </thead>
@@ -503,11 +723,87 @@ export default function AdminDashboard() {
                           {activeLabs.map((user) => (
                             <tr key={user.id} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50">
                               <td className="py-3.5 px-4 font-semibold">{user.lab_name || 'N/A'}</td>
-                              <td className="py-3.5 px-4 text-slate-500">{user.name}</td>
-                              <td className="py-3.5 px-4 font-mono text-xs">{user.lab_license_number || 'N/A'}</td>
+                              <td className="py-3.5 px-4 text-slate-550">{user.name}</td>
+                              <td className="py-3.5 px-4 font-mono text-xs">{user.wallet_address ? `${user.wallet_address.substring(0, 10)}...${user.wallet_address.substring(user.wallet_address.length - 8)}` : 'Not Linked'}</td>
                               <td className="py-3.5 px-4 text-center">
-                                <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-semibold">
-                                  <CheckCircle2 className="h-4 w-4" /> Active
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 uppercase tracking-wider">
+                                  Active
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'inspectors' && (
+                <div className="space-y-4">
+                  {activeInspectors.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">
+                      No active field inspectors currently registered.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
+                            <th className="py-3 px-4">Inspector Name</th>
+                            <th className="py-3 px-4">Email</th>
+                            <th className="py-3 px-4">District / Taluk</th>
+                            <th className="py-3 px-4 font-mono text-xs">Wallet Address</th>
+                            <th className="py-3 px-4 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {activeInspectors.map((user) => (
+                            <tr key={user.id} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50">
+                              <td className="py-3.5 px-4 font-semibold">{user.name}</td>
+                              <td className="py-3.5 px-4 text-slate-505">{user.email}</td>
+                              <td className="py-3.5 px-4 font-medium">{user.district} ({user.sub_district || 'N/A'})</td>
+                              <td className="py-3.5 px-4 font-mono text-xs">{user.wallet_address ? `${user.wallet_address.substring(0, 10)}...${user.wallet_address.substring(user.wallet_address.length - 8)}` : 'Not Linked'}</td>
+                              <td className="py-3.5 px-4 text-center">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 uppercase tracking-wider">
+                                  Active
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'pendingInspectors' && (
+                <div className="space-y-4">
+                  {pendingInspectors.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">
+                      No inspectors currently awaiting setup.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold">
+                            <th className="py-3 px-4">Inspector Name</th>
+                            <th className="py-3 px-4">Email</th>
+                            <th className="py-3 px-4">District / Taluk</th>
+                            <th className="py-3 px-4 text-center">Setup Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingInspectors.map((user) => (
+                            <tr key={user.id} className="border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50/50">
+                              <td className="py-3.5 px-4 font-semibold">{user.name}</td>
+                              <td className="py-3.5 px-4 text-slate-550">{user.email}</td>
+                              <td className="py-3.5 px-4 font-medium">{user.district} ({user.sub_district || 'N/A'})</td>
+                              <td className="py-3.5 px-4 text-center">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50 dark:bg-amber-955/30 dark:text-amber-450 dark:border-amber-900/30 uppercase tracking-wider">
+                                  Awaiting Wallet Link
                                 </span>
                               </td>
                             </tr>

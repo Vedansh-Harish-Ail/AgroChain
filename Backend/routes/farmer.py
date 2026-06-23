@@ -5,6 +5,24 @@ from utils.auth import roles_allowed
 
 farmer_bp = Blueprint('farmer', __name__)
 
+NEIGHBOR_DISTRICTS = {
+    "Thiruvananthapuram": ["Kollam", "Pathanamthitta"],
+    "Kollam": ["Thiruvananthapuram", "Pathanamthitta", "Alappuzha"],
+    "Pathanamthitta": ["Kollam", "Alappuzha", "Kottayam", "Idukki"],
+    "Alappuzha": ["Kottayam", "Kollam", "Pathanamthitta", "Ernakulam"],
+    "Kottayam": ["Alappuzha", "Idukki", "Pathanamthitta", "Ernakulam"],
+    "Idukki": ["Kottayam", "Ernakulam", "Pathanamthitta", "Thrissur"],
+    "Ernakulam": ["Kottayam", "Alappuzha", "Idukki", "Thrissur"],
+    "Thrissur": ["Ernakulam", "Palakkad", "Malappuram", "Idukki"],
+    "Palakkad": ["Thrissur", "Malappuram"],
+    "Malappuram": ["Kozhikode", "Palakkad", "Thrissur", "Wayanad"],
+    "Kozhikode": ["Malappuram", "Wayanad", "Kannur"],
+    "Wayanad": ["Kozhikode", "Kannur", "Malappuram"],
+    "Kannur": ["Kasaragod", "Kozhikode", "Wayanad"],
+    "Kasaragod": ["Kannur"]
+}
+
+
 @farmer_bp.route('/register', methods=['POST'])
 @roles_allowed('FARMER', 'ADMIN')
 def register_crop(current_user):
@@ -108,6 +126,17 @@ def register_crop(current_user):
             status='ACTIVE'
         ).first()
 
+    # Priority 4: Inspector in nearby districts
+    if not inspector and district and district in NEIGHBOR_DISTRICTS:
+        for neighbor in NEIGHBOR_DISTRICTS[district]:
+            inspector = User.query.filter_by(
+                role='INSPECTOR',
+                district=neighbor,
+                status='ACTIVE'
+            ).first()
+            if inspector:
+                break
+
     # Fallback: Any ACTIVE inspector in the system (no district match possible)
     if not inspector:
         inspector = User.query.filter_by(
@@ -115,10 +144,37 @@ def register_crop(current_user):
             status='ACTIVE'
         ).first()
 
-    # Tester location-based matching: same district, fallback to any tester
+    # Tester location-based matching hierarchy
     tester = None
-    if district:
-        tester = User.query.filter_by(role='TESTER', status='ACTIVE', district=district).first()
+    # Priority 1: Tester in same Sub-District
+    if sub_district:
+        tester = User.query.filter_by(
+            role='TESTER',
+            status='ACTIVE',
+            sub_district=sub_district,
+            district=district
+        ).first()
+    
+    # Priority 2: Tester in same District
+    if not tester and district:
+        tester = User.query.filter_by(
+            role='TESTER',
+            status='ACTIVE',
+            district=district
+        ).first()
+
+    # Priority 3: Tester in nearby districts
+    if not tester and district and district in NEIGHBOR_DISTRICTS:
+        for neighbor in NEIGHBOR_DISTRICTS[district]:
+            tester = User.query.filter_by(
+                role='TESTER',
+                status='ACTIVE',
+                district=neighbor
+            ).first()
+            if tester:
+                break
+
+    # Fallback: Any active tester
     if not tester:
         tester = User.query.filter_by(role='TESTER', status='ACTIVE').first()
 

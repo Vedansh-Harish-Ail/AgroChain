@@ -13,9 +13,9 @@ def approve_crop(current_user, crop_id):
         return jsonify({'message': 'Crop registration not found'}), 404
         
     if current_user.role != 'ADMIN' and crop.assigned_inspector_id != current_user.id:
-        # Allow inspectors to act on unassigned crops in their district/sub-district
+        # Allow inspectors to claim and act on crops in their district/sub-district
         can_claim = False
-        if crop.assigned_inspector_id is None and current_user.district:
+        if current_user.district:
             if current_user.coverage_level == 'DISTRICT' and crop.district == current_user.district:
                 can_claim = True
             elif current_user.coverage_level == 'SUB_DISTRICT' and crop.sub_district == current_user.sub_district and crop.district == current_user.district:
@@ -23,7 +23,7 @@ def approve_crop(current_user, crop_id):
             elif crop.district == current_user.district:
                 can_claim = True
         if not can_claim:
-            return jsonify({'message': 'Unauthorized. Crop is not assigned to you.'}), 403
+            return jsonify({'message': 'Unauthorized. Crop is in a different district.'}), 403
         # Auto-assign this crop to the inspector
         crop.assigned_inspector_id = current_user.id
         
@@ -93,9 +93,9 @@ def reject_crop(current_user, crop_id):
         return jsonify({'message': 'Crop registration not found'}), 404
         
     if current_user.role != 'ADMIN' and crop.assigned_inspector_id != current_user.id:
-        # Allow inspectors to act on unassigned crops in their district/sub-district
+        # Allow inspectors to claim and act on crops in their district/sub-district
         can_claim = False
-        if crop.assigned_inspector_id is None and current_user.district:
+        if current_user.district:
             if current_user.coverage_level == 'DISTRICT' and crop.district == current_user.district:
                 can_claim = True
             elif current_user.coverage_level == 'SUB_DISTRICT' and crop.sub_district == current_user.sub_district and crop.district == current_user.district:
@@ -103,7 +103,7 @@ def reject_crop(current_user, crop_id):
             elif crop.district == current_user.district:
                 can_claim = True
         if not can_claim:
-            return jsonify({'message': 'Unauthorized. Crop is not assigned to you.'}), 403
+            return jsonify({'message': 'Unauthorized. Crop is in a different district.'}), 403
         # Auto-assign this crop to the inspector
         crop.assigned_inspector_id = current_user.id
         
@@ -167,25 +167,22 @@ def get_pending_crops(current_user):
         filters = [Farmer.assigned_inspector_id == current_user.id]
         
         if current_user.coverage_level == 'DISTRICT' and current_user.district:
-            # District-level inspectors see all unassigned crops in their district
+            # District-level inspectors see all pending crops in their district
             filters.append(
                 (Farmer.district == current_user.district) &
-                (Farmer.assigned_inspector_id == None) &
                 (Farmer.is_approved == False)
             )
         elif current_user.coverage_level == 'SUB_DISTRICT' and current_user.sub_district:
-            # Sub-district-level inspectors see unassigned crops in their sub-district
+            # Sub-district-level inspectors see pending crops in their sub-district
             filters.append(
                 (Farmer.sub_district == current_user.sub_district) &
                 (Farmer.district == current_user.district) &
-                (Farmer.assigned_inspector_id == None) &
                 (Farmer.is_approved == False)
             )
         elif current_user.district:
             # Fallback: match by district
             filters.append(
                 (Farmer.district == current_user.district) &
-                (Farmer.assigned_inspector_id == None) &
                 (Farmer.is_approved == False)
             )
         
@@ -210,9 +207,9 @@ def save_notes(current_user, crop_id):
         return jsonify({'message': 'Crop registration not found'}), 404
         
     if current_user.role != 'ADMIN' and crop.assigned_inspector_id != current_user.id:
-        # Allow inspectors to act on unassigned crops in their district/sub-district
+        # Allow inspectors to claim and act on crops in their district/sub-district
         can_claim = False
-        if crop.assigned_inspector_id is None and current_user.district:
+        if current_user.district:
             if current_user.coverage_level == 'DISTRICT' and crop.district == current_user.district:
                 can_claim = True
             elif current_user.coverage_level == 'SUB_DISTRICT' and crop.sub_district == current_user.sub_district and crop.district == current_user.district:
@@ -220,7 +217,7 @@ def save_notes(current_user, crop_id):
             elif crop.district == current_user.district:
                 can_claim = True
         if not can_claim:
-            return jsonify({'message': 'Unauthorized. Crop is not assigned to you.'}), 403
+            return jsonify({'message': 'Unauthorized. Crop is in a different district.'}), 403
         # Auto-assign this crop to the inspector
         crop.assigned_inspector_id = current_user.id
         

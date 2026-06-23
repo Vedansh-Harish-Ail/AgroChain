@@ -15,93 +15,107 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/send-otp', methods=['POST'])
 def send_otp():
     data = request.get_json() or {}
-    phone_number = data.get('phone_number')
-    
-    if not phone_number:
+    raw_phone = data.get('phone_number', '')
+
+    if not raw_phone:
         return jsonify({'message': 'Phone number is required'}), 400
-        
-    phone_number = phone_number.strip()
-    
+
+    # --- Normalise phone number ---
+    # Strip everything except digits and leading +
+    digits_only = "".join(c for c in raw_phone.strip() if c.isdigit())
+    # If user typed +919895154388 or 919895154388, keep last 10 digits
+    if len(digits_only) == 12 and digits_only.startswith('91'):
+        digits_only = digits_only[2:]
+    if len(digits_only) != 10 or not digits_only.isdigit():
+        return jsonify({'message': f'Invalid phone number. Please enter a valid 10-digit Indian mobile number.'}), 400
+
+    phone_number = digits_only   # store clean 10-digit number in DB
+
     # Check if user already exists with this phone number
     if User.query.filter_by(phone_number=phone_number).first():
         return jsonify({'message': 'Phone number already registered'}), 400
-        
+
     # Generate 6-digit OTP code
     otp_code = f"{random.randint(100000, 999999)}"
-    
-    # Save OTP to database (Upsert: delete existing for this phone number first)
+
+    # Save OTP to database (Upsert)
     existing_otp = OTPVerification.query.filter_by(phone_number=phone_number).first()
     if existing_otp:
         db.session.delete(existing_otp)
         db.session.commit()
-        
-    # sqlite timezone safety
+
     expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=5)
-    new_otp = OTPVerification(
-        phone_number=phone_number,
-        otp_code=otp_code,
-        expires_at=expires_at
-    )
+    new_otp = OTPVerification(phone_number=phone_number, otp_code=otp_code, expires_at=expires_at)
     db.session.add(new_otp)
     db.session.commit()
-    
+
     sms_enabled = current_app.config.get('SMS_ENABLED', False)
-    sms_url = current_app.config.get('SMS_GATEWAY_URL')
-    sms_user = current_app.config.get('SMS_GATEWAY_USER')
-    sms_pass = current_app.config.get('SMS_GATEWAY_PASSWORD')
-    
-    sms_sent = False
+    sms_url     = current_app.config.get('SMS_GATEWAY_URL')
+    sms_user    = current_app.config.get('SMS_GATEWAY_USER')
+    sms_pass    = current_app.config.get('SMS_GATEWAY_PASSWORD')
+
+    sms_sent  = False
     error_msg = None
-    
+
     if sms_enabled and sms_url:
         try:
-            # Build payload matching the SMS Gate format
+            # SMS Gate Android app confirmed-working format: phone number wrapped in {} e.g. {9895154388}
+            gateway_phone = f"{{{phone_number}}}"
+
             payload = {
                 "textMessage": {
-                    "text": f"Your AgroChain registration OTP is: {otp_code}. Valid for 5 minutes."
+                    "text": f"Your AgroChain OTP is: {otp_code}. Valid for 5 minutes. Do not share."
                 },
-                "phoneNumbers": [phone_number]
+                "phoneNumbers": [gateway_phone]
             }
             data_bytes = json.dumps(payload).encode('utf-8')
-            
-            # Create request
+
+            # Log request
+            print(f"\n=== [SMS GATEWAY REQUEST] ===")
+            print(f"URL:     {sms_url}")
+            print(f"To:      {gateway_phone}")
+            print(f"OTP:     {otp_code}")
+            print(f"Payload: {json.dumps(payload)}")
+            print(f"=============================\n")
+
             req = urllib.request.Request(sms_url, data=data_bytes, method='POST')
             req.add_header('Content-Type', 'application/json')
-            
-            # Basic Authentication
             if sms_user and sms_pass:
-                auth_str = f"{sms_user}:{sms_pass}"
+                auth_str     = f"{sms_user}:{sms_pass}"
                 auth_encoded = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
                 req.add_header('Authorization', f'Basic {auth_encoded}')
-                
-            # Perform network request to the local device gateway
-            with urllib.request.urlopen(req, timeout=5) as response:
-                if response.status == 200:
-                    sms_sent = True
-                else:
-                    error_msg = f"Gateway returned status {response.status}"
+
+            with urllib.request.urlopen(req, timeout=8) as response:
+                resp_status = response.status
+                resp_body   = response.read().decode('utf-8')
+
+            if resp_status in (200, 202):
+                sms_sent = True
+                print(f"=== [SMS GATEWAY SUCCESS] ===")
+                print(f"Status: {resp_status}  Body: {resp_body}")
+                print(f"=============================\n")
+            else:
+                error_msg = f"Gateway returned HTTP {resp_status}: {resp_body}"
+                print(f"!!! [SMS GATEWAY FAILURE] status={resp_status} body={resp_body}")
+
         except Exception as e:
-            error_msg = f"Unexpected error sending SMS: {str(e)}"
+            error_msg = str(e)
+            print(f"!!! [SMS EXCEPTION] {error_msg}")
     else:
-        error_msg = "SMS Gateway is disabled or not configured."
-        
+        error_msg = "SMS Gateway is disabled or not configured in .env"
+
     if sms_sent:
         return jsonify({
             'message': 'OTP sent successfully via SMS.',
             'phone_number': phone_number
         }), 200
     else:
-        # Fallback to dev mode so local testing isn't blocked
-        print(f"\n--- [SMS DEV FALLBACK] ---")
-        print(f"To: {phone_number}")
-        print(f"OTP Code: {otp_code}")
-        print(f"Gateway Error: {error_msg}")
-        print(f"--------------------------\n")
+        # Developer fallback — OTP still works, printed to terminal
+        print(f"\n--- [SMS DEV FALLBACK] OTP for {phone_number} = {otp_code}  Error: {error_msg} ---\n")
         return jsonify({
             'message': 'OTP generated (Developer Mode Fallback).',
             'phone_number': phone_number,
-            'dev_otp': otp_code,
-            'warning': f'SMS delivery failed/disabled. Details: {error_msg}'
+            'warning': f'SMS delivery failed. Reason: {error_msg}'
         }), 200
 
 
@@ -151,12 +165,15 @@ def send_email_otp():
     try:
         send_email(subject, email, text_body, html_body)
     except Exception as e:
-        print(f"Error executing email send: {str(e)}")
+        print(f"\n--- [EMAIL DEV FALLBACK] ---")
+        print(f"To: {email}")
+        print(f"OTP Code: {otp_code}")
+        print(f"SMTP Error: {str(e)}")
+        print(f"--------------------------\n")
         
     return jsonify({
         'message': 'Verification code sent to your email.',
-        'email': email,
-        'dev_otp': otp_code
+        'email': email
     }), 200
 
 
@@ -192,8 +209,9 @@ def register():
         return jsonify({'message': 'Missing required fields, including email OTP and SMS OTP'}), 400
         
     email = email.strip().lower()
-    phone_number = phone_number.strip()
-    
+    # Sanitize phone number (remove spaces, hyphens, parentheses, preserve curly braces/plus signs)
+    phone_number = "".join(c for c in phone_number.strip() if c.isdigit() or c in '+{}')
+        
     if role not in ['FARMER', 'TESTER', 'CONSUMER', 'INVESTOR', 'ADMIN']:
         return jsonify({'message': 'Invalid role specified'}), 400
         
@@ -365,9 +383,9 @@ def link_wallet(current_user):
         return jsonify({'message': 'Wallet address already linked to another account'}), 400
         
     # Enforce MetaMask signature ownership verification
-    if current_user.role == 'INSPECTOR':
+    if current_user.role in ['INSPECTOR', 'TESTER']:
         if not message or not signature:
-            return jsonify({'message': 'Message and signature are required for Inspector wallet verification'}), 400
+            return jsonify({'message': f'Message and signature are required for {current_user.role.lower().replace("_", " ")} wallet verification'}), 400
             
     if message and signature:
         try:
@@ -379,11 +397,45 @@ def link_wallet(current_user):
             return jsonify({'message': f'Signature verification error: {str(e)}'}), 400
             
     current_user.wallet_address = wallet_address
-    if current_user.role == 'INSPECTOR':
+    if current_user.role in ['INSPECTOR', 'TESTER']:
         current_user.status = 'ACTIVE'
         
     db.session.commit()
     
+    # Auto-grant blockchain role for INSPECTOR and TESTER
+    if current_user.role in ['INSPECTOR', 'TESTER']:
+        import subprocess
+        import os
+        import threading
+
+        def run_onchain_grant(addr, role):
+            try:
+                env = os.environ.copy()
+                env['WALLET_ADDRESS'] = addr
+                env['ROLE_TYPE'] = role
+                
+                # Hardhat path setup
+                blockchain_dir = r"c:\MY PROJECTS\AgroChain-Morden\Blockchain"
+                cmd = ["npx", "hardhat", "run", "scripts/grant-role.js", "--network", "localhost"]
+                
+                print(f"\n[AUTO-GRANT] Launching background thread to grant {role} to {addr}...")
+                # Run the command
+                res = subprocess.run(cmd, cwd=blockchain_dir, env=env, capture_output=True, text=True, shell=True)
+                
+                if res.returncode == 0:
+                    print(f"[AUTO-GRANT SUCCESS] Granted {role} to {addr} on-chain.\nLogs:\n{res.stdout}")
+                else:
+                    print(f"[AUTO-GRANT FAILED] returncode={res.returncode}\nStdout: {res.stdout}\nStderr: {res.stderr}")
+            except Exception as ex:
+                print(f"[AUTO-GRANT EXCEPTION] Failed to grant role: {str(ex)}")
+
+        # Run in background so we don't block the API response
+        threading.Thread(
+            target=run_onchain_grant, 
+            args=(wallet_address, current_user.role),
+            daemon=True
+        ).start()
+        
     # Audit log
     audit = AuditLog(
         user_id=current_user.id,

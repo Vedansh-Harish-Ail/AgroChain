@@ -66,6 +66,17 @@ export default function ConsumerTracking() {
     return [];
   };
 
+  const getPhotoName = (url) => {
+    const parts = url.split('/');
+    const rawFilename = parts[parts.length - 1];
+    const underscoreIndex = rawFilename.indexOf('_');
+    if (underscoreIndex !== -1 && underscoreIndex === 32) {
+      return rawFilename.substring(underscoreIndex + 1);
+    }
+    return rawFilename;
+  };
+
+
   // 1. Initial Load of Farmer Directory
   useEffect(() => {
     fetchFarmers();
@@ -454,8 +465,10 @@ export default function ConsumerTracking() {
                   <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">
                     Farmer Wallet Address
                   </span>
-                  <code className="text-xs text-slate-800 dark:text-slate-300 font-mono bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-200/50 dark:border-slate-800 select-all block mt-1">
-                    {selectedFarmer.profile.wallet_address}
+                  <code className="text-xs text-slate-800 dark:text-slate-300 font-mono bg-slate-50 dark:bg-slate-950 p-2 rounded border border-slate-200/50 dark:border-slate-800 block mt-1">
+                    {selectedFarmer.profile.wallet_address
+                      ? `${selectedFarmer.profile.wallet_address.substring(0, 6)}...${selectedFarmer.profile.wallet_address.slice(-4)}`
+                      : ''}
                   </code>
                 </div>
               )}
@@ -640,20 +653,20 @@ export default function ConsumerTracking() {
                 </div>
               </div>
 
-              {/* SECTION 3: Quality Verification */}
+              {/* SECTION 3: Inspector Verification */}
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-850 dark:bg-slate-900 space-y-6">
                 <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
                   <h4 className="font-extrabold text-slate-900 dark:text-white text-md flex items-center gap-2">
-                    <Award className="h-5 w-5 text-emerald-600" /> Laboratory Quality Certification
+                    <UserCheck className="h-5 w-5 text-emerald-600" /> Agricultural Inspector Verification
                   </h4>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-6 text-xs">
                   <div className="space-y-3">
                     <div>
-                      <span className="text-slate-400 block">Assigned Auditor</span>
+                      <span className="text-slate-400 block">Assigned Inspector</span>
                       <p className="font-bold text-slate-950 dark:text-white mt-0.5">
-                        {selectedCrop.tester_name || (selectedCrop.is_approved ? 'Dr. Anita Sharma (Quality Inspector)' : 'Review Pending')}
+                        {selectedCrop.assigned_inspector_name || 'Assigned Field Inspector'}
                       </p>
                     </div>
                     <div>
@@ -683,20 +696,18 @@ export default function ConsumerTracking() {
                       <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
                         {selectedCrop.verification_date
                           ? new Date(selectedCrop.verification_date).toLocaleString()
-                          : (product ? new Date(product.test_date).toLocaleString() : 'N/A')}
+                          : 'Review Pending'}
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     <div>
-                      <span className="text-slate-400 block">Quality remarks / lab notes</span>
-                      <p className="italic text-slate-600 dark:text-slate-400 bg-emerald-50/20 border border-emerald-100/50 p-3 rounded-lg dark:bg-slate-950 dark:border-slate-800">
+                      <span className="text-slate-400 block">Inspector remarks / field notes</span>
+                      <p className="italic text-slate-650 dark:text-slate-400 bg-emerald-50/20 border border-emerald-100/50 p-3 rounded-lg dark:bg-slate-950 dark:border-slate-800">
                         {selectedCrop.tester_remarks
                           ? `"${selectedCrop.tester_remarks}"`
-                          : (selectedCrop.is_approved
-                            ? '"All crop biochemistry parameters satisfy chemical-free farming regulations. Soil toxicity check passed. Verified compliant organic grade."'
-                            : '"Awaiting initial on-site testing logs and verification parameters."')}
+                          : '"Awaiting initial on-site testing logs and verification parameters."'}
                       </p>
                     </div>
                   </div>
@@ -713,7 +724,10 @@ export default function ConsumerTracking() {
                             key={i}
                             className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 aspect-square hover:opacity-80 transition block"
                           >
-                            <img src={url} alt="Field Evidence" className="h-full w-full object-cover" />
+                            <img src={url} alt="Field Evidence" className="absolute inset-0 h-full w-full object-cover" />
+                            <div className="absolute inset-x-0 bottom-0 bg-slate-900/60 backdrop-blur-[1px] px-2 py-1 text-[9px] text-white font-medium truncate select-none">
+                              {getPhotoName(url)}
+                            </div>
                           </a>
                         ))}
                       </div>
@@ -721,6 +735,63 @@ export default function ConsumerTracking() {
                   )}
                 </div>
               </div>
+
+              {/* SECTION 3.5: Laboratory Quality Certification (Only if Product lot is approved/certified) */}
+              {product && product.certification_status === 'APPROVED' && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-850 dark:bg-slate-900 space-y-6">
+                  <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <h4 className="font-extrabold text-slate-900 dark:text-white text-md flex items-center gap-2">
+                      <Award className="h-5 w-5 text-emerald-600" /> Laboratory Quality Certification
+                    </h4>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-6 text-xs">
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-slate-400 block">Product Lot Number</span>
+                        <p className="font-bold font-mono text-emerald-600 dark:text-emerald-450 text-sm mt-0.5">
+                          #{product.lot_number}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block">Quality Grade</span>
+                        <p className="font-bold text-slate-950 dark:text-white text-sm mt-0.5">
+                          {product.quality_grade || 'Grade A+'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block">Certified Base Price</span>
+                        <p className="font-semibold text-slate-850 dark:text-slate-200 mt-0.5">
+                          {ethers.formatEther(product.price.toString())} ETH per unit
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-slate-400 block">Test Certification Date</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
+                          {new Date(product.test_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block">Batch Expiry Date</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
+                          {new Date(product.expiry_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                        </p>
+                      </div>
+                      {product.tester_address && (
+                        <div>
+                          <span className="text-slate-400 block">Authorized Lab Wallet</span>
+                          <code className="text-[10px] font-mono text-slate-700 dark:text-slate-300">
+                            {product.tester_address}
+                          </code>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* SECTION 4: Partnership & Funding Status */}
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-855 dark:bg-slate-900 space-y-5">

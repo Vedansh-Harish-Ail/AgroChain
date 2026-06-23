@@ -5,6 +5,8 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract FarmerRegistry is AccessControl {
     bytes32 public constant TESTER_ROLE = keccak256("TESTER_ROLE");
+    bytes32 public constant AGRICULTURE_ROLE = keccak256("AGRICULTURE_ROLE");
+    bytes32 public constant INSPECTOR_ROLE = keccak256("INSPECTOR_ROLE");
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     struct Farmer {
@@ -31,12 +33,19 @@ contract FarmerRegistry is AccessControl {
         string cropType
     );
 
+    mapping(address => bool) public authorizedInspectors;
+
     event FarmerApproved(uint256 indexed farmerId, address indexed verifier);
     event FarmerRejected(uint256 indexed farmerId, address indexed verifier);
 
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADMIN_ROLE, msg.sender);
+    }
+
+    function authorizeInspector(address _inspector, bool _status) public {
+        require(hasRole(ADMIN_ROLE, msg.sender), "Caller is not an admin");
+        authorizedInspectors[_inspector] = _status;
     }
 
     function registerFarmer(
@@ -71,7 +80,7 @@ contract FarmerRegistry is AccessControl {
     }
 
     function approveFarmer(uint256 _farmerId) public {
-        require(hasRole(TESTER_ROLE, msg.sender) || hasRole(ADMIN_ROLE, msg.sender), "Caller is not an authorized tester or admin");
+        require(authorizedInspectors[msg.sender] || hasRole(ADMIN_ROLE, msg.sender), "Caller is not an authorized inspector or admin");
         require(farmers[_farmerId].isRegistered, "Farmer not registered");
         require(!farmers[_farmerId].isApproved, "Farmer already approved");
 
@@ -91,7 +100,7 @@ contract FarmerRegistry is AccessControl {
         uint256 _cultivationDate,
         address _farmerWallet
     ) public {
-        require(hasRole(TESTER_ROLE, msg.sender) || hasRole(ADMIN_ROLE, msg.sender), "Caller is not an authorized tester or admin");
+        require(authorizedInspectors[msg.sender] || hasRole(ADMIN_ROLE, msg.sender), "Caller is not an authorized inspector or admin");
         
         if (!farmers[_farmerId].isRegistered) {
             farmers[_farmerId] = Farmer({
@@ -118,7 +127,7 @@ contract FarmerRegistry is AccessControl {
     }
 
     function rejectFarmer(uint256 _farmerId) public {
-        require(hasRole(TESTER_ROLE, msg.sender) || hasRole(ADMIN_ROLE, msg.sender), "Caller is not an authorized tester or admin");
+        require(authorizedInspectors[msg.sender] || hasRole(ADMIN_ROLE, msg.sender), "Caller is not an authorized inspector or admin");
         require(farmers[_farmerId].isRegistered, "Farmer not registered");
         
         farmers[_farmerId].isRegistered = false;

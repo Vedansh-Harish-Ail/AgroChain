@@ -133,8 +133,8 @@ export default function FarmerRegistration() {
   });
   const [evidencePhotos, setEvidencePhotos] = useState([]);
   const [evidenceDocuments, setEvidenceDocuments] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const uploading = evidencePhotos.some(p => p.status === 'uploading');
+  const uploadingDocs = evidenceDocuments.some(d => d.status === 'uploading');
   const [gpsLoading, setGpsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -428,68 +428,153 @@ export default function FarmerRegistration() {
         if (mime.includes('excel') || mime.includes('officedocument.spreadsheetml')) return `Document Proof #${index + 1} (Excel)`;
         if (mime.includes('zip') || mime.includes('x-zip-compressed')) return `Document Proof #${index + 1} (ZIP)`;
       }
+    } else {
+      const parts = url.split('/');
+      const rawFilename = parts[parts.length - 1];
+      const underscoreIndex = rawFilename.indexOf('_');
+      if (underscoreIndex !== -1 && underscoreIndex === 32) {
+        return rawFilename.substring(underscoreIndex + 1);
+      }
+      return rawFilename;
     }
     return `Document Proof #${index + 1}`;
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    setUploading(true);
-    const readPromises = files.map(file => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-      });
+    setError('');
+    const newItems = files.map(file => {
+      const tempId = Math.random().toString(36).substring(7);
+      return {
+        id: tempId,
+        name: file.name,
+        localPreview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+        status: 'uploading',
+        url: null,
+        file
+      };
     });
 
-    Promise.all(readPromises)
-      .then(results => {
-        setEvidencePhotos(prev => [...prev, ...results]);
-        setUploading(false);
-      })
-      .catch(err => {
-        console.error("Error reading photos:", err);
-        setError("Failed to upload one or more photos.");
-        setUploading(false);
-      });
+    setEvidencePhotos(prev => [...prev, ...newItems]);
+
+    // Upload each file
+    for (const item of newItems) {
+      try {
+        const formData = new FormData();
+        formData.append('file', item.file);
+        const res = await axios.post('/api/auth/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (res.data && res.data.url) {
+          setEvidencePhotos(prev =>
+            prev.map(p => p.id === item.id ? { ...p, status: 'success', url: res.data.url } : p)
+          );
+        } else {
+          throw new Error("No URL returned");
+        }
+      } catch (err) {
+        console.error("Error uploading photo:", err);
+        const isNetworkErr = !err.response && err.request;
+        setEvidencePhotos(prev =>
+          prev.map(p => p.id === item.id ? { 
+            ...p, 
+            status: 'error', 
+            error: isNetworkErr 
+              ? 'Connection failed. Check if a VPN is ON.' 
+              : (err.response?.data?.message || "Failed to upload") 
+          } : p)
+        );
+        if (isNetworkErr) {
+          setAlertMessage({
+            title: 'Connection Issue Detected',
+            message: 'Failed to reach the server. If you have a VPN turned on, please disable it and try again.',
+            type: 'warning'
+          });
+        }
+      }
+    }
+
+    e.target.value = '';
   };
 
   const removePhoto = (idx) => {
-    setEvidencePhotos(prev => prev.filter((_, i) => i !== idx));
+    setEvidencePhotos(prev => {
+      const target = prev[idx];
+      if (target && target.localPreview) {
+        URL.revokeObjectURL(target.localPreview);
+      }
+      return prev.filter((_, i) => i !== idx);
+    });
   };
 
-  const handleDocChange = (e) => {
+  const handleDocChange = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    setUploadingDocs(true);
-    const readPromises = files.map(file => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-      });
+    setError('');
+    const newItems = files.map(file => {
+      const tempId = Math.random().toString(36).substring(7);
+      return {
+        id: tempId,
+        name: file.name,
+        status: 'uploading',
+        url: null,
+        file
+      };
     });
 
-    Promise.all(readPromises)
-      .then(results => {
-        setEvidenceDocuments(prev => [...prev, ...results]);
-        setUploadingDocs(false);
-      })
-      .catch(err => {
-        console.error("Error reading documents:", err);
-        setError("Failed to upload one or more documents.");
-        setUploadingDocs(false);
-      });
+    setEvidenceDocuments(prev => [...prev, ...newItems]);
+
+    // Upload each file
+    for (const item of newItems) {
+      try {
+        const formData = new FormData();
+        formData.append('file', item.file);
+        const res = await axios.post('/api/auth/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (res.data && res.data.url) {
+          setEvidenceDocuments(prev =>
+            prev.map(d => d.id === item.id ? { ...d, status: 'success', url: res.data.url } : d)
+          );
+        } else {
+          throw new Error("No URL returned");
+        }
+      } catch (err) {
+        console.error("Error uploading document:", err);
+        const isNetworkErr = !err.response && err.request;
+        setEvidenceDocuments(prev =>
+          prev.map(d => d.id === item.id ? { 
+            ...d, 
+            status: 'error', 
+            error: isNetworkErr 
+              ? 'Connection failed. Check if a VPN is ON.' 
+              : (err.response?.data?.message || "Failed to upload") 
+          } : d)
+        );
+        if (isNetworkErr) {
+          setAlertMessage({
+            title: 'Connection Issue Detected',
+            message: 'Failed to reach the server. If you have a VPN turned on, please disable it and try again.',
+            type: 'warning'
+          });
+        }
+      }
+    }
+
+    e.target.value = '';
   };
 
   const removeDoc = (idx) => {
-    setEvidenceDocuments(prev => prev.filter((_, i) => i !== idx));
+    setEvidenceDocuments(prev => {
+      const target = prev[idx];
+      if (target && target.localPreview) {
+        URL.revokeObjectURL(target.localPreview);
+      }
+      return prev.filter((_, i) => i !== idx);
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -516,13 +601,22 @@ export default function FarmerRegistration() {
       return;
     }
 
-    if (evidencePhotos.length === 0) {
+    if (uploading || uploadingDocs) {
+      setError('Please wait for all files to finish uploading.');
+      setLoading(false);
+      return;
+    }
+
+    const uploadedPhotos = evidencePhotos.filter(p => p.status === 'success').map(p => p.url);
+    const uploadedDocs = evidenceDocuments.filter(d => d.status === 'success').map(d => d.url);
+
+    if (uploadedPhotos.length === 0) {
       setError('Please upload at least one crop / land evidence photo.');
       setLoading(false);
       return;
     }
 
-    if (evidenceDocuments.length === 0) {
+    if (uploadedDocs.length === 0) {
       setError('Please upload at least one evidence document (e.g. land deed or tax receipt).');
       setLoading(false);
       return;
@@ -531,8 +625,8 @@ export default function FarmerRegistration() {
     try {
       await axios.post('/api/farmer/register', {
         ...formData,
-        evidence_photos: evidencePhotos,
-        evidence_documents: evidenceDocuments,
+        evidence_photos: uploadedPhotos,
+        evidence_documents: uploadedDocs,
         tx_hash: null,
         block_number: null
       });
@@ -546,8 +640,19 @@ export default function FarmerRegistration() {
       });
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Failed to save crop details.');
+      const isNetworkErr = !err.response && err.request;
+      setError(isNetworkErr 
+        ? 'Connection failed. Check if a VPN is ON.' 
+        : (err.response?.data?.message || 'Failed to save crop details.')
+      );
       setLoading(false);
+      if (isNetworkErr) {
+        setAlertMessage({
+          title: 'Connection Issue Detected',
+          message: 'Failed to reach the server. If you have a VPN turned on, please disable it and try again.',
+          type: 'warning'
+        });
+      }
     }
   };
 
@@ -844,25 +949,60 @@ export default function FarmerRegistration() {
             </label>
             
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-              {evidencePhotos.map((url, idx) => (
-                <div key={idx} className="relative rounded-2xl overflow-hidden aspect-square border border-slate-200 dark:border-slate-800 bg-slate-100">
-                  <img src={url} alt="Evidence preview" className="h-full w-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(idx)}
-                    className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              
-              {uploading && (
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col justify-center items-center aspect-square">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent"></div>
-                  <span className="text-[10px] text-slate-400 mt-2">Uploading...</span>
-                </div>
-              )}
+              {evidencePhotos.map((photo, idx) => {
+                const previewSrc = photo.localPreview || photo.url;
+                const isUploading = photo.status === 'uploading';
+                const isError = photo.status === 'error';
+                
+                return (
+                  <div key={photo.id || idx} className={`relative rounded-2xl overflow-hidden aspect-square border bg-slate-100 flex flex-col justify-end transition-all ${
+                    isError ? 'border-rose-300 dark:border-rose-900/50' : 'border-slate-200 dark:border-slate-800'
+                  }`}>
+                    {previewSrc ? (
+                      <a 
+                        href={photo.url || '#'} 
+                        target={photo.url ? "_blank" : undefined} 
+                        rel="noopener noreferrer" 
+                        onClick={e => { if (!photo.url) e.preventDefault(); }}
+                        className={`absolute inset-0 h-full w-full block hover:opacity-90 transition ${!photo.url ? 'cursor-default' : ''}`}
+                      >
+                        <img src={previewSrc} alt="Evidence preview" className="h-full w-full object-cover" />
+                      </a>
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-950">
+                        <FileText className="h-8 w-8 text-slate-400" />
+                      </div>
+                    )}
+                    
+                    {/* Status Overlays */}
+                    {isUploading && (
+                      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] flex flex-col items-center justify-center text-white p-2">
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent mb-1"></div>
+                        <span className="text-[9px] font-medium">Uploading...</span>
+                      </div>
+                    )}
+                    
+                    {isError && (
+                      <div className="absolute inset-0 bg-rose-950/60 backdrop-blur-[1px] flex flex-col items-center justify-center text-white p-2 text-center">
+                        <AlertCircle className="h-5 w-5 text-rose-450 mb-1" />
+                        <span className="text-[9px] font-semibold text-rose-205">Upload Failed</span>
+                      </div>
+                    )}
+
+                    <div className="absolute inset-x-0 bottom-0 bg-slate-900/60 backdrop-blur-[1px] px-2 py-1 text-[10px] text-white font-medium truncate select-none pointer-events-none">
+                      {photo.name || getFileTypeLabel(photo.url, idx)}
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(idx)}
+                      className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition z-10"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="relative border-2 border-dashed border-slate-250 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-2xl p-6 transition text-center bg-slate-50/50 dark:bg-slate-900/30">
@@ -871,12 +1011,23 @@ export default function FarmerRegistration() {
                 multiple
                 accept="image/*"
                 onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 disabled={uploading}
               />
-              <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Drag & Drop files or click to upload</p>
-              <p className="text-xs text-slate-400 mt-1">PNG, JPG up to 10MB</p>
+              <div className="pointer-events-none flex flex-col items-center justify-center min-h-[96px]">
+                {uploading ? (
+                  <>
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent mb-2"></div>
+                    <p className="text-sm font-semibold text-emerald-650">Uploading selected image(s)...</p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Drag & Drop files or click to upload</p>
+                    <p className="text-xs text-slate-400 mt-1">PNG, JPG up to 10MB</p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -886,28 +1037,44 @@ export default function FarmerRegistration() {
             </label>
             
             <div className="space-y-2 mb-4">
-              {evidenceDocuments.map((url, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs">
-                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                    <FileText className="h-4 w-4 text-emerald-600" />
-                    <span className="truncate max-w-[200px] font-medium">{getFileTypeLabel(url, idx)}</span>
+              {evidenceDocuments.map((doc, idx) => {
+                const isUploading = doc.status === 'uploading';
+                const isError = doc.status === 'error';
+                
+                return (
+                  <div key={doc.id || idx} className={`flex items-center justify-between p-3 rounded-xl border text-xs transition-all ${
+                    isError 
+                      ? 'border-rose-200 bg-rose-50/30 dark:border-rose-950/40 dark:bg-rose-950/10' 
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950'
+                  }`}>
+                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 min-w-0 flex-1 mr-2">
+                      {isUploading ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent shrink-0"></div>
+                      ) : isError ? (
+                        <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
+                      )}
+                      <span className="truncate font-medium text-slate-800 dark:text-slate-200">
+                        {doc.name || getFileTypeLabel(doc.url, idx)}
+                      </span>
+                      {isUploading && (
+                        <span className="text-[10px] text-slate-400 font-normal shrink-0 ml-1">(Uploading...)</span>
+                      )}
+                      {isError && (
+                        <span className="text-[10px] text-rose-500 font-normal shrink-0 ml-1">(Failed)</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeDoc(idx)}
+                      className="p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition shrink-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeDoc(idx)}
-                    className="p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              
-              {uploadingDocs && (
-                <div className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs text-slate-400">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent"></div>
-                  <span>Uploading document...</span>
-                </div>
-              )}
+                );
+              })}
             </div>
 
             <div className="relative border-2 border-dashed border-slate-250 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-2xl p-6 transition text-center bg-slate-50/50 dark:bg-slate-900/30">
@@ -916,12 +1083,23 @@ export default function FarmerRegistration() {
                 multiple
                 accept=".pdf,.doc,.docx,.xls,.xlsx"
                 onChange={handleDocChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 disabled={uploadingDocs}
               />
-              <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Drag & Drop files or click to upload</p>
-              <p className="text-xs text-slate-400 mt-1">PDF, DOC, XLS up to 10MB</p>
+              <div className="pointer-events-none flex flex-col items-center justify-center min-h-[96px]">
+                {uploadingDocs ? (
+                  <>
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent mb-2"></div>
+                    <p className="text-sm font-semibold text-emerald-650">Uploading selected document(s)...</p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Drag & Drop files or click to upload</p>
+                    <p className="text-xs text-slate-400 mt-1">PDF, DOC, XLS up to 10MB</p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 

@@ -3,6 +3,13 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
+const getConnectionError = (err, defaultMsg) => {
+  if (!err.response && err.request) {
+    return 'Connection Error: Failed to reach the server. Please check if a VPN is turned on and blocking local network traffic.';
+  }
+  return err.response?.data?.message || defaultMsg;
+};
+
 // Configure axios base defaults
 axios.defaults.baseURL = ''; // Powered by Vite Proxy in local development
 
@@ -51,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       return { 
         success: false, 
-        message: err.response?.data?.message || 'Login failed. Please check your credentials.' 
+        message: getConnectionError(err, 'Login failed. Please check your credentials.') 
       };
     }
   };
@@ -73,7 +80,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       return {
         success: false,
-        message: err.response?.data?.message || 'Registration failed. Please try again.'
+        message: getConnectionError(err, 'Registration failed. Please try again.')
       };
     }
   };
@@ -87,7 +94,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       return {
         success: false,
-        message: err.response?.data?.message || 'Failed to send SMS OTP. Please check the phone number.'
+        message: getConnectionError(err, 'Failed to send SMS OTP. Please check the phone number.')
       };
     }
   };
@@ -101,7 +108,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       return {
         success: false,
-        message: err.response?.data?.message || 'Failed to send email OTP. Please check the email address.'
+        message: getConnectionError(err, 'Failed to send email OTP. Please check the email address.')
       };
     }
   };
@@ -117,7 +124,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       return {
         success: false,
-        message: err.response?.data?.message || 'Failed to change password.'
+        message: getConnectionError(err, 'Failed to change password.')
       };
     }
   };
@@ -134,7 +141,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       return {
         success: false,
-        message: err.response?.data?.message || 'Failed to link wallet.'
+        message: getConnectionError(err, 'Failed to link wallet.')
       };
     }
   };

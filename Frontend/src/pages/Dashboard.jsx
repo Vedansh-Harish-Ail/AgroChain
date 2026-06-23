@@ -91,18 +91,32 @@ export default function Dashboard() {
   const [walletSuccess, setWalletSuccess] = useState('');
   const [linkingWallet, setLinkingWallet] = useState(false);
 
-  // Inspector creation states
+  // Inspector & Tester creation states
   const [showCreateInspectorModal, setShowCreateInspectorModal] = useState(false);
+  const [onboardRole, setOnboardRole] = useState('INSPECTOR'); // 'INSPECTOR' or 'TESTER'
   const [inspectorName, setInspectorName] = useState('');
   const [inspectorEmail, setInspectorEmail] = useState('');
   const [inspectorPhone, setInspectorPhone] = useState('');
   const [inspectorDistrict, setInspectorDistrict] = useState('');
   const [inspectorSubDistrict, setInspectorSubDistrict] = useState('');
   const [inspectorCoverage, setInspectorCoverage] = useState('SUB_DISTRICT');
+  const [testerPinCode, setTesterPinCode] = useState('');
+  const [testerLabName, setTesterLabName] = useState('');
+  const [testerLicense, setTesterLicense] = useState('');
+  const [testerAccreditation, setTesterAccreditation] = useState('');
+  const [testerGovReg, setTesterGovReg] = useState('');
   const [creatingInspector, setCreatingInspector] = useState(false);
   const [createSuccess, setCreateSuccess] = useState('');
   const [createError, setCreateError] = useState('');
   const [generatedTempPassword, setGeneratedTempPassword] = useState('');
+
+  // First Login setup wallet states
+  const [setupWalletAddress, setSetupWalletAddress] = useState('');
+  const [setupMessage, setSetupMessage] = useState('');
+  const [setupSignature, setSetupSignature] = useState('');
+  const [setupWalletConnected, setSetupWalletConnected] = useState(false);
+  const [verifyingSetupWallet, setVerifyingSetupWallet] = useState(false);
+  const [setupError, setSetupError] = useState('');
 
   const navigate = useNavigate();
 
@@ -158,6 +172,60 @@ export default function Dashboard() {
     }
   };
 
+  const handleSetupConnectWallet = async () => {
+    setSetupError('');
+    setVerifyingSetupWallet(true);
+    try {
+      // Always request accounts fresh from MetaMask
+      if (!window.ethereum) {
+        setSetupError('MetaMask is not installed. Please install the MetaMask browser extension.');
+        setVerifyingSetupWallet(false);
+        return;
+      }
+      let accounts;
+      try {
+        accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      } catch (reqErr) {
+        setSetupError('MetaMask connection was rejected. Please approve the connection request.');
+        setVerifyingSetupWallet(false);
+        return;
+      }
+      const address = accounts?.[0];
+      if (!address) {
+        setSetupError('No MetaMask account found. Please unlock MetaMask and try again.');
+        setVerifyingSetupWallet(false);
+        return;
+      }
+      
+      const message = user?.role === 'TESTER'
+        ? `Verify wallet ownership for AgroChain Quality Lab: ${user.email}`
+        : `Verify wallet ownership for AgroChain Inspector: ${user.email}`;
+      
+      let signature;
+      try {
+        signature = await window.ethereum.request({
+          method: 'personal_sign',
+          params: [message, address],
+        });
+      } catch (signErr) {
+        console.error(signErr);
+        setSetupError('Signature request was rejected by user.');
+        setVerifyingSetupWallet(false);
+        return;
+      }
+      
+      setSetupWalletAddress(address);
+      setSetupMessage(message);
+      setSetupSignature(signature);
+      setSetupWalletConnected(true);
+    } catch (err) {
+      console.error(err);
+      setSetupError('Failed to connect or sign message with MetaMask.');
+    } finally {
+      setVerifyingSetupWallet(false);
+    }
+  };
+
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     setPassError('');
@@ -166,13 +234,38 @@ export default function Dashboard() {
       setPassError('Password must be at least 6 characters long.');
       return;
     }
+
+    const needsWallet = ['INSPECTOR', 'TESTER'].includes(user?.role);
+    if (needsWallet && !setupWalletConnected) {
+      setPassError('You must connect and verify your MetaMask wallet first.');
+      return;
+    }
+
     setChangingPass(true);
-    const res = await changePassword(newPassword);
-    setChangingPass(false);
-    if (res.success) {
-      setPassSuccess('Password updated successfully!');
-    } else {
-      setPassError(res.message);
+    try {
+      // 1. Link wallet first
+      if (needsWallet) {
+        const linkRes = await linkWallet(setupWalletAddress, setupMessage, setupSignature);
+        if (!linkRes.success) {
+          setPassError(linkRes.message || 'Failed to link wallet on backend.');
+          setChangingPass(false);
+          return;
+        }
+      }
+
+      // 2. Change password
+      const res = await changePassword(newPassword);
+      if (res.success) {
+        setPassSuccess('Setup completed successfully!');
+        window.location.reload();
+      } else {
+        setPassError(res.message);
+      }
+    } catch (err) {
+      console.error(err);
+      setPassError('Failed to complete first login setup.');
+    } finally {
+      setChangingPass(false);
     }
   };
 
@@ -184,15 +277,32 @@ export default function Dashboard() {
     setCreatingInspector(true);
     
     try {
-      const res = await axios.post('/api/admin/create-inspector', {
-        name: inspectorName,
-        email: inspectorEmail,
-        phone_number: inspectorPhone,
-        district: inspectorDistrict,
-        sub_district: inspectorSubDistrict,
-        coverage_level: inspectorCoverage
-      });
-      setCreateSuccess('Inspector account created successfully!');
+      let res;
+      if (onboardRole === 'INSPECTOR') {
+        res = await axios.post('/api/admin/create-inspector', {
+          name: inspectorName,
+          email: inspectorEmail,
+          phone_number: inspectorPhone,
+          district: inspectorDistrict,
+          sub_district: inspectorSubDistrict,
+          coverage_level: inspectorCoverage
+        });
+        setCreateSuccess('Inspector account created successfully!');
+      } else {
+        res = await axios.post('/api/admin/create-tester', {
+          name: inspectorName,
+          email: inspectorEmail,
+          phone_number: inspectorPhone,
+          district: inspectorDistrict,
+          sub_district: inspectorSubDistrict,
+          pin_code: testerPinCode,
+          lab_name: testerLabName,
+          lab_license_number: testerLicense,
+          accreditation_number: testerAccreditation,
+          gov_reg_number: testerGovReg
+        });
+        setCreateSuccess('Quality Lab Tester account created successfully!');
+      }
       setGeneratedTempPassword(res.data.temp_password);
       
       // Clear form
@@ -202,9 +312,14 @@ export default function Dashboard() {
       setInspectorDistrict('');
       setInspectorSubDistrict('');
       setInspectorCoverage('SUB_DISTRICT');
+      setTesterPinCode('');
+      setTesterLabName('');
+      setTesterLicense('');
+      setTesterAccreditation('');
+      setTesterGovReg('');
     } catch (err) {
       console.error(err);
-      setCreateError(err.response?.data?.message || 'Failed to create inspector account.');
+      setCreateError(err.response?.data?.message || 'Failed to create verifier account.');
     } finally {
       setCreatingInspector(false);
     }
@@ -413,23 +528,23 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 py-4">
-      {/* First Login Change Password Modal */}
+      {/* First Login Change Password & MetaMask Setup Modal */}
       {user?.must_change_password && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <AlertCircle className="h-6 w-6 text-amber-500 animate-pulse" /> First Login: Password Reset
+              <AlertCircle className="h-6 w-6 text-amber-500 animate-pulse" /> First Login: Account Setup
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              For security reasons, you must change your temporary password before accessing your dashboard.
+              For security, you must set a new password and connect your MetaMask wallet to activate your account.
             </p>
             {passError && (
-              <div className="p-3 text-xs text-rose-600 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400 rounded-xl">
+              <div className="p-3 text-xs text-rose-600 bg-rose-50 dark:bg-rose-955/30 dark:text-rose-400 rounded-xl">
                 {passError}
               </div>
             )}
             {passSuccess && (
-              <div className="p-3 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-xl">
+              <div className="p-3 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-955/30 dark:text-emerald-400 rounded-xl">
                 {passSuccess}
               </div>
             )}
@@ -447,12 +562,39 @@ export default function Dashboard() {
                   onChange={(e) => setNewPassword(e.target.value)}
                 />
               </div>
+
+              {['INSPECTOR', 'TESTER'].includes(user?.role) && (
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 space-y-2">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    MetaMask Digital Signature Setup
+                  </label>
+                  {setupWalletConnected ? (
+                    <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-xs text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/40 dark:text-emerald-400 font-mono">
+                      <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="truncate">Wallet Verified: {setupWalletAddress.substring(0, 8)}...{setupWalletAddress.substring(setupWalletAddress.length - 6)}</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSetupConnectWallet}
+                      disabled={verifyingSetupWallet}
+                      className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 px-4 rounded-xl transition text-xs disabled:opacity-50"
+                    >
+                      <Wallet className="h-4 w-4" /> {verifyingSetupWallet ? 'Verifying with MetaMask...' : 'Connect & Verify MetaMask'}
+                    </button>
+                  )}
+                  {setupError && (
+                    <p className="text-[10px] text-rose-600 dark:text-rose-450 font-semibold">{setupError}</p>
+                  )}
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={changingPass}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-xl transition text-xs flex justify-center items-center gap-2"
+                disabled={changingPass || (['INSPECTOR', 'TESTER'].includes(user?.role) && !setupWalletConnected)}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-xl transition text-xs flex justify-center items-center gap-2 disabled:opacity-50"
               >
-                {changingPass ? 'Saving...' : 'Update Password & Continue'}
+                {changingPass ? 'Completing Setup...' : 'Complete Account Setup'}
               </button>
             </form>
           </div>
@@ -950,13 +1092,12 @@ export default function Dashboard() {
             >
               <X className="h-6 w-6" />
             </button>
-
             <div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <UserPlus className="h-6 w-6 text-purple-600 dark:text-purple-400" /> Create Agricultural Inspector Account
+                <UserPlus className="h-6 w-6 text-purple-600 dark:text-purple-400" /> Onboard Regional Verifier Account
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Enter details to create a new field inspector. The system will auto-generate a temporary password.
+                Enter details to onboard a new field inspector or lab tester. The system will auto-generate a temporary password.
               </p>
             </div>
 
@@ -964,8 +1105,8 @@ export default function Dashboard() {
               <div className="rounded-xl bg-emerald-50 p-4 text-xs text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 font-semibold space-y-2">
                 <p>{createSuccess}</p>
                 {generatedTempPassword && (
-                  <div className="font-mono bg-white dark:bg-slate-950 p-2.5 rounded border border-emerald-200 dark:border-emerald-800/40 inline-block">
-                    Temporary Password: <strong className="text-emerald-700 dark:text-emerald-450 select-all">{generatedTempPassword}</strong> (Copy and share with inspector)
+                  <div className="font-mono bg-white dark:bg-slate-955 p-2.5 rounded border border-emerald-200 dark:border-emerald-800/40 inline-block">
+                    Temporary Password: <strong className="text-emerald-700 dark:text-emerald-455 select-all">{generatedTempPassword}</strong> (Copy and share with verifier)
                   </div>
                 )}
               </div>
@@ -978,15 +1119,29 @@ export default function Dashboard() {
             )}
 
             <form onSubmit={handleCreateInspector} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Onboard Role Type</label>
+                <select 
+                  value={onboardRole} 
+                  onChange={(e) => setOnboardRole(e.target.value)} 
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-1 focus:ring-purple-500"
+                >
+                  <option value="INSPECTOR">Agricultural Inspector</option>
+                  <option value="TESTER">Quality Lab Tester</option>
+                </select>
+              </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Inspector Name</label>
+                <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">
+                  {onboardRole === 'TESTER' ? 'Authorized Person Name' : 'Inspector Name'}
+                </label>
                 <input 
                   type="text" 
                   value={inspectorName} 
                   onChange={(e) => setInspectorName(e.target.value)} 
                   required 
-                  placeholder="Rajiv Kumar" 
-                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                  placeholder={onboardRole === 'TESTER' ? 'Dr. Jane Smith' : 'Rajiv Kumar'} 
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
                 />
               </div>
               <div>
@@ -996,8 +1151,8 @@ export default function Dashboard() {
                   value={inspectorEmail} 
                   onChange={(e) => setInspectorEmail(e.target.value)} 
                   required 
-                  placeholder="inspector@agrochain.gov" 
-                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                  placeholder="name@agrochain.gov" 
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
                 />
               </div>
               <div>
@@ -1008,7 +1163,7 @@ export default function Dashboard() {
                   onChange={(e) => setInspectorPhone(e.target.value)} 
                   required 
                   placeholder="+919876543210" 
-                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
                 />
               </div>
               <div>
@@ -1017,7 +1172,7 @@ export default function Dashboard() {
                   value={inspectorDistrict} 
                   onChange={(e) => { setInspectorDistrict(e.target.value); setInspectorSubDistrict(''); }} 
                   required 
-                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500 appearance-none cursor-pointer"
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500 appearance-none cursor-pointer"
                 >
                   <option value="">Select District</option>
                   {Object.keys(KERALA_LOCATIONS).map(d => (
@@ -1032,7 +1187,7 @@ export default function Dashboard() {
                   onChange={(e) => setInspectorSubDistrict(e.target.value)} 
                   required 
                   disabled={!inspectorDistrict}
-                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">{inspectorDistrict ? 'Select Taluk' : 'Select District first'}</option>
                   {inspectorDistrict && KERALA_LOCATIONS[inspectorDistrict] && Object.keys(KERALA_LOCATIONS[inspectorDistrict]).map(t => (
@@ -1040,18 +1195,79 @@ export default function Dashboard() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Coverage Level</label>
-                <select 
-                  value={inspectorCoverage} 
-                  onChange={(e) => setInspectorCoverage(e.target.value)} 
-                  required 
-                  className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
-                >
-                  <option value="SUB_DISTRICT">SUB_DISTRICT</option>
-                  <option value="DISTRICT">DISTRICT</option>
-                </select>
-              </div>
+
+              {onboardRole === 'INSPECTOR' ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Coverage Level</label>
+                  <select 
+                    value={inspectorCoverage} 
+                    onChange={(e) => setInspectorCoverage(e.target.value)} 
+                    required 
+                    className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-950 dark:text-white focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="SUB_DISTRICT">SUB_DISTRICT</option>
+                    <option value="DISTRICT">DISTRICT</option>
+                  </select>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Base PIN Code</label>
+                    <input 
+                      type="text" 
+                      value={testerPinCode} 
+                      onChange={(e) => setTesterPinCode(e.target.value)} 
+                      required 
+                      placeholder="682022" 
+                      className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Lab Name</label>
+                    <input 
+                      type="text" 
+                      value={testerLabName} 
+                      onChange={(e) => setTesterLabName(e.target.value)} 
+                      required 
+                      placeholder="Kerala Quality Testing Lab" 
+                      className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Lab License Number</label>
+                    <input 
+                      type="text" 
+                      value={testerLicense} 
+                      onChange={(e) => setTesterLicense(e.target.value)} 
+                      required 
+                      placeholder="LIC-98765" 
+                      className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Accreditation Number</label>
+                    <input 
+                      type="text" 
+                      value={testerAccreditation} 
+                      onChange={(e) => setTesterAccreditation(e.target.value)} 
+                      required 
+                      placeholder="ACR-12345" 
+                      className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-755 dark:text-slate-300 mb-1">Government Registration Number</label>
+                    <input 
+                      type="text" 
+                      value={testerGovReg} 
+                      onChange={(e) => setTesterGovReg(e.target.value)} 
+                      required 
+                      placeholder="REG-112233" 
+                      className="text-xs w-full py-2.5 px-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-purple-500 focus:border-purple-500" 
+                    />
+                  </div>
+                </>
+              )}
               
               <div className="sm:col-span-2 flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
@@ -1066,7 +1282,7 @@ export default function Dashboard() {
                   disabled={creatingInspector}
                   className="bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2.5 px-6 rounded-xl transition disabled:opacity-50 text-xs shadow-md shadow-purple-600/10"
                 >
-                  {creatingInspector ? 'Creating...' : 'Create Inspector Account'}
+                  {creatingInspector ? 'Creating...' : `Create ${onboardRole === 'TESTER' ? 'Tester' : 'Inspector'} Account`}
                 </button>
               </div>
             </form>

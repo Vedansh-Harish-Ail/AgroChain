@@ -506,11 +506,10 @@ export default function RegisterPage() {
                       <Mail className="h-4 w-4 text-slate-400" />
                     </div>
                     <input
-                      type="email"
+                      type="text"
                       id="email"
                       placeholder="name@example.com"
-                      disabled={emailOtpSent}
-                      className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-70"
+                      className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -518,9 +517,8 @@ export default function RegisterPage() {
                   </div>
                   <button
                     type="button"
-                    disabled={sendingEmailOtp || emailCountdown > 0}
                     onClick={handleSendEmailOtp}
-                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition-colors whitespace-nowrap"
+                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors whitespace-nowrap"
                   >
                     {sendingEmailOtp ? 'Sending...' : emailCountdown > 0 ? `Resend (${emailCountdown}s)` : emailOtpSent ? 'Resend Code' : 'Send Code'}
                   </button>
@@ -535,14 +533,13 @@ export default function RegisterPage() {
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <KeyRound className="h-4 w-4 text-slate-400" />
                   </div>
-                  <input
+                   <input
                     type="text"
                     id="emailOtp"
                     required
                     maxLength={6}
                     placeholder="Enter 6-digit Email OTP"
-                    disabled={!emailOtpSent}
-                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-50"
+                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
                     value={emailOtp}
                     onChange={(e) => setEmailOtp(e.target.value)}
                   />
@@ -566,17 +563,15 @@ export default function RegisterPage() {
                       id="phoneNumber"
                       required
                       placeholder="+919876543210"
-                      disabled={smsOtpSent}
-                      className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-70"
+                      className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                     />
                   </div>
                   <button
                     type="button"
-                    disabled={sendingSmsOtp || smsCountdown > 0}
                     onClick={handleSendSmsOtp}
-                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 disabled:opacity-50 transition-colors whitespace-nowrap"
+                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors whitespace-nowrap"
                   >
                     {sendingSmsOtp ? 'Sending...' : smsCountdown > 0 ? `Resend (${smsCountdown}s)` : smsOtpSent ? 'Resend Code' : 'Send Code'}
                   </button>
@@ -597,8 +592,7 @@ export default function RegisterPage() {
                     required
                     maxLength={6}
                     placeholder="Enter 6-digit SMS OTP"
-                    disabled={!smsOtpSent}
-                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-50"
+                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
                     value={smsOtp}
                     onChange={(e) => setSmsOtp(e.target.value)}
                   />

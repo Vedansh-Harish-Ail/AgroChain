@@ -21,7 +21,7 @@ def register_product(current_user):
     tx_hash = data.get('tx_hash')
     block_number = data.get('block_number')
     
-    if not lot_number or not farmer_id or not crop_name or not quality_grade or not price or not test_date_str or not expiry_date_str or not certification_status:
+    if not lot_number or not farmer_id or not crop_name or not quality_grade or price is None or not test_date_str or not expiry_date_str or not certification_status:
         return jsonify({'message': 'Missing required fields'}), 400
         
     # Check if lot already exists
@@ -61,6 +61,9 @@ def register_product(current_user):
     
     if certification_status == 'APPROVED':
         farmer_project.timeline_status = 'PRODUCT_AVAILABLE'
+    elif certification_status == 'REJECTED':
+        farmer_project.timeline_status = 'REJECTED'
+        farmer_project.is_approved = False
 
     db.session.add(new_product)
     db.session.commit()

@@ -238,3 +238,100 @@ def create_inspector(current_user):
         'temp_password': temp_password,
         'user': new_user.to_dict()
     }), 201
+
+
+@admin_bp.route('/create-tester', methods=['POST'])
+@roles_allowed('ADMIN')
+def create_tester(current_user):
+    import random
+    data = request.get_json() or {}
+    name = data.get('name')
+    email = data.get('email')
+    phone_number = data.get('phone_number')
+    district = data.get('district')
+    sub_district = data.get('sub_district')
+    pin_code = data.get('pin_code')
+    lab_name = data.get('lab_name')
+    lab_license_number = data.get('lab_license_number')
+    accreditation_number = data.get('accreditation_number')
+    gov_reg_number = data.get('gov_reg_number')
+
+    if not name or not email or not phone_number or not district or not sub_district or not pin_code or not lab_name or not lab_license_number or not accreditation_number or not gov_reg_number:
+        return jsonify({'message': 'Missing required fields'}), 400
+
+    email = email.strip().lower()
+    phone_number = phone_number.strip()
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({'message': 'Email address already registered'}), 400
+
+    if User.query.filter_by(phone_number=phone_number).first():
+        return jsonify({'message': 'Phone number already registered'}), 400
+
+    # System automatically generates a temporary password (e.g. Temp@1234)
+    temp_password = f"Temp@{random.randint(1000, 9999)}"
+    
+    new_user = User(
+        name=name,
+        email=email,
+        phone_number=phone_number,
+        role='TESTER',
+        district=district,
+        sub_district=sub_district,
+        pin_code=pin_code,
+        lab_name=lab_name,
+        authorized_person=name,
+        lab_license_number=lab_license_number,
+        accreditation_number=accreditation_number,
+        gov_reg_number=gov_reg_number,
+        must_change_password=True,
+        status='PENDING_SETUP',
+        is_approved=True # Automatically approved by admin
+    )
+    new_user.set_password(temp_password)
+    db.session.add(new_user)
+    db.session.commit()
+
+    # Audit log
+    audit = AuditLog(
+        user_id=current_user.id,
+        action='TESTER_CREATED_BY_ADMIN',
+        details=f"Admin {current_user.name} created Quality Lab Tester {name} (Email: {email}, Lab: {lab_name}, District: {district}, Taluk: {sub_district})."
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    # Notify Tester via email about account creation and temporary password
+    from utils.email import send_email, get_html_template
+    subject = "AgroChain Quality Lab Tester Account Created"
+    text_body = f"Hello {name},\n\nA Quality Lab Tester account has been created for you by the Admin.\n\nOfficial Email: {email}\nTemporary Password: {temp_password}\n\nYou must change your password on your first login."
+    html_body = get_html_template(
+        title="Quality Lab Tester Account Created",
+        body_text=f"<p>Hello <strong>{name}</strong>,</p>"
+                  f"<p>A Quality Lab Tester account has been created for you on the AgroChain platform by the System Administrator.</p>"
+                  f"<p><strong>Your credentials:</strong></p>"
+                  f"<ul>"
+                  f"<li><strong>Email:</strong> {email}</li>"
+                  f"<li><strong>Temporary Password:</strong> {temp_password}</li>"
+                  f"</ul>"
+                  f"<p><strong>Lab Details:</strong></p>"
+                  f"<ul>"
+                  f"<li><strong>Lab Name:</strong> {lab_name}</li>"
+                  f"<li><strong>License:</strong> {lab_license_number}</li>"
+                  f"<li><strong>Jurisdiction District:</strong> {district} (Taluk: {sub_district})</li>"
+                  f"</ul>"
+                  f"<p><strong>Note:</strong> You must change your password and connect your MetaMask wallet on your first login to activate your account.</p>",
+        cta_text="Login to AgroChain",
+        cta_url="http://localhost:5173/login"
+    )
+    try:
+        send_email(subject, email, text_body, html_body)
+    except Exception as e:
+        print(f"Error sending tester creation email: {e}")
+
+    return jsonify({
+        'message': 'Quality Lab Tester account created successfully!',
+        'temp_password': temp_password,
+        'user': new_user.to_dict()
+    }), 201
+
