@@ -1,6 +1,6 @@
 # AgroChain (Modernized) — Complete Project Memory
 
-**Last Updated:** *June 22, 2026, 05:50 PM IST (UTC+5:30)*
+**Last Updated:** *June 24, 2026, 01:19 PM IST (UTC+5:30)*
 
 This document is the master documentation of the **AgroChain** (Modernized) project. It contains a detailed breakdown of the project’s purpose, features, security models, data structures, backend routes, contract details, frontend screens, and step-by-step developer checklists.
 
@@ -192,7 +192,7 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 ### B. Core REST API Endpoints
 
 #### Auth Blueprint (`/api/auth`)
-* `POST /send-otp` $\rightarrow$ Generates 6-digit random code, saves to DB with 5 min expiry, triggers SMS Gateway or fallback dev log.
+* `POST /send-otp` $\rightarrow$ Generates 6-digit random code, saves to DB with 5-min expiry, enforces 60-second OTP cooldown (HTTP 429 on spam), dispatches via the `_send_sms_gate()` helper, or falls back to a dev terminal log.
 * `POST /register` $\rightarrow$ Validates registration inputs (public registration restricted to FARMER, TESTER, CONSUMER, INVESTOR roles), verifies OTP, hashes password, creates user.
 * `POST /login` $\rightarrow$ Authenticates user credentials, logs login event, generates a JWT token containing `id` and `role` claims.
 * `GET /profile` $\rightarrow$ Decodes JWT token and returns user details.
@@ -358,7 +358,7 @@ Here is a comprehensive index of all key files in the AgroChain workspace:
 * [Backend/utils/auth.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/utils/auth.py): Contains JWT session helpers (`generate_token`, `token_required`, `role_required`) to enforce route access.
 * **API Routing Blueprints (`Backend/routes/`)**:
   * [Backend/routes/admin.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/admin.py): Serves administrative analytics tables, user approval logs, and system audit trails.
-  * [Backend/routes/auth.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/auth.py): Manages OTP codes, profile linkages, and MetaMask addresses.
+  * [Backend/routes/auth.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/auth.py): Manages OTP codes (via hardened `_send_sms_gate()` SMS helper using the correct SMS Gate API format), profile linkages, and MetaMask addresses.
   * [Backend/routes/explorer.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/explorer.py): Logs mined blockchain hashes and processes transaction search lookups.
   * [Backend/routes/farmer.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/farmer.py): Registers crops, fetches crop lists, and restricts timeline status changes.
   * [Backend/routes/finance.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/finance.py): Connects investor proposals, accepts LOIs, and triggers status changes.
@@ -403,6 +403,14 @@ Here is a comprehensive index of all key files in the AgroChain workspace:
 ---
 
 ## 9. Chronological Change Log
+
+* **June 24, 2026** (SMS Gateway Diagnosis & Hardened OTP Dispatch):
+  * **Root Cause Diagnosis**: Identified that the SMS gateway (`SMS Gate` Android app at `192.168.1.28:8080`) was failing silently due to two critical bugs: wrong JSON field names (`textMessage.text` instead of `message`) and a broken phone format (`{9895154388}` instead of E.164 `+919895154388`).
+  * **Dedicated `_send_sms_gate()` Helper**: Extracted all SMS dispatch logic in [Backend/routes/auth.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/auth.py) into a clean, reusable `_send_sms_gate(url, user, pass, phone_e164, text)` function with 3-layer error handling: `urllib.error.HTTPError` (bad HTTP response from gateway), `urllib.error.URLError` (network unreachable / phone offline), and `Exception` (catch-all with full detail).
+  * **Correct SMS Gate API Payload**: Fixed JSON body to match the official SMS Gate Android API spec: `{ "message": "...", "phoneNumbers": ["+91XXXXXXXXXX"] }` with proper E.164 phone format and `Basic Auth` header.
+  * **Hardened Phone Normalisation**: Updated the `send_otp` route to accept all Indian phone number variants: `9895...` (10-digit), `09895...` (11-digit with leading 0), `919895...` (12-digit with country code), and `+919895...` (13-digit E.164). Added first-digit validation (must start with 6, 7, 8, or 9 per Indian telecom regulations).
+  * **60-Second OTP Rate-Limit**: Added a cooldown check in `send_otp` — if an OTP was issued within the last 60 seconds (i.e. `expires_at > now + 4 minutes`), the endpoint returns HTTP 429 to prevent OTP spam.
+  * **Cleaner Config Handling**: Added `.strip()` to SMS URL, username, and password reads from `current_app.config` to prevent silent failures caused by trailing whitespace in `.env` values.
 
 * **June 22, 2026** (Roles Bento Grid Redesign, Contrast fixes, SMS Gateway & Floating Navbars):
   * **Hero Contrast Backdrop**: Added a responsive gradient overlay and updated hero text classes (`text-slate-700 dark:text-slate-200 font-medium`), trust badges (`text-slate-700 dark:text-slate-300`), and the secondary marketplace button to resolve text readability issues over the agricultural leafy background image.

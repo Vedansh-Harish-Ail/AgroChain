@@ -248,3 +248,8 @@ The complete stakeholder verification workflow functions as follows:
 | Role-based protected routes verified in React Router | ✅ |
 | Role-based on-chain authorization separated (`AGRICULTURE_ROLE` & `QUALITY_TESTOR_ROLE`) | ✅ |
 | Warnings displayed reactively for inspectors and testers lacking on-chain authorization | ✅ |
+| SMS Gate Android app receives OTP via correct API payload `{ "message": "...", "phoneNumbers": ["+91..."] }` | ✅ |
+| All Indian phone number formats normalised to 10-digit (handles `9895...`, `09895...`, `919895...`, `+919895...`) | ✅ |
+| OTP resend blocked within 60 seconds (HTTP 429 rate-limit enforced) | ✅ |
+| SMS gateway network errors surface descriptive messages (URLError vs HTTPError vs generic Exception) | ✅ |
+

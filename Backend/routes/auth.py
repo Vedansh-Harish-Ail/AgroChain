@@ -12,111 +12,176 @@ from eth_account.messages import encode_defunct
 
 auth_bp = Blueprint('auth', __name__)
 
+# ---------------------------------------------------------------------------
+# Helper: Send SMS via SMS Gate Android app
+# Docs: https://sms-gate.app/api/
+# Payload: { "message": "...", "phoneNumbers": ["+91XXXXXXXXXX"] }
+# Auth:    HTTP Basic (username:password from .env)
+# ---------------------------------------------------------------------------
+def _send_sms_gate(sms_url, sms_user, sms_pass, phone_e164, text):
+    """
+    Sends an SMS via the SMS Gate Android gateway app.
+
+    Args:
+        sms_url   : Full URL e.g. http://192.168.1.28:8080/message
+        sms_user  : Basic-auth username
+        sms_pass  : Basic-auth password
+        phone_e164: Phone in E.164 format e.g. +919895154388
+        text      : SMS body text
+
+    Returns:
+        (success: bool, detail: str)
+    """
+    payload = {
+        "message": text,
+        "phoneNumbers": [phone_e164]
+    }
+    data_bytes = json.dumps(payload).encode('utf-8')
+
+    req = urllib.request.Request(sms_url, data=data_bytes, method='POST')
+    req.add_header('Content-Type', 'application/json')
+
+    if sms_user and sms_pass:
+        token = base64.b64encode(f"{sms_user}:{sms_pass}".encode()).decode()
+        req.add_header('Authorization', f'Basic {token}')
+
+    print(f"\n=== [SMS GATEWAY REQUEST] ===")
+    print(f"  URL    : {sms_url}")
+    print(f"  To     : {phone_e164}")
+    print(f"  Payload: {json.dumps(payload)}")
+    print(f"=============================\n")
+
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            status = resp.status
+            body   = resp.read().decode('utf-8', errors='replace')
+
+        if status in (200, 202):
+            print(f"=== [SMS GATEWAY SUCCESS] status={status} body={body} ===\n")
+            return True, f"HTTP {status}"
+        else:
+            detail = f"Gateway returned HTTP {status}: {body}"
+            print(f"!!! [SMS GATEWAY FAILURE] {detail}")
+            return False, detail
+
+    except urllib.error.HTTPError as e:
+        body   = e.read().decode('utf-8', errors='replace') if e.fp else ''
+        detail = f"HTTP {e.code} from gateway: {body}"
+        print(f"!!! [SMS HTTP ERROR] {detail}")
+        return False, detail
+
+    except urllib.error.URLError as e:
+        detail = (
+            f"Cannot reach SMS Gateway at {sms_url}. "
+            f"Make sure the phone is on the same Wi-Fi and the SMS Gate app is running. "
+            f"Reason: {e.reason}"
+        )
+        print(f"!!! [SMS NETWORK ERROR] {detail}")
+        return False, detail
+
+    except Exception as e:
+        detail = f"Unexpected error: {str(e)}"
+        print(f"!!! [SMS EXCEPTION] {detail}")
+        return False, detail
+
+
+# ---------------------------------------------------------------------------
+# Route: POST /send-otp
+# ---------------------------------------------------------------------------
 @auth_bp.route('/send-otp', methods=['POST'])
 def send_otp():
-    data = request.get_json() or {}
-    raw_phone = data.get('phone_number', '')
+    data      = request.get_json() or {}
+    raw_phone = data.get('phone_number', '').strip()
 
     if not raw_phone:
         return jsonify({'message': 'Phone number is required'}), 400
 
-    # --- Normalise phone number ---
-    # Strip everything except digits and leading +
-    digits_only = "".join(c for c in raw_phone.strip() if c.isdigit())
-    # If user typed +919895154388 or 919895154388, keep last 10 digits
-    if len(digits_only) == 12 and digits_only.startswith('91'):
-        digits_only = digits_only[2:]
-    if len(digits_only) != 10 or not digits_only.isdigit():
-        return jsonify({'message': f'Invalid phone number. Please enter a valid 10-digit Indian mobile number.'}), 400
+    # ------------------------------------------------------------------
+    # Normalise to clean 10-digit Indian mobile number
+    # Accepts:  9895154388 | 09895154388 | 919895154388 | +919895154388
+    # ------------------------------------------------------------------
+    digits = "".join(c for c in raw_phone if c.isdigit())
 
-    phone_number = digits_only   # store clean 10-digit number in DB
+    if len(digits) == 13 and digits.startswith('091'):
+        digits = digits[3:]                      # 091XXXXXXXXXX → 10 digits
+    elif len(digits) == 12 and digits.startswith('91'):
+        digits = digits[2:]                      # 91XXXXXXXXXX  → 10 digits
+    elif len(digits) == 11 and digits.startswith('0'):
+        digits = digits[1:]                      # 0XXXXXXXXXX   → 10 digits
 
-    # Check if user already exists with this phone number
+    if len(digits) != 10 or not digits.isdigit():
+        return jsonify({
+            'message': 'Invalid phone number. Please enter a valid 10-digit Indian mobile number.'
+        }), 400
+
+    # Validate first digit (Indian mobile numbers start with 6-9)
+    if digits[0] not in '6789':
+        return jsonify({
+            'message': 'Invalid phone number. Indian mobile numbers must start with 6, 7, 8, or 9.'
+        }), 400
+
+    phone_number = digits  # clean 10-digit string stored in DB
+
+    # ------------------------------------------------------------------
+    # Block if phone is already registered
+    # ------------------------------------------------------------------
     if User.query.filter_by(phone_number=phone_number).first():
         return jsonify({'message': 'Phone number already registered'}), 400
 
-    # Generate 6-digit OTP code
+    # ------------------------------------------------------------------
+    # OTP generation & DB upsert
+    # ------------------------------------------------------------------
     otp_code = f"{random.randint(100000, 999999)}"
 
-    # Save OTP to database (Upsert)
     existing_otp = OTPVerification.query.filter_by(phone_number=phone_number).first()
+    
+    # Simple rate-limit: 60s cooldown check
     if existing_otp:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        if existing_otp.expires_at > now + timedelta(minutes=4):
+            return jsonify({'message': 'Please wait 60 seconds before requesting a new OTP.'}), 429
         db.session.delete(existing_otp)
         db.session.commit()
 
     expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=5)
-    new_otp = OTPVerification(phone_number=phone_number, otp_code=otp_code, expires_at=expires_at)
+    new_otp    = OTPVerification(phone_number=phone_number, otp_code=otp_code, expires_at=expires_at)
     db.session.add(new_otp)
     db.session.commit()
 
+    # ------------------------------------------------------------------
+    # SMS dispatch
+    # ------------------------------------------------------------------
     sms_enabled = current_app.config.get('SMS_ENABLED', False)
-    sms_url     = current_app.config.get('SMS_GATEWAY_URL')
-    sms_user    = current_app.config.get('SMS_GATEWAY_USER')
-    sms_pass    = current_app.config.get('SMS_GATEWAY_PASSWORD')
+    sms_url     = current_app.config.get('SMS_GATEWAY_URL', '').strip()
+    sms_user    = current_app.config.get('SMS_GATEWAY_USER', '').strip()
+    sms_pass    = current_app.config.get('SMS_GATEWAY_PASSWORD', '').strip()
 
     sms_sent  = False
     error_msg = None
 
     if sms_enabled and sms_url:
-        try:
-            # SMS Gate Android app confirmed-working format: phone number wrapped in {} e.g. {9895154388}
-            gateway_phone = f"{{{phone_number}}}"
-
-            payload = {
-                "textMessage": {
-                    "text": f"Your AgroChain OTP is: {otp_code}. Valid for 5 minutes. Do not share."
-                },
-                "phoneNumbers": [gateway_phone]
-            }
-            data_bytes = json.dumps(payload).encode('utf-8')
-
-            # Log request
-            print(f"\n=== [SMS GATEWAY REQUEST] ===")
-            print(f"URL:     {sms_url}")
-            print(f"To:      {gateway_phone}")
-            print(f"OTP:     {otp_code}")
-            print(f"Payload: {json.dumps(payload)}")
-            print(f"=============================\n")
-
-            req = urllib.request.Request(sms_url, data=data_bytes, method='POST')
-            req.add_header('Content-Type', 'application/json')
-            if sms_user and sms_pass:
-                auth_str     = f"{sms_user}:{sms_pass}"
-                auth_encoded = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
-                req.add_header('Authorization', f'Basic {auth_encoded}')
-
-            with urllib.request.urlopen(req, timeout=8) as response:
-                resp_status = response.status
-                resp_body   = response.read().decode('utf-8')
-
-            if resp_status in (200, 202):
-                sms_sent = True
-                print(f"=== [SMS GATEWAY SUCCESS] ===")
-                print(f"Status: {resp_status}  Body: {resp_body}")
-                print(f"=============================\n")
-            else:
-                error_msg = f"Gateway returned HTTP {resp_status}: {resp_body}"
-                print(f"!!! [SMS GATEWAY FAILURE] status={resp_status} body={resp_body}")
-
-        except Exception as e:
-            error_msg = str(e)
-            print(f"!!! [SMS EXCEPTION] {error_msg}")
+        phone_e164 = f"+91{phone_number}"
+        sms_text   = f"Your AgroChain OTP is: {otp_code}. Valid for 5 minutes. Do not share."
+        sms_sent, error_msg = _send_sms_gate(sms_url, sms_user, sms_pass, phone_e164, sms_text)
     else:
-        error_msg = "SMS Gateway is disabled or not configured in .env"
+        error_msg = "SMS Gateway is disabled or URL not configured in .env"
 
+    # ------------------------------------------------------------------
+    # Response
+    # ------------------------------------------------------------------
     if sms_sent:
         return jsonify({
             'message': 'OTP sent successfully via SMS.',
             'phone_number': phone_number
         }), 200
-    else:
-        # Developer fallback — OTP still works, printed to terminal
-        print(f"\n--- [SMS DEV FALLBACK] OTP for {phone_number} = {otp_code}  Error: {error_msg} ---\n")
-        return jsonify({
-            'message': 'OTP generated (Developer Mode Fallback).',
-            'phone_number': phone_number,
-            'warning': f'SMS delivery failed. Reason: {error_msg}'
-        }), 200
+
+    # Dev-mode fallback: OTP is still valid in DB, printed to terminal
+    print(f"\n--- [SMS DEV FALLBACK] OTP for {phone_number} = {otp_code} | Reason: {error_msg} ---\n")
+    return jsonify({
+        'message': 'OTP generated. SMS delivery failed — check terminal for OTP (dev mode).',
+        'phone_number': phone_number,
+        'warning': f'SMS not delivered: {error_msg}'
+    }), 200
 
 
 @auth_bp.route('/send-email-otp', methods=['POST'])

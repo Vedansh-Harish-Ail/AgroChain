@@ -41,7 +41,7 @@ graph TD
 ### Phase 1: Onboarding & Account setup
 1. **Registration & Web2 Security**:
    * Navigate to `/register` and fill in the profile form: Name, Email, Phone Number, Government ID (Aadhaar/PAN), Farm Land Title Ownership Proof URL, District, Pin Code, and Password.
-   * Click **"Send OTP"** to trigger a mock/real SMS code.
+   * Click **"Send OTP"** to trigger an SMS to your number via the SMS Gate gateway (or a terminal dev-fallback if the gateway is offline). The system accepts all Indian phone formats (`9895...`, `09895...`, `+919895...`) and enforces a 60-second cooldown between OTP requests.
    * Enter the 6-digit code to verify the phone number. Click **"Sign Up"** to create the user database entry with the role `FARMER`.
 2. **Wallet Address Association (No MetaMask/Gas required)**:
    * Log into the Dashboard (`/dashboard`).

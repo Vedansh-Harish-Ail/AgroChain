@@ -617,8 +617,10 @@ def roles_allowed(*roles):
 
 #### 1. User Authentication
 *   **Send OTP** (`POST /api/auth/send-otp`)
-    *   *Request*: `{ "phone_number": "+10000000001" }`
-    *   *Response*: `{ "message": "OTP sent successfully (Dev code: 123456)" }`
+    *   *Request*: `{ "phone_number": "9895154388" }` *(also accepts `09895154388`, `919895154388`, `+919895154388`)*
+    *   *Success Response*: `{ "message": "OTP sent successfully via SMS.", "phone_number": "9895154388" }`
+    *   *Dev Fallback Response (gateway offline)*: `{ "message": "OTP generated. SMS delivery failed — check terminal for OTP (dev mode).", "warning": "Cannot reach SMS Gateway..." }`
+    *   *Rate-limit Response*: HTTP `429` — `{ "message": "Please wait 60 seconds before requesting a new OTP." }`
 *   **Register User** (`POST /api/auth/register`) (FARMER, TESTER, CONSUMER, INVESTOR)
     *   *Farmer Request*: `{ "name": "Rajesh Patel", "email": "rajesh@gmail.com", "phone_number": "+10000000001", "role": "FARMER", "password": "password123", "otp_code": "123456", "district": "Thrissur", "pin_code": "680001" }`
     *   *Quality Lab Request*: `{ "name": "Dr. Anita Sharma", "email": "lab@test.com", "phone_number": "+919999999999", "role": "TESTER", "password": "password123", "otp_code": "123456", "district": "Thrissur", "pin_code": "680001", "lab_name": "Thrissur Soil and Crop Quality Testing Lab", "authorized_person": "Dr. Anita Sharma", "lab_license_number": "LIC-THR-2026-99A", "accreditation_number": "NABL-9876", "gov_reg_number": "GOV-REG-44321", "lab_certificates": ["/uploads/cert1.pdf"], "supporting_documents": ["/uploads/doc1.pdf"] }`
