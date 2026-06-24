@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, role, walletAddress, phoneNumber, emailOtp, smsOtp, locationData = {}) => {
+  const register = async (name, email, password, role, walletAddress, phoneNumber, emailOtp, smsOtp, locationData = {}, otpMethod = 'email') => {
     try {
       const res = await axios.post('/api/auth/register', {
         name,
@@ -74,6 +74,7 @@ export const AuthProvider = ({ children }) => {
         phone_number: phoneNumber,
         email_otp: emailOtp,
         sms_otp: smsOtp,
+        otp_method: otpMethod,
         ...locationData
       });
       return { success: true, user: res.data.user };

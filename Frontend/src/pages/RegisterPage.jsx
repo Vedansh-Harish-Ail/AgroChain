@@ -5,7 +5,8 @@ import { useWallet } from '../context/WalletContext';
 import {
   UserPlus, User, Mail, Lock, Briefcase, Wallet,
   ShieldCheck, ChevronRight, Sparkles, Eye, EyeOff,
-  Phone, KeyRound, Upload, X, FileText, HelpCircle
+  Phone, KeyRound, Upload, X, FileText, HelpCircle,
+  MessageSquare, ToggleLeft, ToggleRight
 } from 'lucide-react';
 
 const KERALA_LOCATIONS = {
@@ -213,6 +214,9 @@ export default function RegisterPage() {
   const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
   const [emailCountdown, setEmailCountdown] = useState(0);
 
+  // OTP Method Toggle: 'email' | 'sms'
+  const [otpMethod, setOtpMethod] = useState('email');
+
   // SMS OTP States
   const [smsOtp, setSmsOtp] = useState('');
   const [smsOtpSent, setSmsOtpSent] = useState(false);
@@ -310,6 +314,12 @@ export default function RegisterPage() {
   };
 
 
+  const handleOtpMethodSwitch = (method) => {
+    setOtpMethod(method);
+    setError('');
+    setDevOtpMessage('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -324,12 +334,12 @@ export default function RegisterPage() {
       setError('Phone number is required.');
       return;
     }
-    if (!emailOtp) {
-      setError('Email verification OTP is required.');
+    if (otpMethod === 'email' && !emailOtp) {
+      setError('Please enter the Email OTP sent to your inbox.');
       return;
     }
-    if (!smsOtp) {
-      setError('SMS verification OTP is required (type "123456" in dev).');
+    if (otpMethod === 'sms' && !smsOtp) {
+      setError('Please enter the SMS OTP sent to your phone.');
       return;
     }
 
@@ -356,7 +366,13 @@ export default function RegisterPage() {
       };
     }
 
-    const result = await register(name, email, password, role, activeWallet, phoneNumber, emailOtp, smsOtp, locationData);
+    const result = await register(
+      name, email, password, role, activeWallet, phoneNumber,
+      otpMethod === 'email' ? emailOtp : '',
+      otpMethod === 'sms' ? smsOtp : '',
+      locationData,
+      otpMethod
+    );
     setLoading(false);
 
     if (result.success) {
@@ -494,109 +510,152 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Email Address & Email OTP Verification Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="email" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Email Address
-                </label>
-                <div className="relative flex gap-2">
-                  <div className="relative flex-grow">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Mail className="h-4 w-4 text-slate-400" />
-                    </div>
-                    <input
-                      type="text"
-                      id="email"
-                      placeholder="name@example.com"
-                      className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSendEmailOtp}
-                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors whitespace-nowrap"
-                  >
-                    {sendingEmailOtp ? 'Sending...' : emailCountdown > 0 ? `Resend (${emailCountdown}s)` : emailOtpSent ? 'Resend Code' : 'Send Code'}
-                  </button>
+            {/* Email Address Row (always shown) */}
+            <div>
+              <label htmlFor="email" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Email Address
+              </label>
+              <div className="relative flex-grow">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Mail className="h-4 w-4 text-slate-400" />
                 </div>
-              </div>
-
-              <div>
-                <label htmlFor="emailOtp" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Email OTP Code {emailOtpSent && <span className="text-emerald-600 dark:text-emerald-400 font-normal">(Sent)</span>}
-                </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <KeyRound className="h-4 w-4 text-slate-400" />
-                  </div>
-                   <input
-                    type="text"
-                    id="emailOtp"
-                    required
-                    maxLength={6}
-                    placeholder="Enter 6-digit Email OTP"
-                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
-                    value={emailOtp}
-                    onChange={(e) => setEmailOtp(e.target.value)}
-                  />
-                </div>
+                <input
+                  type="text"
+                  id="email"
+                  placeholder="name@example.com"
+                  className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
               </div>
             </div>
 
-            {/* Phone Number & SMS OTP Verification Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="phoneNumber" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Phone Number
-                </label>
-                <div className="relative flex gap-2">
-                  <div className="relative flex-grow">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Phone className="h-4 w-4 text-slate-400" />
-                    </div>
-                    <input
-                      type="tel"
-                      id="phoneNumber"
-                      required
-                      placeholder="+919876543210"
-                      className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                    />
-                  </div>
+            {/* Phone Number Row (always shown) */}
+            <div>
+              <label htmlFor="phoneNumber" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Phone Number
+              </label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Phone className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  type="tel"
+                  id="phoneNumber"
+                  required
+                  placeholder="+919876543210"
+                  className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* OTP Method Toggle */}
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+              {/* Toggle Header */}
+              <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
+                <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Verify identity via</p>
+                <div className="flex items-center gap-1 p-0.5 bg-slate-200 dark:bg-slate-800 rounded-lg">
                   <button
                     type="button"
-                    onClick={handleSendSmsOtp}
-                    className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors whitespace-nowrap"
+                    id="otp-toggle-email"
+                    onClick={() => handleOtpMethodSwitch('email')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all duration-200 ${
+                      otpMethod === 'email'
+                        ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
                   >
-                    {sendingSmsOtp ? 'Sending...' : smsCountdown > 0 ? `Resend (${smsCountdown}s)` : smsOtpSent ? 'Resend Code' : 'Send Code'}
+                    <Mail className="h-3 w-3" /> Email OTP
+                  </button>
+                  <button
+                    type="button"
+                    id="otp-toggle-sms"
+                    onClick={() => handleOtpMethodSwitch('sms')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all duration-200 ${
+                      otpMethod === 'sms'
+                        ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    <MessageSquare className="h-3 w-3" /> SMS OTP
                   </button>
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="smsOtp" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  SMS OTP Code {smsOtpSent && <span className="text-emerald-600 dark:text-emerald-400 font-normal">(Sent)</span>}
-                </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <KeyRound className="h-4 w-4 text-slate-400" />
+              {/* Active OTP Panel */}
+              <div className="p-3 bg-white dark:bg-slate-900">
+                {otpMethod === 'email' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Send code to email</label>
+                      <button
+                        type="button"
+                        onClick={handleSendEmailOtp}
+                        disabled={sendingEmailOtp || emailCountdown > 0}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 dark:hover:bg-emerald-950/20 dark:hover:text-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Mail className="h-3.5 w-3.5" />
+                        {sendingEmailOtp ? 'Sending...' : emailCountdown > 0 ? `Resend in ${emailCountdown}s` : emailOtpSent ? 'Resend Code' : 'Send Email Code'}
+                      </button>
+                    </div>
+                    <div>
+                      <label htmlFor="emailOtp" className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                        Enter Email OTP {emailOtpSent && <span className="text-emerald-600 dark:text-emerald-400">✓ Sent</span>}
+                      </label>
+                      <div className="relative">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                          <KeyRound className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <input
+                          type="text"
+                          id="emailOtp"
+                          maxLength={6}
+                          placeholder="6-digit code"
+                          className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
+                          value={emailOtp}
+                          onChange={(e) => setEmailOtp(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <input
-                    type="text"
-                    id="smsOtp"
-                    required
-                    maxLength={6}
-                    placeholder="Enter 6-digit SMS OTP"
-                    className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-955 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
-                    value={smsOtp}
-                    onChange={(e) => setSmsOtp(e.target.value)}
-                  />
-                </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">Send code to phone</label>
+                      <button
+                        type="button"
+                        onClick={handleSendSmsOtp}
+                        disabled={sendingSmsOtp || smsCountdown > 0}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 dark:hover:bg-emerald-950/20 dark:hover:text-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        {sendingSmsOtp ? 'Sending...' : smsCountdown > 0 ? `Resend in ${smsCountdown}s` : smsOtpSent ? 'Resend Code' : 'Send SMS Code'}
+                      </button>
+                    </div>
+                    <div>
+                      <label htmlFor="smsOtp" className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                        Enter SMS OTP {smsOtpSent && <span className="text-emerald-600 dark:text-emerald-400">✓ Sent</span>}
+                      </label>
+                      <div className="relative">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                          <KeyRound className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <input
+                          type="text"
+                          id="smsOtp"
+                          maxLength={6}
+                          placeholder="6-digit code"
+                          className="text-xs w-full py-2 pl-9 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
+                          value={smsOtp}
+                          onChange={(e) => setSmsOtp(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

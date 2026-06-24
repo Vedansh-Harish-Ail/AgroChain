@@ -270,44 +270,58 @@ def register():
     lab_certificates = data.get('lab_certificates')
     supporting_documents = data.get('supporting_documents')
     
-    if not name or not email or not password or not role or not phone_number or not email_otp or not sms_otp:
-        return jsonify({'message': 'Missing required fields, including email OTP and SMS OTP'}), 400
-        
+    # otp_method: 'email' (default) or 'sms' — only one OTP is required
+    otp_method = (data.get('otp_method') or 'email').strip().lower()
+    if otp_method not in ('email', 'sms'):
+        otp_method = 'email'
+
+    if otp_method == 'email':
+        otp_value = email_otp
+    else:
+        otp_value = sms_otp
+
+    if not name or not email or not password or not role or not phone_number or not otp_value:
+        return jsonify({'message': 'Missing required fields, including the OTP for your chosen verification method'}), 400
+
     email = email.strip().lower()
     # Sanitize phone number (remove spaces, hyphens, parentheses, preserve curly braces/plus signs)
     phone_number = "".join(c for c in phone_number.strip() if c.isdigit() or c in '+{}')
-        
+
     if role not in ['FARMER', 'TESTER', 'CONSUMER', 'INVESTOR', 'ADMIN']:
         return jsonify({'message': 'Invalid role specified'}), 400
-        
+
     if User.query.filter_by(email=email).first():
         return jsonify({'message': 'Email address already registered'}), 400
-        
+
     if User.query.filter_by(phone_number=phone_number).first():
         return jsonify({'message': 'Phone number already registered'}), 400
-        
+
     if wallet_address and User.query.filter_by(wallet_address=wallet_address).first():
         return jsonify({'message': 'Wallet address already linked to another account'}), 400
-        
-    # Verify Email OTP
-    email_verification = OTPVerification.query.filter_by(email=email).first()
-    if not email_verification or email_verification.otp_code != str(email_otp):
-        return jsonify({'message': 'Invalid Email OTP code'}), 400
-        
+
     now = datetime.now(timezone.utc).replace(tzinfo=None)
-    if now > email_verification.expires_at:
-        return jsonify({'message': 'Email OTP has expired. Please request a new one.'}), 400
-        
-    # Verify SMS OTP (Allow mock bypass 123456 as SMS is integrated later)
-    sms_verification = OTPVerification.query.filter_by(phone_number=phone_number).first()
-    if str(sms_otp) != "123456":
-        if not sms_verification or sms_verification.otp_code != str(sms_otp):
-            return jsonify({'message': 'Invalid SMS OTP code'}), 400
-        if now > sms_verification.expires_at:
-            return jsonify({'message': 'SMS OTP has expired. Please request a new one.'}), 400
-            
-    # Clean up OTP records on success
-    db.session.delete(email_verification)
+    email_verification = None
+    sms_verification = None
+
+    if otp_method == 'email':
+        # Verify Email OTP
+        email_verification = OTPVerification.query.filter_by(email=email).first()
+        if not email_verification or email_verification.otp_code != str(email_otp):
+            return jsonify({'message': 'Invalid Email OTP code'}), 400
+        if now > email_verification.expires_at:
+            return jsonify({'message': 'Email OTP has expired. Please request a new one.'}), 400
+    else:
+        # Verify SMS OTP (Allow mock bypass 123456 in dev)
+        sms_verification = OTPVerification.query.filter_by(phone_number=phone_number).first()
+        if str(sms_otp) != "123456":
+            if not sms_verification or sms_verification.otp_code != str(sms_otp):
+                return jsonify({'message': 'Invalid SMS OTP code'}), 400
+            if now > sms_verification.expires_at:
+                return jsonify({'message': 'SMS OTP has expired. Please request a new one.'}), 400
+
+    # Clean up used OTP records
+    if email_verification:
+        db.session.delete(email_verification)
     if sms_verification:
         db.session.delete(sms_verification)
     db.session.commit()
