@@ -3,11 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Cpu, Search, Layers, Calendar, ArrowLeft, ExternalLink, 
   Sprout, Award, ShieldCheck, FileCheck, CheckCircle2, Clock, XCircle, MapPin,
-  Download, FileText
+  Download, FileText, QrCode
 } from 'lucide-react';
 import axios from 'axios';
 import { ethers } from 'ethers';
 import html2pdf from 'html2pdf.js';
+import QrScannerModal from '../components/QrScannerModal';
+import { fetchServerIp, getQrCodeBaseUrl } from '../utils/qr';
 
 export default function BlockchainExplorer() {
   const navigate = useNavigate();
@@ -18,6 +20,8 @@ export default function BlockchainExplorer() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
+  const [serverIp, setServerIp] = useState(null);
 
   // 7-step timeline mapping
   const getStatusStepNumber = (status) => {
@@ -223,6 +227,61 @@ export default function BlockchainExplorer() {
     }
   };
 
+  const handleScanSuccess = (decodedText) => {
+    console.log("Decoded QR:", decodedText);
+    try {
+      if (decodedText.startsWith('http://') || decodedText.startsWith('https://')) {
+        const url = new URL(decodedText);
+        const lot = url.searchParams.get('lot') || url.searchParams.get('lot_number');
+        const crop = url.searchParams.get('crop') || url.searchParams.get('crop_id');
+        
+        if (lot) {
+          setSearchType('LOT');
+          setSearchQuery(lot);
+          handleLookup('LOT', lot);
+        } else if (crop) {
+          setSearchType('CROP');
+          setSearchQuery(crop);
+          handleLookup('CROP', crop);
+        } else {
+          const queryParam = url.searchParams.get('query');
+          if (queryParam) {
+            setSearchQuery(queryParam);
+            if (!isNaN(queryParam) && parseInt(queryParam) >= 1000) {
+              setSearchType('LOT');
+              handleLookup('LOT', queryParam);
+            } else {
+              setSearchType('CROP');
+              handleLookup('CROP', queryParam);
+            }
+          }
+        }
+      } else {
+        setSearchQuery(decodedText);
+        if (!isNaN(decodedText) && parseInt(decodedText) >= 1000) {
+          setSearchType('LOT');
+          handleLookup('LOT', decodedText);
+        } else {
+          setSearchType('CROP');
+          handleLookup('CROP', decodedText);
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing QR content:", e);
+      setSearchQuery(decodedText);
+    }
+  };
+
+  useEffect(() => {
+    const initServerIp = async () => {
+      const ip = await fetchServerIp();
+      if (ip) {
+        setServerIp(ip);
+      }
+    };
+    initServerIp();
+  }, []);
+
   useEffect(() => {
     // 1. Read parameters from URL query string (search parameters)
     const params = new URLSearchParams(location.search);
@@ -353,8 +412,16 @@ export default function BlockchainExplorer() {
                 placeholder={searchType === 'CROP' ? "Enter Crop ID (e.g. 1)" : "Enter Product Lot (e.g. 1001)"}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm font-mono text-xs"
+                className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-12 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm font-mono text-xs"
               />
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-emerald-550 dark:hover:text-emerald-450 transition-colors"
+                title="Scan QR Code"
+              >
+                <QrCode className="h-5 w-5" />
+              </button>
             </div>
             <button
               type="submit"
@@ -481,7 +548,7 @@ export default function BlockchainExplorer() {
                         <div className="p-2.5 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white shadow-md print:border-slate-300">
                           <img
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(
-                              window.location.origin + '/explorer?lot=' + product.lot_number
+                              getQrCodeBaseUrl(serverIp) + '/explorer?lot=' + product.lot_number
                             )}`}
                             alt="Product Batch QR Code"
                             className="w-32 h-32"
@@ -830,6 +897,11 @@ export default function BlockchainExplorer() {
           </div>
         );
       })()}
+      <QrScannerModal
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScanSuccess={handleScanSuccess}
+      />
     </div>
   );
 }

@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
+import { useToast } from '../context/ToastContext';
 import { 
   Sprout, FileCheck, Coins, Eye, Cpu, Settings, ShieldCheck, 
   HelpCircle, UserCheck, CheckCircle2, TrendingUp, Layers, AlertCircle, ArrowRight, Wallet, Mail, Phone,
-  UserPlus, X
+  UserPlus, X, CloudSun, CloudMoon, Sun, Moon, Droplets, Thermometer, Wind, BookOpen, Sparkles, Clock,
+  RotateCw
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -54,9 +56,27 @@ const KERALA_LOCATIONS = {
   }
 };
 
+const DISTRICT_COORDINATES = {
+  "Thiruvananthapuram": { lat: 8.5241, lon: 76.9366 },
+  "Kollam": { lat: 8.8932, lon: 76.6141 },
+  "Pathanamthitta": { lat: 9.2648, lon: 76.7870 },
+  "Alappuzha": { lat: 9.4981, lon: 76.3388 },
+  "Kottayam": { lat: 9.5916, lon: 76.5222 },
+  "Idukki": { lat: 9.9189, lon: 77.1025 },
+  "Ernakulam": { lat: 9.9816, lon: 76.2999 },
+  "Thrissur": { lat: 10.5276, lon: 76.2144 },
+  "Palakkad": { lat: 10.7867, lon: 76.6548 },
+  "Malappuram": { lat: 11.0735, lon: 76.0740 },
+  "Kozhikode": { lat: 11.2588, lon: 75.7804 },
+  "Wayanad": { lat: 11.6854, lon: 76.1320 },
+  "Kannur": { lat: 11.8745, lon: 75.3704 },
+  "Kasaragod": { lat: 12.5102, lon: 74.9852 }
+};
+
 export default function Dashboard() {
   const { user, linkWallet, changePassword } = useAuth();
   const { walletAddress, isConnected, connectWallet, contracts } = useWallet();
+  const { showToast } = useToast();
   const [stats, setStats] = useState({
     cropsCount: 0,
     lotsCount: 0,
@@ -79,6 +99,175 @@ export default function Dashboard() {
   const [currentPendingCertIds, setCurrentPendingCertIds] = useState([]);
   const [currentFarmerCropStatuses, setCurrentFarmerCropStatuses] = useState({});
   const [currentPendingUserIds, setCurrentPendingUserIds] = useState([]);
+
+  // Farmer metrics states
+  const [weatherData, setWeatherData] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [selectedDistrict, setSelectedDistrict] = useState(user?.district || 'Thrissur');
+
+  useEffect(() => {
+    if (user?.district) {
+      setSelectedDistrict(user.district);
+    }
+  }, [user]);
+
+  const fetchWeather = useCallback(async () => {
+    if (user?.role !== 'FARMER') return;
+    setWeatherLoading(true);
+    try {
+      const coords = DISTRICT_COORDINATES[selectedDistrict] || DISTRICT_COORDINATES['Thrissur'];
+      const response = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,wind_speed_10m,weather_code,is_day`
+      );
+      if (!response.ok) {
+        throw new Error(`Weather API returned status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data && data.current) {
+        setWeatherData({
+          temp: Math.round(data.current.temperature_2m),
+          windSpeed: data.current.wind_speed_10m,
+          weatherCode: data.current.weather_code,
+          isDay: data.current.is_day,
+          district: selectedDistrict,
+          isSimulated: false,
+          updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+      } else {
+        throw new Error("No current weather data");
+      }
+    } catch (err) {
+      console.error("Failed to fetch live weather, using simulated weather:", err);
+      const districtBaselines = {
+        "Thiruvananthapuram": 30,
+        "Kollam": 30,
+        "Pathanamthitta": 29,
+        "Alappuzha": 30,
+        "Kottayam": 29,
+        "Idukki": 22,
+        "Ernakulam": 31,
+        "Thrissur": 31,
+        "Palakkad": 34,
+        "Malappuram": 31,
+        "Kozhikode": 31,
+        "Wayanad": 21,
+        "Kannur": 31,
+        "Kasaragod": 31
+      };
+      const baseTemp = districtBaselines[selectedDistrict] || 29;
+      const randomOffset = Math.floor(Math.random() * 4) - 1; // -1 to +2 C
+      const finalTemp = baseTemp + randomOffset;
+      const weatherCodes = [0, 1, 3, 51, 80];
+      const randomCode = weatherCodes[Math.floor(Math.random() * weatherCodes.length)];
+      const randomWind = (Math.random() * (12 - 4) + 4).toFixed(1);
+      
+      const currentHour = new Date().getHours();
+      const simIsDay = currentHour >= 6 && currentHour < 18 ? 1 : 0;
+
+      setWeatherData({
+        temp: finalTemp,
+        windSpeed: parseFloat(randomWind),
+        weatherCode: randomCode,
+        isDay: simIsDay,
+        district: selectedDistrict,
+        isSimulated: true,
+        updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    } finally {
+      setWeatherLoading(false);
+    }
+  }, [user, selectedDistrict]);
+
+  useEffect(() => {
+    fetchWeather();
+  }, [fetchWeather]);
+
+  const getWeatherDesc = (code, isDay = 1) => {
+    const isNight = isDay === 0;
+    if (code === 0) return { label: isNight ? 'Clear Night' : 'Sunny' };
+    if (code >= 1 && code <= 3) return { label: isNight ? 'Partly Cloudy' : 'Partly Cloudy' };
+    if (code >= 45 && code <= 48) return { label: 'Foggy' };
+    if (code >= 51 && code <= 67) return { label: 'Rainy' };
+    if (code >= 80 && code <= 82) return { label: 'Rain Showers' };
+    if (code >= 95 && code <= 99) return { label: 'Thunderstorm' };
+    return { label: isNight ? 'Clear Night' : 'Clear' };
+  };
+
+  const getWeatherIcon = (code, isDay = 1) => {
+    const isNight = isDay === 0;
+    if (code === 0) {
+      return isNight 
+        ? <Moon className="h-10 w-10 text-indigo-305 animate-pulse shrink-0" /> 
+        : <Sun className="h-10 w-10 text-amber-550 animate-pulse shrink-0" />;
+    }
+    if (code >= 1 && code <= 3) {
+      return isNight 
+        ? <CloudMoon className="h-10 w-10 text-indigo-305 shrink-0" /> 
+        : <CloudSun className="h-10 w-10 text-amber-500 shrink-0" />;
+    }
+    if (code >= 51 && code <= 67) return <Droplets className="h-10 w-10 text-blue-500 animate-bounce shrink-0" />;
+    if (code >= 80 && code <= 82) return <Droplets className="h-10 w-10 text-blue-400 shrink-0" />;
+    return isNight 
+      ? <CloudMoon className="h-10 w-10 text-slate-400 shrink-0" /> 
+      : <CloudSun className="h-10 w-10 text-slate-400 shrink-0" />;
+  };
+
+  const getCropAdvisory = () => {
+    const registeredCrops = myCrops.map(c => (c.crop_type || '').toLowerCase());
+    let matchedAdvisories = [];
+    if (registeredCrops.some(c => c.includes('rice') || c.includes('paddy'))) {
+      matchedAdvisories.push({
+        crop: 'Rice / Paddy',
+        stage: 'Flowering Stage',
+        tips: [
+          'Maintain 5cm water level in the field during grain filling.',
+          'Monitor carefully for stem borer and leaf folder pests.'
+        ]
+      });
+    }
+    if (registeredCrops.some(c => c.includes('coconut'))) {
+      matchedAdvisories.push({
+        crop: 'Coconut Palm',
+        stage: 'Pre-Monsoon Care',
+        tips: [
+          'Clean palm crowns to prevent bud rot during heavy rain.',
+          'Apply organic manure/compost to root basin and mulch.'
+        ]
+      });
+    }
+    if (registeredCrops.some(c => c.includes('pepper'))) {
+      matchedAdvisories.push({
+        crop: 'Black Pepper',
+        stage: 'Vines Support',
+        tips: [
+          'Provide proper support to young vines and regulate shade.',
+          'Apply phytophthora control measures before monsoons.'
+        ]
+      });
+    }
+    if (registeredCrops.some(c => c.includes('tapioca') || c.includes('cassava'))) {
+      matchedAdvisories.push({
+        crop: 'Tapioca / Cassava',
+        stage: 'Root Development',
+        tips: [
+          'Apply balanced NPK fertilizer for starch accumulation.',
+          'Mound soil around tubers to shield them from exposure.'
+        ]
+      });
+    }
+
+    if (matchedAdvisories.length === 0) {
+      return {
+        crop: 'General Advisory',
+        stage: 'Seasonal Planning',
+        tips: [
+          'Apply organic manure before planting new batches.',
+          'Regularly inspect crop foliage for pest/disease outbreaks.'
+        ]
+      };
+    }
+    return matchedAdvisories[0];
+  };
 
   // Password reset state
   const [newPassword, setNewPassword] = useState('');
@@ -380,10 +569,11 @@ export default function Dashboard() {
       await axios.post(`/api/finance/update-status/${proposalId}`, { status });
       const res = await axios.get('/api/finance/received-proposals');
       setProposals(res.data);
-      alert(`Proposal successfully ${status.toLowerCase()}ed!`);
+      showToast(`Proposal successfully ${status.toLowerCase()}ed!`, 'success');
     } catch (err) {
       console.error(err);
       setProposalError('Failed to update proposal status.');
+      showToast('Failed to update proposal status.', 'error');
     }
   };
 
@@ -446,6 +636,14 @@ export default function Dashboard() {
         if (user?.role === 'FARMER') {
           const myCropsRes = await axios.get('/api/farmer/my-crops');
           setMyCrops(myCropsRes.data);
+          
+          if (myCropsRes.data && myCropsRes.data.length > 0) {
+            const sortedCrops = [...myCropsRes.data].sort((a, b) => b.id - a.id);
+            const lastCrop = sortedCrops[0];
+            if (lastCrop && lastCrop.district) {
+              setSelectedDistrict(lastCrop.district);
+            }
+          }
           
           // Farmer My Crop Updates
           const seenCropStatuses = JSON.parse(localStorage.getItem('farmer_seen_crop_statuses') || '{}');
@@ -526,6 +724,8 @@ export default function Dashboard() {
     }
   };
 
+  const totalCapitalCommitted = proposals.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
   return (
     <div className="space-y-8 py-4">
       {/* First Login Change Password & MetaMask Setup Modal */}
@@ -605,17 +805,45 @@ export default function Dashboard() {
       <div className="relative overflow-hidden rounded-3xl bg-white p-6 sm:p-8 border border-slate-200 dark:border-slate-800 dark:bg-slate-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-950 dark:text-white">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-955 dark:text-white">
               Hello, {user?.name}
             </h1>
             <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase ${getRoleBadge(user?.role)}`}>
               {user?.role}
             </span>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-505 dark:text-slate-400">
             Welcome to your unified AgroChain control panel.
           </p>
         </div>
+
+        {user?.role === 'FARMER' && (
+          <div className="flex items-center justify-around bg-slate-50 dark:bg-slate-955 border border-slate-100 dark:border-slate-800/80 px-6 py-3.5 rounded-2xl flex-1 max-w-xl mx-4 lg:mx-8">
+            <div className="text-center flex-1">
+              <span className="block text-[10px] font-bold text-slate-405 uppercase tracking-wider">Registered Crop</span>
+              <span className="text-lg font-extrabold text-slate-855 dark:text-white">{myCrops.length}</span>
+            </div>
+            <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+            <div className="text-center flex-1">
+              <span className="block text-[10px] font-bold text-emerald-600 dark:text-emerald-450 uppercase tracking-wider">Approved Crop</span>
+              <span className="text-lg font-extrabold text-emerald-650 dark:text-emerald-400">{myCrops.filter(c => c.verification_status === 'VERIFIED').length}</span>
+            </div>
+            <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+            <div className="text-center flex-1">
+              <span className="block text-[10px] font-bold text-amber-605 dark:text-amber-450 uppercase tracking-wider">Pending Crop</span>
+              <span className="text-lg font-extrabold text-amber-650 dark:text-amber-400">{myCrops.filter(c => c.verification_status === 'PENDING').length}</span>
+            </div>
+            {myCrops.some(c => c.verification_status === 'REJECTED') && (
+              <>
+                <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+                <div className="text-center flex-1">
+                  <span className="block text-[10px] font-bold text-rose-600 dark:text-rose-455 uppercase tracking-wider">Rejected Crop</span>
+                  <span className="text-lg font-extrabold text-rose-655 dark:text-rose-400">{myCrops.filter(c => c.verification_status === 'REJECTED').length}</span>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="shrink-0">
           {['ADMIN', 'INSPECTOR', 'TESTER'].includes(user?.role) ? (
@@ -725,55 +953,184 @@ export default function Dashboard() {
       )}
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Network Crops</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : stats.cropsCount}</h3>
+      {user?.role === 'FARMER' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {/* Card 1: Weather Forecast */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between h-[195px] transition hover:shadow-md">
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Weather Forecast</span>
+                  {weatherData && (
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                      weatherData.isSimulated 
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200/50 dark:bg-amber-950/20 dark:text-amber-450 dark:border-amber-900/30' 
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-250/50 dark:bg-emerald-950/20 dark:text-emerald-455 dark:border-emerald-900/30'
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${weatherData.isSimulated ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`}></span>
+                      {weatherData.isSimulated ? 'Simulated' : 'Live'}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={selectedDistrict}
+                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                    className="text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    {Object.keys(DISTRICT_COORDINATES).map(dist => (
+                      <option key={dist} value={dist}>{dist}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-slate-505 dark:text-slate-400 font-semibold">Kerala</span>
+                </div>
+              </div>
+              <div className="p-1.5 bg-blue-50 dark:bg-blue-950/40 rounded-lg text-blue-600 dark:text-blue-400 shrink-0">
+                <CloudSun className="h-4.5 w-4.5" />
+              </div>
             </div>
-            <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-600 dark:text-emerald-400">
-              <Sprout className="h-5 w-5" />
-            </div>
+            
+            {weatherLoading ? (
+              <div className="flex items-center gap-2 py-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></div>
+                <span className="text-xs text-slate-450 dark:text-slate-400">Updating forecast...</span>
+              </div>
+            ) : weatherData ? (
+              <div className="my-1 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getWeatherIcon(weatherData.weatherCode, weatherData.isDay)}
+                  <div>
+                    <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white leading-none">{weatherData.temp}°C</h3>
+                    <p className="text-xs font-bold text-slate-505 dark:text-slate-400 mt-1">
+                      {getWeatherDesc(weatherData.weatherCode, weatherData.isDay).label} • {weatherData.isDay === 0 ? 'Night 🌙' : 'Day ☀️'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1 text-right shrink-0">
+                  <span className="flex items-center justify-end gap-1 text-sm font-bold text-slate-755 dark:text-slate-200">
+                    <Wind className="h-4 w-4 text-blue-500 animate-pulse shrink-0" /> {weatherData.windSpeed} km/h
+                  </span>
+                  <button 
+                    onClick={fetchWeather}
+                    disabled={weatherLoading}
+                    className="flex items-center justify-end gap-1 text-[10px] text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors font-semibold font-mono disabled:opacity-55"
+                    title="Refresh Weather"
+                  >
+                    <span>Updated: {weatherData.updatedAt || 'just now'}</span>
+                    <RotateCw className={`h-2.5 w-2.5 shrink-0 ${weatherLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-rose-500 py-2">Weather unavailable</p>
+            )}
+            
+            <p className="text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800/60 pt-1.5 font-medium leading-tight">
+              {weatherData?.weatherCode >= 51 && weatherData?.weatherCode <= 82 
+                ? "Rainy skies: Hold off irrigation for today." 
+                : "Sunny/Cloudy skies: Good for fertilizer application."}
+            </p>
           </div>
-        </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Certified Batches</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : stats.lotsCount}</h3>
+          {/* Card 2: AI/Smart Crop Advisory */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 flex flex-col justify-between h-[195px] transition hover:shadow-md">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Crop Advisory</p>
+                <p className="text-sm text-slate-805 dark:text-slate-300 font-bold mt-1 truncate max-w-[160px] sm:max-w-xs">{getCropAdvisory().crop}</p>
+              </div>
+              <div className="p-1.5 bg-purple-50 dark:bg-purple-950/40 rounded-lg text-purple-600 dark:text-purple-400 shrink-0">
+                <Sparkles className="h-4.5 w-4.5" />
+              </div>
             </div>
-            <div className="p-2 bg-blue-50 dark:bg-blue-950/40 rounded-xl text-blue-600 dark:text-blue-400">
-              <FileCheck className="h-5 w-5" />
-            </div>
-          </div>
-        </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Ledger Actions</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : stats.investmentsCount}</h3>
+            <div className="my-1 space-y-1 overflow-y-auto no-scrollbar max-h-20">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-400 font-bold uppercase tracking-wide">
+                {getCropAdvisory().stage}
+              </span>
+              <ul className="space-y-0.5 text-xs text-slate-600 dark:text-slate-350 leading-relaxed pl-3 list-disc list-outside font-medium">
+                {getCropAdvisory().tips.slice(0, 2).map((tip, idx) => (
+                  <li key={idx}>{tip}</li>
+                ))}
+              </ul>
             </div>
-            <div className="p-2 bg-purple-50 dark:bg-purple-950/40 rounded-xl text-purple-600 dark:text-purple-400">
-              <Layers className="h-5 w-5" />
-            </div>
-          </div>
-        </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Farmer Trust</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">98.4%</h3>
-            </div>
-            <div className="p-2 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400">
-              <CheckCircle2 className="h-5 w-5" />
+            <div className="border-t border-slate-100 dark:border-slate-800/60 pt-1.5 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" /> Ensure drainage & monitor daily.
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Network Crops</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : stats.cropsCount}</h3>
+              </div>
+              <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-600 dark:text-emerald-400">
+                <Sprout className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Certified Batches</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : stats.lotsCount}</h3>
+              </div>
+              <div className="p-2 bg-blue-50 dark:bg-blue-950/40 rounded-xl text-blue-600 dark:text-blue-400">
+                <FileCheck className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex justify-between items-start">
+              {user?.role === 'INVESTOR' ? (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">LOIs Submitted</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loadingProposals ? '...' : proposals.length}</h3>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Ledger Actions</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : stats.investmentsCount}</h3>
+                </div>
+              )}
+              <div className="p-2 bg-purple-50 dark:bg-purple-950/40 rounded-xl text-purple-600 dark:text-purple-400">
+                <Layers className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex justify-between items-start">
+              {user?.role === 'INVESTOR' ? (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Committed Capital</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                    {loadingProposals ? '...' : `Rs. ${totalCapitalCommitted.toLocaleString('en-IN')}`}
+                  </h3>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Farmer Trust</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">98.4%</h3>
+                </div>
+              )}
+              <div className="p-2 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400">
+                {user?.role === 'INVESTOR' ? (
+                  <Wallet className="h-5 w-5" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5" />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Grid Menu of Actions */}
       <div>
@@ -1018,6 +1375,9 @@ export default function Dashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="font-bold text-slate-950 dark:text-white text-sm">LOI from {prop.investor_name}</span>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
+                          Crop: <span className="font-bold text-emerald-600 dark:text-emerald-400">{prop.crop_name || 'N/A'}</span>
+                        </p>
                         <p className="text-slate-450 dark:text-slate-500 text-[10px] mt-0.5">Lot Number: {prop.lot_number}</p>
                       </div>
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${

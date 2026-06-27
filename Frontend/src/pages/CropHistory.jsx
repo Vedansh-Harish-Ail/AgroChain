@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   Sprout, ShieldCheck, ArrowLeft, Clock, XCircle,
   FileText, Award, Download, ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
+import { fetchServerIp, getQrCodeBaseUrl } from '../utils/qr';
 
 export default function CropHistory() {
   const { user } = useAuth();
@@ -15,6 +17,7 @@ export default function CropHistory() {
   const [loading, setLoading] = useState(true);
   const [selectedCropForLetter, setSelectedCropForLetter] = useState(null);
   const [selectedCropForCertificate, setSelectedCropForCertificate] = useState(null);
+  const [serverIp, setServerIp] = useState(null);
   const navigate = useNavigate();
 
   const fetchCrops = async () => {
@@ -38,11 +41,20 @@ export default function CropHistory() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchCrops(), fetchProducts()]);
+      const [ip] = await Promise.all([
+        fetchServerIp(),
+        fetchCrops(),
+        fetchProducts()
+      ]);
+      if (ip) {
+        setServerIp(ip);
+      }
       setLoading(false);
     };
     loadData();
   }, []);
+
+  const { showToast } = useToast();
 
   const handleUpdateTimeline = async (cropId, timelineStatus) => {
     try {
@@ -50,10 +62,10 @@ export default function CropHistory() {
         timeline_status: timelineStatus
       });
       await fetchCrops();
-      alert('Timeline status updated successfully!');
+      showToast('Timeline status updated successfully!', 'success');
     } catch (err) {
       console.error(err);
-      alert('Failed to update timeline status: ' + (err.response?.data?.message || err.message));
+      showToast('Failed to update timeline status: ' + (err.response?.data?.message || err.message), 'error');
     }
   };
 
@@ -645,7 +657,7 @@ export default function CropHistory() {
                   <div className="p-2 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white shadow-sm print:border-slate-300">
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(
-                        window.location.origin + '/explorer?lot=' + selectedCropForCertificate.product.lot_number
+                        getQrCodeBaseUrl(serverIp) + '/explorer?lot=' + selectedCropForCertificate.product.lot_number
                       )}`}
                       alt="Product Batch QR Code"
                       className="w-32 h-32"

@@ -46,8 +46,8 @@ export default function FundingPage() {
         }
       }
 
-      // Load my investments if logged in
-      if (user) {
+      // Load my investments if logged in as investor
+      if (user && user.role === 'INVESTOR') {
         const invRes = await axios.get('/api/finance/my-investments');
         setMyInvestments(invRes.data);
       }

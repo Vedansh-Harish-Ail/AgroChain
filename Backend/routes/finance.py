@@ -219,3 +219,34 @@ def update_investment_tx(current_user, investment_id):
         'investment': investment.to_dict()
     }), 200
 
+
+
+@finance_bp.route('/cancel/<int:investment_id>', methods=['POST'])
+@token_required
+def cancel_investment(current_user, investment_id):
+    investment = Investment.query.get(investment_id)
+    if not investment:
+        return jsonify({'message': 'Investment record not found'}), 404
+        
+    # Verify authorization
+    if current_user.id != investment.investor_id and current_user.role != 'ADMIN':
+        return jsonify({'message': 'Unauthorized to cancel this proposal'}), 403
+        
+    # Check status
+    if investment.status != 'PENDING':
+        return jsonify({'message': f'Cannot cancel a proposal that has already been {investment.status.lower()}'}), 400
+        
+    # Delete investment
+    db.session.delete(investment)
+    
+    # Audit log
+    audit = AuditLog(
+        user_id=current_user.id,
+        action='INVESTMENT_CANCELLED',
+        details=f"Investor {current_user.name} cancelled the funding proposal (ID {investment_id}) for Lot {investment.lot_number}."
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({'message': 'Proposal cancelled successfully!'}), 200
+

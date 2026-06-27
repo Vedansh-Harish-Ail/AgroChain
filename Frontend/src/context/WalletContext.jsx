@@ -116,13 +116,18 @@ export const WalletProvider = ({ children }) => {
         } catch (switchError) {
           // If network doesn't exist in MetaMask, add it
           if (switchError.code === 4902) {
+            const hostname = window.location.hostname;
+            const dynamicRpcUrl = (hostname === 'localhost' || hostname === '127.0.0.1')
+              ? 'http://127.0.0.1:8545'
+              : `http://${hostname}:8545`;
+
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [{
                 chainId: '0x7a69',
                 chainName: 'Hardhat Localhost',
                 nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-                rpcUrls: ['http://127.0.0.1:8545'],
+                rpcUrls: [dynamicRpcUrl],
                 blockExplorerUrls: []
               }]
             });

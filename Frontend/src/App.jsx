@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WalletProvider, useWallet } from './context/WalletContext';
+import { ToastProvider } from './context/ToastContext';
 import { 
   Sprout, Wallet, LogOut, LogIn, UserPlus, LayoutDashboard, 
   FileCheck, ShieldAlert, Cpu, LineChart, Award, Eye, Sun, Moon, Menu, X
@@ -52,6 +54,7 @@ const Navbar = ({ theme, toggleTheme }) => {
   const { user, logout } = useAuth();
   const { walletAddress, isConnected, connectWallet } = useWallet();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -62,7 +65,7 @@ const Navbar = ({ theme, toggleTheme }) => {
   };
 
   return (
-    <nav className="sticky top-4 z-40 mx-auto mt-4 w-[calc(100%-2rem)] max-w-7xl border border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80 rounded-2xl shadow-md">
+    <nav className="sticky top-4 z-40 mx-auto mt-4 w-[calc(100%-2rem)] max-w-[95%] border border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80 rounded-2xl shadow-md">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 justify-between">
           <div className="flex items-center">
@@ -124,7 +127,7 @@ const Navbar = ({ theme, toggleTheme }) => {
                   Hi, {user.name.split(' ')[0]}
                 </span>
                 <button
-                  onClick={() => { logout(); navigate('/'); }}
+                  onClick={() => setShowLogoutConfirm(true)}
                   className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-slate-800 dark:hover:bg-rose-950/30"
                 >
                   <LogOut className="h-4 w-4" /> Sign Out
@@ -209,7 +212,10 @@ const Navbar = ({ theme, toggleTheme }) => {
 
           {user ? (
             <button
-              onClick={() => { logout(); setMobileMenuOpen(false); navigate('/'); }}
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setShowLogoutConfirm(true);
+              }}
               className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50 dark:border-slate-800 dark:hover:bg-rose-950/30"
             >
               Sign Out
@@ -234,6 +240,47 @@ const Navbar = ({ theme, toggleTheme }) => {
           )}
         </div>
       )}
+
+      {/* Sign Out Confirmation Modal */}
+      {showLogoutConfirm && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-6 text-center animate-in zoom-in-95 duration-200">
+            {/* Warning/Alert Icon */}
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/30 flex items-center justify-center mx-auto text-rose-600 dark:text-rose-400 animate-pulse">
+              <LogOut className="h-6 w-6" />
+            </div>
+
+            {/* Message */}
+            <div className="space-y-2">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">Confirm Sign Out</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                Are you sure you want to sign out of your AgroChain account?
+              </p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  logout();
+                  navigate('/');
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold shadow-md shadow-rose-600/20 hover:shadow-lg transition duration-200"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </nav>
   );
 };
@@ -255,7 +302,7 @@ const MainLayout = ({ theme, toggleTheme }) => {
           <Route path="/" element={<LandingPage theme={theme} toggleTheme={toggleTheme} />} />
         </Routes>
       ) : (
-        <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 ${isExplorer ? 'max-w-[1600px]' : 'max-w-7xl'}`}>
+        <main className="flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-[95%]">
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
@@ -317,7 +364,9 @@ function App() {
   return (
     <AuthProvider>
       <WalletProvider>
-        <MainLayout theme={theme} toggleTheme={toggleTheme} />
+        <ToastProvider>
+          <MainLayout theme={theme} toggleTheme={toggleTheme} />
+        </ToastProvider>
       </WalletProvider>
     </AuthProvider>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   Search, ShieldCheck, Star, Award, CheckCircle2,
   ChevronRight, MessageSquare, Plus, Calendar, MapPin,
@@ -14,6 +15,7 @@ import { ethers } from 'ethers';
 export default function ConsumerTracking() {
   const { isConnected, connectWallet, contracts } = useWallet();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   // Navigation state: 'explorer', 'profile', 'details'
@@ -253,9 +255,9 @@ export default function ConsumerTracking() {
 
       setLoadingRating(false);
       if (txHash) {
-        alert('Review recorded successfully on blockchain!');
+        showToast('Review recorded successfully on blockchain!', 'success');
       } else {
-        alert('Review recorded successfully in database!');
+        showToast('Review recorded successfully in database!', 'success');
       }
       setShowRatingForm(false);
 
@@ -286,7 +288,7 @@ export default function ConsumerTracking() {
   const fundingPercentage = targetPriceEth > 0 ? Math.min(Math.round((parseFloat(totalFundingEth) / targetPriceEth) * 100), 100) : 0;
 
   return (
-    <div className="space-y-8 py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="space-y-8 py-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8">
 
       {/* ----------------- VIEW 1: FARM EXPLORER ----------------- */}
       {view === 'explorer' && (

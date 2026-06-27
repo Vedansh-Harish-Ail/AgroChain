@@ -124,3 +124,19 @@ def get_public_stats():
         'partner_laboratories': int(partner_labs),
         'batch_trust_rating': float(batch_trust_rating)
     }), 200
+
+
+@explorer_bp.route('/server-ip', methods=['GET'])
+def get_server_ip():
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Doesn't need to be reachable, just triggers OS local IP lookup
+        s.connect(('8.8.8.8', 1))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = '127.0.0.1'
+    finally:
+        s.close()
+    return jsonify({'ip': ip}), 200
+

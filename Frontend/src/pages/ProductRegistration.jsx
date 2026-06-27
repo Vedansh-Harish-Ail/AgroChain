@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
+import { useToast } from '../context/ToastContext';
 import { FileCheck, Wallet, Calendar, Tag, ShieldCheck, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { ethers } from 'ethers';
 
 export default function ProductRegistration() {
   const { isConnected, connectWallet, contracts } = useWallet();
+  const { showToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -117,7 +119,7 @@ export default function ProductRegistration() {
       });
 
       setLoading(false);
-      alert(`Product Lot ${lotNumber} certified and registered on the blockchain successfully!`);
+      showToast(`Product Lot ${lotNumber} certified and registered on the blockchain successfully!`, 'success');
       navigate('/dashboard');
 
     } catch (err) {

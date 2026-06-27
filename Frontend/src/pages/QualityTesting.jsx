@@ -10,6 +10,7 @@ import {
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
 import { ethers } from 'ethers';
+import { fetchServerIp, getQrCodeBaseUrl } from '../utils/qr';
 
 // ─── Custom Toast Notification Component ─────────────────────────────────────
 function Toast({ toasts, removeToast }) {
@@ -135,6 +136,7 @@ export default function QualityTesting() {
   const [error, setError] = useState('');
   const [selectedCropForLetter, setSelectedCropForLetter] = useState(null);
   const [selectedCropForCertificate, setSelectedCropForCertificate] = useState(null);
+  const [serverIp, setServerIp] = useState(null);
 
   // ─── Toast notification state ───────────────────────────────────────────────
   const [toasts, setToasts] = useState([]);
@@ -191,6 +193,13 @@ export default function QualityTesting() {
   };
 
   useEffect(() => {
+    const initServerIp = async () => {
+      const ip = await fetchServerIp();
+      if (ip) {
+        setServerIp(ip);
+      }
+    };
+    initServerIp();
     fetchPendingCrops();
     fetchProducts();
   }, []);
@@ -1263,7 +1272,7 @@ export default function QualityTesting() {
                   <div className="p-2 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white shadow-sm print:border-slate-300">
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(
-                        window.location.origin + '/explorer?lot=' + selectedCropForCertificate.product.lot_number
+                        getQrCodeBaseUrl(serverIp) + '/explorer?lot=' + selectedCropForCertificate.product.lot_number
                       )}`}
                       alt="Product Batch QR Code"
                       className="w-32 h-32"

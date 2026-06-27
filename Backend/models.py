@@ -297,6 +297,7 @@ class Investment(db.Model):
             'farmer_email': self.farmer.user.email if self.farmer and self.farmer.user else None,
             'farmer_phone': self.farmer.user.phone_number if self.farmer and self.farmer.user else None,
             'lot_number': self.lot_number,
+            'crop_name': self.product.crop_name if self.product else None,
             'amount': self.amount,
             'tx_hash': self.tx_hash,
             'block_number': self.block_number,

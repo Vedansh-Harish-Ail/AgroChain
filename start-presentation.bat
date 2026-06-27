@@ -13,7 +13,7 @@ cd /d "C:\MY PROJECTS\AgroChain-Morden"
 
 REM ==== 3️⃣ Start Blockchain Node in a new window -------------------------
 echo Starting Hardhat Blockchain Node...
-start "Blockchain Node" cmd /k "cd Blockchain & echo y | npx hardhat node"
+start "Blockchain Node" cmd /k "cd Blockchain & echo y | npx hardhat node --hostname 0.0.0.0"
 
 REM ==== 4️⃣ Wait for Node to start ----------------------------------------
 timeout /t 5 >nul
@@ -52,7 +52,7 @@ if not exist node_modules (
 )
 
 REM Start the Vite server
-npm run dev
+npm run dev -- --host
 
 REM -------------------------------------------------
 REM When you close this window, the Flask and Node windows stay alive.

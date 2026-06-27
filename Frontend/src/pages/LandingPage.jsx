@@ -400,6 +400,24 @@ export default function LandingPage({ theme, toggleTheme }) {
                 ))}
               </div>
             </div>
+
+            {/* Video Player */}
+            <div className="mt-16 relative max-w-4xl mx-auto z-10">
+              <div className="relative z-10 glass-card p-2 rounded-3xl shadow-2xl border border-slate-200/40 dark:border-slate-800/40">
+                <div className="relative rounded-2xl overflow-hidden bg-slate-950">
+                  <video 
+                    className="w-full h-auto block" 
+                    controls 
+                    preload="metadata"
+                    playsInline
+                  >
+                    <source src="/agrochain_how_it_works.mp4" type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 to-blue-500/10 rounded-3xl blur-2xl -z-10 opacity-70" />
+            </div>
           </div>
         </section>
 
