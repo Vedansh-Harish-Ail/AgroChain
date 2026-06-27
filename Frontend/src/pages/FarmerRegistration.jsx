@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLoading } from '../context/LoadingContext';
 import { Sprout, FileText, Calendar, Compass, ShieldCheck, Database, Info, ArrowLeft, MapPin, Upload, X, Check, Search, CheckCircle2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
@@ -116,6 +117,7 @@ const DISTRICT_COORDINATES = {
 
 export default function FarmerRegistration() {
   const { user } = useAuth();
+  const { showLoading, hideLoading } = useLoading();
   const [formData, setFormData] = useState({
     farm_location: '',
     district: '',
@@ -623,6 +625,7 @@ export default function FarmerRegistration() {
     }
 
     try {
+      showLoading('Submitting crop registration & survey details...');
       await axios.post('/api/farmer/register', {
         ...formData,
         evidence_photos: uploadedPhotos,
@@ -632,6 +635,7 @@ export default function FarmerRegistration() {
       });
 
       setLoading(false);
+      hideLoading();
       setAlertMessage({
         title: 'Crop Registered Successfully',
         message: 'State officials / Quality testers will inspect this and log it on the blockchain.',
@@ -640,6 +644,7 @@ export default function FarmerRegistration() {
       });
     } catch (err) {
       console.error(err);
+      hideLoading();
       const isNetworkErr = !err.response && err.request;
       setError(isNetworkErr 
         ? 'Connection failed. Check if a VPN is ON.' 

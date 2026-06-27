@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
 import { useToast } from '../context/ToastContext';
+import { useLoading } from '../context/LoadingContext';
+import { DashboardSkeleton } from '../components/Skeletons';
 import { 
   Sprout, FileCheck, Coins, Eye, Cpu, Settings, ShieldCheck, 
   HelpCircle, UserCheck, CheckCircle2, TrendingUp, Layers, AlertCircle, ArrowRight, Wallet, Mail, Phone,
@@ -77,6 +79,7 @@ export default function Dashboard() {
   const { user, linkWallet, changePassword } = useAuth();
   const { walletAddress, isConnected, connectWallet, contracts } = useWallet();
   const { showToast } = useToast();
+  const { showLoading, hideLoading } = useLoading();
   const [stats, setStats] = useState({
     cropsCount: 0,
     lotsCount: 0,
@@ -313,6 +316,7 @@ export default function Dashboard() {
     setWalletError('');
     setWalletSuccess('');
     setLinkingWallet(true);
+    showLoading('Verifying and linking your MetaMask wallet...');
     try {
       let address = walletAddress;
       if (!isConnected) {
@@ -321,6 +325,7 @@ export default function Dashboard() {
       if (!address) {
         setWalletError('MetaMask connection failed or was rejected.');
         setLinkingWallet(false);
+        hideLoading();
         return;
       }
       
@@ -336,10 +341,12 @@ export default function Dashboard() {
           console.error(signErr);
           setWalletError('Signature request was rejected by user.');
           setLinkingWallet(false);
+          hideLoading();
           return;
         }
         
         const res = await linkWallet(address, message, signature);
+        hideLoading();
         if (res.success) {
           setWalletSuccess('MetaMask wallet successfully verified and linked!');
         } else {
@@ -347,6 +354,7 @@ export default function Dashboard() {
         }
       } else {
         const res = await linkWallet(address);
+        hideLoading();
         if (res.success) {
           setWalletSuccess('Wallet linked successfully.');
         } else {
@@ -356,6 +364,7 @@ export default function Dashboard() {
     } catch (err) {
       console.error(err);
       setWalletError('Failed to link wallet.');
+      hideLoading();
     } finally {
       setLinkingWallet(false);
     }
@@ -431,6 +440,7 @@ export default function Dashboard() {
     }
 
     setChangingPass(true);
+    showLoading('Configuring password & credentials...');
     try {
       // 1. Link wallet first
       if (needsWallet) {
@@ -438,12 +448,14 @@ export default function Dashboard() {
         if (!linkRes.success) {
           setPassError(linkRes.message || 'Failed to link wallet on backend.');
           setChangingPass(false);
+          hideLoading();
           return;
         }
       }
 
       // 2. Change password
       const res = await changePassword(newPassword);
+      hideLoading();
       if (res.success) {
         setPassSuccess('Setup completed successfully!');
         window.location.reload();
@@ -453,6 +465,7 @@ export default function Dashboard() {
     } catch (err) {
       console.error(err);
       setPassError('Failed to complete first login setup.');
+      hideLoading();
     } finally {
       setChangingPass(false);
     }
@@ -464,6 +477,7 @@ export default function Dashboard() {
     setCreateError('');
     setGeneratedTempPassword('');
     setCreatingInspector(true);
+    showLoading('Creating verifier account profile...');
     
     try {
       let res;
@@ -493,6 +507,7 @@ export default function Dashboard() {
         setCreateSuccess('Quality Lab Tester account created successfully!');
       }
       setGeneratedTempPassword(res.data.temp_password);
+      hideLoading();
       
       // Clear form
       setInspectorName('');
@@ -509,6 +524,7 @@ export default function Dashboard() {
     } catch (err) {
       console.error(err);
       setCreateError(err.response?.data?.message || 'Failed to create verifier account.');
+      hideLoading();
     } finally {
       setCreatingInspector(false);
     }
@@ -565,14 +581,17 @@ export default function Dashboard() {
 
   const handleProposalAction = async (proposalId, status) => {
     setProposalError('');
+    showLoading(status === 'ACCEPTED' ? 'Accepting proposal...' : 'Declining proposal...');
     try {
       await axios.post(`/api/finance/update-status/${proposalId}`, { status });
       const res = await axios.get('/api/finance/received-proposals');
       setProposals(res.data);
+      hideLoading();
       showToast(`Proposal successfully ${status.toLowerCase()}ed!`, 'success');
     } catch (err) {
       console.error(err);
       setProposalError('Failed to update proposal status.');
+      hideLoading();
       showToast('Failed to update proposal status.', 'error');
     }
   };
@@ -725,6 +744,10 @@ export default function Dashboard() {
   };
 
   const totalCapitalCommitted = proposals.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="space-y-8 py-4">

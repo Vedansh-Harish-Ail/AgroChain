@@ -9,6 +9,7 @@ import {
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
 import { fetchServerIp, getQrCodeBaseUrl } from '../utils/qr';
+import { StatCardsSkeleton } from '../components/Skeletons';
 
 export default function CropHistory() {
   const { user } = useAuth();
@@ -350,9 +351,7 @@ export default function CropHistory() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
-        </div>
+        <StatCardsSkeleton count={3} />
       ) : myCrops.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900 shadow-sm space-y-4">
           <Sprout className="h-12 w-12 text-slate-300 dark:text-slate-700 mx-auto" />

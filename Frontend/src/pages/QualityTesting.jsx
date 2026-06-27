@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
+import { useLoading } from '../context/LoadingContext';
 import { 
   Search, CheckCircle, XCircle, ShieldAlert, Cpu, UserCheck, ArrowLeft, 
   MapPin, ExternalLink, Image, FileText, Award, Download, Clock, ShieldCheck,
@@ -123,6 +124,7 @@ function ConfirmDialog({ dialog, onConfirm, onCancel }) {
 export default function QualityTesting() {
   const { isConnected, connectWallet, contracts, walletAddress } = useWallet();
   const { user } = useAuth();
+  const { showLoading, hideLoading } = useLoading();
   const [crops, setCrops] = useState([]);
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -243,6 +245,7 @@ export default function QualityTesting() {
     }
 
     try {
+      showLoading('Submitting crop approval transaction on-chain...');
       const cropId = crop.id;
       const farmerName = crop.farmer_name || 'Unknown Farmer';
       const farmLocation = crop.farm_location || '';
@@ -298,6 +301,7 @@ export default function QualityTesting() {
       });
 
       setLoading(false);
+      hideLoading();
       addToast(`Farmer crop ID ${crop.id} has been verified and approved on-chain successfully!`, 'success', 'Approved On-Chain ✓');
       setSelectedCrop(null);
       setRemarks('');
@@ -308,6 +312,7 @@ export default function QualityTesting() {
       console.error(err);
       setError(err.reason || err.message || 'Approval failed. Please try again.');
       setLoading(false);
+      hideLoading();
     }
   };
 
@@ -324,12 +329,14 @@ export default function QualityTesting() {
     });
     if (!confirmed) return;
     setLoading(true);
+    showLoading('Rejecting crop registration...');
     try {
       await axios.post(`/api/quality/reject/${crop.id}`, {
         tester_remarks: remarks,
         inspection_notes: remarks,
         inspection_method: inspectionMethod
       });
+      hideLoading();
       addToast('The crop registration has been rejected successfully.', 'warning', 'Crop Rejected');
       setSelectedCrop(null);
       setRemarks('');
@@ -337,6 +344,7 @@ export default function QualityTesting() {
       fetchPendingCrops();
     } catch (err) {
       console.error(err);
+      hideLoading();
       setError("Failed to reject cultivation project.");
     } finally {
       setLoading(false);
@@ -350,15 +358,18 @@ export default function QualityTesting() {
     }
     setError('');
     setSavingNotes(true);
+    showLoading('Saving inspection remarks...');
     try {
       await axios.post(`/api/quality/save-notes/${selectedCrop.id}`, {
         inspection_notes: remarks,
         inspection_method: inspectionMethod
       });
+      hideLoading();
       addToast('Inspection notes saved successfully!', 'info', 'Notes Saved');
       fetchPendingCrops();
     } catch (err) {
       console.error(err);
+      hideLoading();
       setError(err.response?.data?.message || 'Failed to save inspection notes.');
     } finally {
       setSavingNotes(false);
@@ -380,6 +391,7 @@ export default function QualityTesting() {
     }
 
     try {
+      showLoading('Broadcasting quality certification transaction on-chain...');
       const lotNumber = Math.floor(1000 + Math.random() * 9000);
       const cropId = crop.id;
       const cropName = crop.crop_type;
@@ -444,6 +456,7 @@ export default function QualityTesting() {
       });
 
       setLoading(false);
+      hideLoading();
       addToast(`Product Lot ${lotNumber} certified and registered on the blockchain successfully!`, 'success', 'Lot Certified ✓');
       
       // Refresh list
@@ -454,6 +467,7 @@ export default function QualityTesting() {
       console.error(err);
       setError(err.reason || err.message || 'Transaction failed. Check MetaMask logs.');
       setLoading(false);
+      hideLoading();
     }
   };
 
@@ -483,6 +497,7 @@ export default function QualityTesting() {
     }
 
     try {
+      showLoading('Broadcasting rejected lot transaction on-chain...');
       const lotNumber = Math.floor(1000 + Math.random() * 9000);
       const cropId = crop.id;
       const cropName = crop.crop_type;
@@ -546,6 +561,7 @@ export default function QualityTesting() {
       });
 
       setLoading(false);
+      hideLoading();
       addToast(`Product Lot ${lotNumber} has been rejected and logged on the blockchain.`, 'warning', 'Lot Rejected');
       
       // Refresh list
@@ -556,6 +572,7 @@ export default function QualityTesting() {
       console.error(err);
       setError(err.reason || err.message || 'Transaction failed. Check MetaMask logs.');
       setLoading(false);
+      hideLoading();
     }
   };
 
@@ -714,8 +731,10 @@ export default function QualityTesting() {
           <h3 className="font-bold text-slate-900 dark:text-white mb-4">Pending Crop Cultivations</h3>
           
           {loadingList ? (
-            <div className="flex justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+            <div className="space-y-4 animate-pulse">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="h-10 bg-slate-100 dark:bg-slate-850 rounded-xl w-full"></div>
+              ))}
             </div>
           ) : crops.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-12">No pending cultivations found.</p>

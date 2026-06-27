@@ -441,8 +441,14 @@ export default function BlockchainExplorer() {
       )}
 
       {loading && (
-        <div className="flex justify-center py-12">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-8 animate-pulse">
+          <div className="lg:col-span-6 space-y-8 w-full">
+            <div className="h-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full"></div>
+            <div className="h-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full"></div>
+          </div>
+          <div className="lg:col-span-6 space-y-8 w-full">
+            <div className="h-[480px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full"></div>
+          </div>
         </div>
       )}
 

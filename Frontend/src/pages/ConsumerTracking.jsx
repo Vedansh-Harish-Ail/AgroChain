@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useLoading } from '../context/LoadingContext';
 import {
   Search, ShieldCheck, Star, Award, CheckCircle2,
   ChevronRight, MessageSquare, Plus, Calendar, MapPin,
@@ -11,11 +12,13 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { ethers } from 'ethers';
+import { StatCardsSkeleton, DetailsCardSkeleton } from '../components/Skeletons';
 
 export default function ConsumerTracking() {
   const { isConnected, connectWallet, contracts } = useWallet();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { showLoading, hideLoading } = useLoading();
   const navigate = useNavigate();
 
   // Navigation state: 'explorer', 'profile', 'details'
@@ -205,6 +208,7 @@ export default function ConsumerTracking() {
     if (!selectedCrop || !product) return;
     setError('');
     setLoadingRating(true);
+    showLoading(isConnected ? 'Broadcasting review transaction to blockchain...' : 'Recording review details...');
 
     try {
       let txHash = null;
@@ -254,6 +258,7 @@ export default function ConsumerTracking() {
       });
 
       setLoadingRating(false);
+      hideLoading();
       if (txHash) {
         showToast('Review recorded successfully on blockchain!', 'success');
       } else {
@@ -269,6 +274,7 @@ export default function ConsumerTracking() {
       console.error(err);
       setError(err.reason || err.message || 'Rating submission failed. Verify MetaMask connection.');
       setLoadingRating(false);
+      hideLoading();
     }
   };
 
@@ -286,6 +292,28 @@ export default function ConsumerTracking() {
   const totalFundingEth = parseFloat(ethers.formatEther(totalFundingWei)).toFixed(4);
   const targetPriceEth = product ? parseFloat(ethers.formatEther(product.price.toString())) : 0;
   const fundingPercentage = targetPriceEth > 0 ? Math.min(Math.round((parseFloat(totalFundingEth) / targetPriceEth) * 100), 100) : 0;
+
+  if (loading) {
+    return (
+      <div className="space-y-8 py-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex gap-4">
+          <div className="h-10 w-10 bg-slate-200 dark:bg-slate-850 rounded-xl animate-pulse"></div>
+          <div className="space-y-2 flex-1">
+            <div className="h-6 w-48 bg-slate-200 dark:bg-slate-850 rounded animate-pulse"></div>
+            <div className="h-4 w-96 bg-slate-100 dark:bg-slate-900 rounded animate-pulse"></div>
+          </div>
+        </div>
+        <div className="grid lg:grid-cols-3 gap-8 mt-6">
+          <div className="lg:col-span-2">
+            <DetailsCardSkeleton />
+          </div>
+          <div>
+            <DetailsCardSkeleton />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 py-6 max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -364,9 +392,7 @@ export default function ConsumerTracking() {
 
           {/* Directory Listings */}
           {loadingList ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
-            </div>
+            <StatCardsSkeleton count={3} />
           ) : filteredFarmers.length === 0 ? (
             <div className="text-center py-20 text-slate-500">
               No registered farmers matching selection filters found.

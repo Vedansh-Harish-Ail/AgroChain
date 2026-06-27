@@ -4,6 +4,7 @@ import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { WalletProvider, useWallet } from './context/WalletContext';
 import { ToastProvider } from './context/ToastContext';
+import { LoadingProvider, useLoading } from './context/LoadingContext';
 import { 
   Sprout, Wallet, LogOut, LogIn, UserPlus, LayoutDashboard, 
   FileCheck, ShieldAlert, Cpu, LineChart, Award, Eye, Sun, Moon, Menu, X
@@ -55,6 +56,7 @@ const Navbar = ({ theme, toggleTheme }) => {
   const { walletAddress, isConnected, connectWallet } = useWallet();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const { showLoading, hideLoading } = useLoading();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -269,8 +271,12 @@ const Navbar = ({ theme, toggleTheme }) => {
               <button
                 onClick={() => {
                   setShowLogoutConfirm(false);
-                  logout();
-                  navigate('/');
+                  showLoading('Signing out of your account...');
+                  setTimeout(() => {
+                    logout();
+                    hideLoading();
+                    navigate('/');
+                  }, 800);
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold shadow-md shadow-rose-600/20 hover:shadow-lg transition duration-200"
               >
@@ -362,13 +368,15 @@ function App() {
   };
 
   return (
-    <AuthProvider>
-      <WalletProvider>
-        <ToastProvider>
-          <MainLayout theme={theme} toggleTheme={toggleTheme} />
-        </ToastProvider>
-      </WalletProvider>
-    </AuthProvider>
+    <LoadingProvider>
+      <AuthProvider>
+        <WalletProvider>
+          <ToastProvider>
+            <MainLayout theme={theme} toggleTheme={toggleTheme} />
+          </ToastProvider>
+        </WalletProvider>
+      </AuthProvider>
+    </LoadingProvider>
   );
 }
 

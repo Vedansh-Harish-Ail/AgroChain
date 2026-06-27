@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
+import { useLoading } from '../context/LoadingContext';
 import {
   UserPlus, User, Mail, Lock, Briefcase, Wallet,
   ShieldCheck, ChevronRight, Sparkles, Eye, EyeOff,
@@ -105,6 +106,7 @@ const KERALA_LOCATIONS = {
 export default function RegisterPage() {
   const { register, sendSmsOtp, sendEmailOtp } = useAuth();
   const { walletAddress, isConnected, connectWallet } = useWallet();
+  const { showLoading, hideLoading } = useLoading();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -344,6 +346,7 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
+    showLoading('Creating your account & preparing credentials...');
 
     const activeWallet = customWallet || (isConnected ? walletAddress : '');
 
@@ -374,6 +377,7 @@ export default function RegisterPage() {
       otpMethod
     );
     setLoading(false);
+    hideLoading();
 
     if (result.success) {
       setSuccess('Account created successfully! Redirecting to login...');

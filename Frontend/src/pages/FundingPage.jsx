@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLoading } from '../context/LoadingContext';
 import { 
   Coins, History, ArrowLeft, ArrowRight, ShieldCheck, Mail, 
   Phone, FileText, Check, AlertCircle, X, ChevronRight, User, Star
 } from 'lucide-react';
 import axios from 'axios';
 import { ethers } from 'ethers';
+import { StatCardsSkeleton } from '../components/Skeletons';
 
 export default function FundingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { showLoading, hideLoading } = useLoading();
   
   const [products, setProducts] = useState([]);
   const [myInvestments, setMyInvestments] = useState([]);
@@ -87,6 +90,7 @@ export default function FundingPage() {
     setError('');
     setSuccess('');
     setLoading(true);
+    showLoading('Submitting partnership proposal & LOI details...');
 
     try {
       await axios.post('/api/finance/invest', {
@@ -100,6 +104,7 @@ export default function FundingPage() {
 
       setSuccess('Your partnership proposal was sent to the farmer successfully!');
       setLoading(false);
+      hideLoading();
       setTimeout(() => {
         setSelectedProduct(null);
         setSuccess('');
@@ -110,6 +115,7 @@ export default function FundingPage() {
       console.error(err);
       setError(err.response?.data?.message || 'Failed to submit partnership proposal.');
       setLoading(false);
+      hideLoading();
     }
   };
 
@@ -157,9 +163,7 @@ export default function FundingPage() {
       )}
 
       {loadingData ? (
-        <div className="flex justify-center py-12">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
-        </div>
+        <StatCardsSkeleton count={3} />
       ) : (
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Side: Product Lot Marketplace */}

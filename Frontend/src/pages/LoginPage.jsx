@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLoading } from '../context/LoadingContext';
 import { Mail, Lock, Eye, EyeOff, Sparkles, SunIcon as Sunburst } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { showLoading, hideLoading } = useLoading();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,10 +17,12 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    showLoading("Verifying your credentials & logging in...");
     setLoading(true);
 
     const result = await login(email, password);
     setLoading(false);
+    hideLoading();
 
     if (result.success) {
       navigate('/dashboard');

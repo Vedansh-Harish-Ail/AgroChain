@@ -2,16 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useLoading } from '../context/LoadingContext';
 import {
   Coins, ArrowLeft, Clock, XCircle, ShieldCheck,
   Mail, Phone, FileText, Download, ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
+import { TableSkeleton } from '../components/Skeletons';
 
 export default function SubmittedLOIs() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { showLoading, hideLoading } = useLoading();
   const [lois, setLois] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedLoiForDoc, setSelectedLoiForDoc] = useState(null);
@@ -59,12 +62,15 @@ export default function SubmittedLOIs() {
     if (!window.confirm("Are you sure you want to cancel this Letter of Intent? This action cannot be undone.")) {
       return;
     }
+    showLoading('Cancelling Letter of Intent...');
     try {
       await axios.post(`/api/finance/cancel/${loiId}`);
+      hideLoading();
       showToast('Proposal cancelled successfully!', 'success');
       fetchLOIs();
     } catch (err) {
       console.error(err);
+      hideLoading();
       showToast(err.response?.data?.message || 'Failed to cancel proposal.', 'error');
     }
   };
@@ -195,9 +201,7 @@ export default function SubmittedLOIs() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
-        </div>
+        <TableSkeleton rows={5} cols={5} />
       ) : lois.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900 shadow-sm space-y-4">
           <Coins className="h-12 w-12 text-slate-350 mx-auto" />

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useToast } from '../context/ToastContext';
+import { useLoading } from '../context/LoadingContext';
 import { FileCheck, Wallet, Calendar, Tag, ShieldCheck, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { ethers } from 'ethers';
@@ -9,6 +10,7 @@ import { ethers } from 'ethers';
 export default function ProductRegistration() {
   const { isConnected, connectWallet, contracts } = useWallet();
   const { showToast } = useToast();
+  const { showLoading, hideLoading } = useLoading();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -58,6 +60,7 @@ export default function ProductRegistration() {
     }
 
     try {
+      showLoading('Broadcasting quality certificate and lot registry transaction...');
       const lotNumber = parseInt(formData.lot_number);
       const farmerId = parseInt(formData.farmer_id);
       
@@ -119,6 +122,7 @@ export default function ProductRegistration() {
       });
 
       setLoading(false);
+      hideLoading();
       showToast(`Product Lot ${lotNumber} certified and registered on the blockchain successfully!`, 'success');
       navigate('/dashboard');
 
@@ -126,6 +130,7 @@ export default function ProductRegistration() {
       console.error(err);
       setError(err.reason || err.message || 'Transaction failed. Verify farmer is approved on-chain.');
       setLoading(false);
+      hideLoading();
     }
   };
 

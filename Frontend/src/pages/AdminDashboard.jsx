@@ -4,10 +4,12 @@ import { Settings, ShieldAlert, Users, LineChart, FileText, CheckCircle2, XCircl
 import axios from 'axios';
 import { useWallet } from '../context/WalletContext';
 import { ethers } from 'ethers';
+import { useLoading } from '../context/LoadingContext';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { walletAddress: adminWallet, isConnected, connectWallet, contracts } = useWallet();
+  const { showLoading, hideLoading } = useLoading();
   const [onChainRoles, setOnChainRoles] = useState({});
   const [checkingRoles, setCheckingRoles] = useState(false);
   const [grantingRoleMap, setGrantingRoleMap] = useState({});
@@ -272,6 +274,7 @@ export default function AdminDashboard() {
     
     setGrantingRoleMap(prev => ({ ...prev, [walletAddress.toLowerCase()]: true }));
     setError('');
+    showLoading('Granting verifier role on the blockchain ledger...');
     
     try {
       if (user.role === 'INSPECTOR') {
@@ -312,8 +315,10 @@ export default function AdminDashboard() {
       
       // Refresh role status
       checkAllOnChainRoles();
+      hideLoading();
     } catch (err) {
       console.error(err);
+      hideLoading();
       setAlertMessage({
         title: 'Transaction Failed',
         message: err.reason || err.message || 'MetaMask transaction failed.',
@@ -325,8 +330,10 @@ export default function AdminDashboard() {
   };
 
   const handleUserApprove = async (userId) => {
+    showLoading('Activating laboratory profile...');
     try {
       await axios.post(`/api/admin/approve-user/${userId}`);
+      hideLoading();
       setAlertMessage({
         title: 'Profile Approved',
         message: 'The Quality Laboratory profile has been successfully approved and activated.',
@@ -335,6 +342,7 @@ export default function AdminDashboard() {
       loadAdminData();
     } catch (err) {
       console.error(err);
+      hideLoading();
       setError('User approval operation failed.');
     }
   };
