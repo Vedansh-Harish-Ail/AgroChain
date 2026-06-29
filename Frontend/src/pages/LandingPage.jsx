@@ -210,8 +210,10 @@ export default function LandingPage({ theme, toggleTheme }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
@@ -220,7 +222,7 @@ export default function LandingPage({ theme, toggleTheme }) {
       <PulseStyle />
 
       {/* ── Top Navbar ── */}
-      <nav className={`fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-6xl z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-800/60 rounded-2xl transition-all duration-300 shadow-md ${scrolled ? 'nav-shadow' : ''}`}>
+      <nav className={`fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-6xl z-50 bg-white/80 dark:bg-slate-955/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-800/60 rounded-2xl transition-all duration-300 shadow-md ${scrolled ? 'nav-shadow' : ''}`}>
         <div className="flex justify-between items-center h-16 px-6 md:px-10">
           <Link to="/" className="text-xl font-bold text-emerald-700 dark:text-emerald-400 tracking-tight flex items-center gap-2">
             <Sprout className="h-6 w-6" />
@@ -261,10 +263,13 @@ export default function LandingPage({ theme, toggleTheme }) {
 
       <main className="w-full">
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden pt-28 pb-16 bg-white dark:bg-slate-950">
-          {/* Translucent Background Image Overlay */}
+        <section 
+          className="relative overflow-hidden pt-28 pb-16 bg-white dark:bg-slate-950"
+          style={{ clipPath: 'inset(0)' }}
+        >
+          {/* Fixed Background Image Overlay */}
           <div 
-            className="absolute inset-0 bg-cover bg-center opacity-35 dark:opacity-50 pointer-events-none"
+            className="fixed inset-0 bg-cover bg-center opacity-35 dark:opacity-50 pointer-events-none"
             style={{ backgroundImage: "url('/hero_background.png')" }}
           />
           {/* Gradient Overlay for Text Readability */}

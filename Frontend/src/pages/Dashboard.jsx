@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWallet } from '../context/WalletContext';
@@ -84,7 +84,9 @@ export default function Dashboard() {
     cropsCount: 0,
     lotsCount: 0,
     investmentsCount: 0,
-    ratingsCount: 0
+    ratingsCount: 0,
+    testerCertsCount: 0,
+    inspectorVerifiedCount: 0
   });
   const [myCrops, setMyCrops] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,15 +109,37 @@ export default function Dashboard() {
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState(user?.district || 'Thrissur');
+  const districtInitialized = useRef(false);
 
   useEffect(() => {
-    if (user?.district) {
+    if (user?.district && !districtInitialized.current) {
       setSelectedDistrict(user.district);
+      districtInitialized.current = true;
     }
-  }, [user]);
+  }, [user?.district]);
 
-  const fetchWeather = useCallback(async () => {
+  const fetchWeather = useCallback(async (force = false) => {
     if (user?.role !== 'FARMER') return;
+    
+    const shouldForce = force === true;
+    const cacheKey = `weather_${selectedDistrict}`;
+    
+    if (!shouldForce) {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const { data, timestamp } = JSON.parse(cached);
+          // 15 minutes cache lifetime
+          if (Date.now() - timestamp < 15 * 60 * 1000) {
+            setWeatherData(data);
+            return;
+          }
+        } catch (e) {
+          console.warn("Failed to parse cached weather:", e);
+        }
+      }
+    }
+
     setWeatherLoading(true);
     try {
       const coords = DISTRICT_COORDINATES[selectedDistrict] || DISTRICT_COORDINATES['Thrissur'];
@@ -127,7 +151,7 @@ export default function Dashboard() {
       }
       const data = await response.json();
       if (data && data.current) {
-        setWeatherData({
+        const newWeatherData = {
           temp: Math.round(data.current.temperature_2m),
           windSpeed: data.current.wind_speed_10m,
           weatherCode: data.current.weather_code,
@@ -135,12 +159,29 @@ export default function Dashboard() {
           district: selectedDistrict,
           isSimulated: false,
           updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
+        };
+        setWeatherData(newWeatherData);
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data: newWeatherData,
+          timestamp: Date.now()
+        }));
       } else {
         throw new Error("No current weather data");
       }
     } catch (err) {
       console.error("Failed to fetch live weather, using simulated weather:", err);
+      
+      // Deterministic simulation based on district and today's date
+      const todayStr = new Date().toDateString();
+      const getDeterministicValue = (district, seed, min, max) => {
+        const str = `${district}_${seed}`;
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return min + (Math.abs(hash) % (max - min + 1));
+      };
+
       const districtBaselines = {
         "Thiruvananthapuram": 30,
         "Kollam": 30,
@@ -157,17 +198,22 @@ export default function Dashboard() {
         "Kannur": 31,
         "Kasaragod": 31
       };
+      
       const baseTemp = districtBaselines[selectedDistrict] || 29;
-      const randomOffset = Math.floor(Math.random() * 4) - 1; // -1 to +2 C
-      const finalTemp = baseTemp + randomOffset;
+      const tempOffset = getDeterministicValue(selectedDistrict, `${todayStr}_temp`, -1, 2);
+      const finalTemp = baseTemp + tempOffset;
+      
       const weatherCodes = [0, 1, 3, 51, 80];
-      const randomCode = weatherCodes[Math.floor(Math.random() * weatherCodes.length)];
-      const randomWind = (Math.random() * (12 - 4) + 4).toFixed(1);
+      const codeIndex = getDeterministicValue(selectedDistrict, `${todayStr}_code`, 0, 4);
+      const randomCode = weatherCodes[codeIndex];
+      
+      const windOffset = getDeterministicValue(selectedDistrict, `${todayStr}_wind`, 40, 120);
+      const randomWind = (windOffset / 10).toFixed(1);
       
       const currentHour = new Date().getHours();
       const simIsDay = currentHour >= 6 && currentHour < 18 ? 1 : 0;
 
-      setWeatherData({
+      const simWeatherData = {
         temp: finalTemp,
         windSpeed: parseFloat(randomWind),
         weatherCode: randomCode,
@@ -175,7 +221,13 @@ export default function Dashboard() {
         district: selectedDistrict,
         isSimulated: true,
         updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      });
+      };
+
+      setWeatherData(simWeatherData);
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data: simWeatherData,
+        timestamp: Date.now()
+      }));
     } finally {
       setWeatherLoading(false);
     }
@@ -604,11 +656,24 @@ export default function Dashboard() {
         const cropsList = await axios.get('/api/farmer/all-crops');
         const lotsList = await axios.get('/api/product/all');
         
+        let testerCertsCount = 0;
+        if (user && user.role === 'TESTER') {
+          const testerCropIds = cropsList.data.filter(c => c.assigned_tester_id === user.id).map(c => c.id);
+          testerCertsCount = lotsList.data.filter(l => testerCropIds.includes(l.farmer_id)).length;
+        }
+
+        let inspectorVerifiedCount = 0;
+        if (user && user.role === 'INSPECTOR') {
+          inspectorVerifiedCount = cropsList.data.filter(c => c.assigned_inspector_id === user.id && c.verification_status === 'VERIFIED').length;
+        }
+
         setStats({
           cropsCount: cropsList.data.length,
           lotsCount: lotsList.data.length,
           investmentsCount: explorerSummary.data.total_transactions || 0,
-          ratingsCount: 0 
+          ratingsCount: 0,
+          testerCertsCount,
+          inspectorVerifiedCount
         });
 
         if (user?.role === 'INSPECTOR' || user?.role === 'ADMIN') {
@@ -656,11 +721,12 @@ export default function Dashboard() {
           const myCropsRes = await axios.get('/api/farmer/my-crops');
           setMyCrops(myCropsRes.data);
           
-          if (myCropsRes.data && myCropsRes.data.length > 0) {
+          if (myCropsRes.data && myCropsRes.data.length > 0 && !districtInitialized.current) {
             const sortedCrops = [...myCropsRes.data].sort((a, b) => b.id - a.id);
             const lastCrop = sortedCrops[0];
             if (lastCrop && lastCrop.district) {
               setSelectedDistrict(lastCrop.district);
+              districtInitialized.current = true;
             }
           }
           
@@ -746,7 +812,7 @@ export default function Dashboard() {
   const totalCapitalCommitted = proposals.reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   if (loading) {
-    return <DashboardSkeleton />;
+    return <DashboardSkeleton role={user?.role} />;
   }
 
   return (
@@ -998,7 +1064,10 @@ export default function Dashboard() {
                 <div className="flex items-center gap-1.5">
                   <select
                     value={selectedDistrict}
-                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedDistrict(e.target.value);
+                      districtInitialized.current = true;
+                    }}
                     className="text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                   >
                     {Object.keys(DISTRICT_COORDINATES).map(dist => (
@@ -1034,7 +1103,7 @@ export default function Dashboard() {
                     <Wind className="h-4 w-4 text-blue-500 animate-pulse shrink-0" /> {weatherData.windSpeed} km/h
                   </span>
                   <button 
-                    onClick={fetchWeather}
+                    onClick={() => fetchWeather(true)}
                     disabled={weatherLoading}
                     className="flex items-center justify-end gap-1 text-[10px] text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors font-semibold font-mono disabled:opacity-55"
                     title="Refresh Weather"
@@ -1116,14 +1185,32 @@ export default function Dashboard() {
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">LOIs Submitted</p>
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loadingProposals ? '...' : proposals.length}</h3>
                 </div>
+              ) : user?.role === 'TESTER' ? (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pending Lab Audits</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : currentPendingApprovalIds.length}</h3>
+                </div>
+              ) : user?.role === 'INSPECTOR' ? (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Pending Field Audits</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : currentPendingApprovalIds.length}</h3>
+                </div>
               ) : (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Ledger Actions</p>
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : stats.investmentsCount}</h3>
                 </div>
               )}
-              <div className="p-2 bg-purple-50 dark:bg-purple-950/40 rounded-xl text-purple-600 dark:text-purple-400">
-                <Layers className="h-5 w-5" />
+              <div className={`p-2 rounded-xl shrink-0 ${
+                user?.role === 'TESTER' || user?.role === 'INSPECTOR'
+                  ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400'
+                  : 'bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400'
+              }`}>
+                {user?.role === 'TESTER' || user?.role === 'INSPECTOR' ? (
+                  <Clock className="h-5 w-5" />
+                ) : (
+                  <Layers className="h-5 w-5" />
+                )}
               </div>
             </div>
           </div>
@@ -1137,15 +1224,33 @@ export default function Dashboard() {
                     {loadingProposals ? '...' : `Rs. ${totalCapitalCommitted.toLocaleString('en-IN')}`}
                   </h3>
                 </div>
+              ) : user?.role === 'TESTER' ? (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Certificates Issued</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : stats.testerCertsCount}</h3>
+                </div>
+              ) : user?.role === 'INSPECTOR' ? (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Verified Crops</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{loading ? '...' : stats.inspectorVerifiedCount}</h3>
+                </div>
               ) : (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Farmer Trust</p>
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">98.4%</h3>
                 </div>
               )}
-              <div className="p-2 bg-amber-50 dark:bg-amber-950/40 rounded-xl text-amber-600 dark:text-amber-400">
+              <div className={`p-2 rounded-xl shrink-0 ${
+                user?.role === 'INVESTOR' 
+                  ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400' 
+                  : user?.role === 'TESTER' || user?.role === 'INSPECTOR'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400'
+              }`}>
                 {user?.role === 'INVESTOR' ? (
                   <Wallet className="h-5 w-5" />
+                ) : user?.role === 'TESTER' || user?.role === 'INSPECTOR' ? (
+                  <CheckCircle2 className="h-5 w-5" />
                 ) : (
                   <CheckCircle2 className="h-5 w-5" />
                 )}

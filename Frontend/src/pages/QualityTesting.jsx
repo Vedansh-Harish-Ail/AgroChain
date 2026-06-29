@@ -12,6 +12,7 @@ import axios from 'axios';
 import html2pdf from 'html2pdf.js';
 import { ethers } from 'ethers';
 import { fetchServerIp, getQrCodeBaseUrl } from '../utils/qr';
+import { TableSkeleton } from '../components/Skeletons';
 
 // ─── Custom Toast Notification Component ─────────────────────────────────────
 function Toast({ toasts, removeToast }) {
@@ -731,11 +732,7 @@ export default function QualityTesting() {
           <h3 className="font-bold text-slate-900 dark:text-white mb-4">Pending Crop Cultivations</h3>
           
           {loadingList ? (
-            <div className="space-y-4 animate-pulse">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <div key={idx} className="h-10 bg-slate-100 dark:bg-slate-850 rounded-xl w-full"></div>
-              ))}
-            </div>
+            <TableSkeleton rows={5} cols={5} />
           ) : crops.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-12">No pending cultivations found.</p>
           ) : (

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { ethers } from 'ethers';
-import { StatCardsSkeleton } from '../components/Skeletons';
+import { FundingMarketplaceSkeleton } from '../components/Skeletons';
 
 export default function FundingPage() {
   const { user } = useAuth();
@@ -163,7 +163,7 @@ export default function FundingPage() {
       )}
 
       {loadingData ? (
-        <StatCardsSkeleton count={3} />
+        <FundingMarketplaceSkeleton />
       ) : (
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Side: Product Lot Marketplace */}
