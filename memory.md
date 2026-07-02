@@ -3,7 +3,7 @@
 **Last Updated:** *July 1, 2026, 02:30 PM IST (UTC+5:30)*
 
 This document is the master documentation of the **AgroChain** (Modernized) project. It contains a detailed breakdown of the project’s purpose, features, security models, data structures, backend routes, contract details, frontend screens, and step-by-step developer checklists.
-
+................
 ---
 
 ## 1. What the Project is About (The "Why")
