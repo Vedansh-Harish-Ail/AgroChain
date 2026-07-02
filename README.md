@@ -3,7 +3,7 @@
 AgroChain is a blockchain-based agricultural supply chain and micro-finance platform. It bridges the gap between farmers, consumers, and investors by combining immutable ledger-based traceability with interest-free P2P micro-finance. By eliminating intermediaries, AgroChain ensures direct connections, verified quality, and fair financing.
 
 This repository represents a complete modernization of the original AgroChain architecture, moving from legacy Truffle/Web3.js/Geth configurations to a modern, robust, and performant full-stack ecosystem.
-
+....
 ---
 
 ## 🛠️ Modern Tech Stack
