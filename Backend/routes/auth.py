@@ -42,6 +42,52 @@ def debug_db():
             'error': str(e)
         }), 500
 
+@auth_bp.route('/debug-login', methods=['GET'])
+def debug_login():
+    try:
+        import traceback
+        email = "ailvedansh@gmail.com"
+        password = "Vedansh@123"
+        
+        print("DEBUG LOGIN: Fetching user...")
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'status': 'error', 'message': 'User not found in database'}), 404
+            
+        print("DEBUG LOGIN: Checking password...")
+        matched = user.check_password(password)
+        if not matched:
+            return jsonify({'status': 'error', 'message': 'Password verification failed'}), 401
+            
+        print("DEBUG LOGIN: Generating token...")
+        token = generate_token(user.id, user.role)
+        
+        print("DEBUG LOGIN: Adding audit log...")
+        audit = AuditLog(
+            user_id=user.id,
+            action='USER_LOGIN_DEBUG',
+            details="Debug login check."
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        # Cleanup
+        db.session.delete(audit)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'token_length': len(token) if token else 0,
+            'user': user.to_dict()
+        }), 200
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
 # ---------------------------------------------------------------------------
 # Helper: Send SMS via SMS Gate Android app
 # Docs: https://sms-gate.app/api/
