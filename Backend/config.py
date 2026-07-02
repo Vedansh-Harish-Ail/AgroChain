@@ -19,6 +19,11 @@ class Config:
         # Convert postgres:// to postgresql:// if needed for SQLAlchemy 1.4+
         if DATABASE_URL.startswith("postgres://"):
             DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        # Convert relative SQLite paths to absolute paths to avoid instance folder routing
+        elif DATABASE_URL.startswith("sqlite:///"):
+            db_name = DATABASE_URL.replace("sqlite:///", "", 1)
+            if not os.path.isabs(db_name) and not db_name.startswith('\\'):
+                DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, db_name)}"
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
     else:
         DATABASE_PATH = os.path.join(BASE_DIR, 'agrochain.db')
