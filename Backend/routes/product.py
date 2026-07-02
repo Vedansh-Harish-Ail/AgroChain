@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
 from models import db, Product, Farmer, AuditLog
 from utils.auth import roles_allowed
@@ -87,7 +87,7 @@ def register_product(current_user):
             title="Crop Lot Certified!",
             body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>We are excited to inform you that Quality Lab Tester <strong>{current_user.name}</strong> has tested and certified your crop batch.</p><table style='width: 100%; margin: 20px 0; border-collapse: collapse; border: 1px solid #e5e7eb;'><tr style='background-color: #f9fafb;'><td style='padding: 10px; font-weight: bold; border-bottom: 1px solid #e5e7eb;'>Crop Name:</td><td style='padding: 10px; border-bottom: 1px solid #e5e7eb;'>{crop_name}</td></tr><tr><td style='padding: 10px; font-weight: bold; border-bottom: 1px solid #e5e7eb;'>Certified Quality Grade:</td><td style='padding: 10px; border-bottom: 1px solid #e5e7eb; color: #059669; font-weight: bold;'>{quality_grade}</td></tr><tr style='background-color: #f9fafb;'><td style='padding: 10px; font-weight: bold;'>Lot Number:</td><td style='padding: 10px;'>{lot_number}</td></tr></table><p>You can now view, download, or print your gold-bordered Batch Quality Certificate and dynamic QR packaging labels directly from your AgroChain Document Center.</p>",
             cta_text="Go to Document Center",
-            cta_url="http://localhost:5173/dashboard"
+            cta_url=f"{current_app.config['FRONTEND_URL']}/dashboard"
         )
         try:
             send_email(subject, farmer_user.email, text_body, html_body)

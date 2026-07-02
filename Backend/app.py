@@ -1,4 +1,5 @@
-from flask import Flask, jsonify   
+import os
+from flask import Flask, jsonify, send_from_directory   
 from flask_cors import CORS
 from config import Config
 from models import db
@@ -14,7 +15,14 @@ from routes.explorer import explorer_bp
 from routes.admin import admin_bp
 
 def create_app():
-    app = Flask(__name__)
+    # Detect Frontend build directory relative to Backend folder
+    frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Frontend', 'dist'))
+    
+    if os.path.exists(frontend_dist):
+        app = Flask(__name__, static_folder=frontend_dist)
+    else:
+        app = Flask(__name__)
+        
     app.config.from_object(Config)
     
     # Enable CORS
@@ -45,6 +53,20 @@ def create_app():
     def health_check():
         return jsonify({'status': 'healthy', 'message': 'AgroChain Backend API is online.'}), 200
         
+    # Catch-all route to serve Frontend Single-Page Application (SPA)
+    if os.path.exists(frontend_dist):
+        @app.route('/', defaults={'path': ''})
+        @app.route('/<path:path>')
+        def serve_frontend(path):
+            if path.startswith('api/') or path == 'health':
+                return jsonify({'message': 'Not Found'}), 404
+            
+            # Check if requested path is a real file inside the build directory
+            if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+                return send_from_directory(app.static_folder, path)
+            else:
+                return send_from_directory(app.static_folder, 'index.html')
+
     with app.app_context():
         db.create_all()
         

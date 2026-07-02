@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from models import db, Farmer, AuditLog
 from utils.auth import roles_allowed
 
@@ -71,7 +71,7 @@ def approve_crop(current_user, crop_id):
             title="Crop Registration Approved!",
             body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>We are pleased to inform you that Agricultural Inspector <strong>{current_user.name}</strong> has verified and approved your crop registration for <strong>{crop.crop_type} (ID: {crop_id})</strong>.</p><p><strong>Inspector Remarks:</strong><br>{inspection_notes or 'No remarks provided.'}</p><p>You can now update your crop status or prepare for testing.</p>",
             cta_text="View Crop History",
-            cta_url="http://localhost:5173/dashboard"
+            cta_url=f"{current_app.config['FRONTEND_URL']}/dashboard"
         )
         try:
             send_email(subject, farmer_user.email, text_body, html_body)
@@ -142,7 +142,7 @@ def reject_crop(current_user, crop_id):
             title="Crop Registration Rejected",
             body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>We regret to inform you that Agricultural Inspector <strong>{current_user.name}</strong> has rejected your crop registration for <strong>{crop.crop_type} (ID: {crop_id})</strong>.</p><p><strong>Inspector Remarks:</strong><br>{inspection_notes or 'No remarks provided.'}</p><p>Please review the remarks and resubmit if necessary.</p>",
             cta_text="Go to Dashboard",
-            cta_url="http://localhost:5173/dashboard"
+            cta_url=f"{current_app.config['FRONTEND_URL']}/dashboard"
         )
         try:
             send_email(subject, farmer_user.email, text_body, html_body)

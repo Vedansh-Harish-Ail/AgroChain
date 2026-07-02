@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from models import db, User, Farmer, Product, Investment, AuditLog
 from utils.auth import roles_allowed
 
@@ -45,7 +45,7 @@ def approve_user(current_user, user_id):
                     f"<p>You can now log into the platform and access your laboratory testing queue using the email (<strong>{user.email}</strong>) and password credentials you used when creating the account.</p>"
                 ),
                 cta_text="Log In to AgroBlock",
-                cta_url="http://localhost:5173/login"
+                cta_url=f"{current_app.config['FRONTEND_URL']}/login"
             )
             send_email(subject, user.email, text_body, html_body)
         except Exception as e:
@@ -226,7 +226,7 @@ def create_inspector(current_user):
                   f"<p>You are assigned to cover the district of <strong>{district}</strong> (Taluk: <strong>{sub_district}</strong>, Level: <strong>{coverage_level}</strong>).</p>"
                   f"<p><strong>Note:</strong> You must change your password on your first login to activate your account.</p>",
         cta_text="Login to AgroChain",
-        cta_url="http://localhost:5173/login"
+        cta_url=f"{current_app.config['FRONTEND_URL']}/login"
     )
     try:
         send_email(subject, email, text_body, html_body)
@@ -322,7 +322,7 @@ def create_tester(current_user):
                   f"</ul>"
                   f"<p><strong>Note:</strong> You must change your password and connect your MetaMask wallet on your first login to activate your account.</p>",
         cta_text="Login to AgroChain",
-        cta_url="http://localhost:5173/login"
+        cta_url=f"{current_app.config['FRONTEND_URL']}/login"
     )
     try:
         send_email(subject, email, text_body, html_body)

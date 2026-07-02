@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from models import db, Investment, Product, Farmer, AuditLog
 from utils.auth import token_required, roles_allowed
 
@@ -70,7 +70,7 @@ def make_investment(current_user):
             title="New Funding Proposal",
             body_text=f"<p>Hello <strong>{farmer_user.name}</strong>,</p><p>You have received a new funding proposal for your crop lot <strong>Lot {lot_number}</strong> from investor <strong>{current_user.name}</strong>.</p><table style='width: 100%; margin: 20px 0; border-collapse: collapse; border: 1px solid #e5e7eb;'><tr style='background-color: #f9fafb;'><td style='padding: 10px; font-weight: bold; border-bottom: 1px solid #e5e7eb;'>Proposal Amount:</td><td style='padding: 10px; border-bottom: 1px solid #e5e7eb;'>Rs. {amount:,}</td></tr><tr><td style='padding: 10px; font-weight: bold; border-bottom: 1px solid #e5e7eb;'>Proposed Profit Share:</td><td style='padding: 10px; border-bottom: 1px solid #e5e7eb;'>{profit_percentage}%</td></tr><tr style='background-color: #f9fafb;'><td style='padding: 10px; font-weight: bold;'>Message:</td><td style='padding: 10px;'>{message or 'No message provided.'}</td></tr></table><p>Please log in to your dashboard to review and manage this proposal.</p>",
             cta_text="Go to Dashboard",
-            cta_url="http://localhost:5173/dashboard"
+            cta_url=f"{current_app.config['FRONTEND_URL']}/dashboard"
         )
         try:
             send_email(subject, farmer_user.email, text_body, html_body)
@@ -165,7 +165,7 @@ def update_investment_status(current_user, investment_id):
             title=title_text,
             body_text=body_text,
             cta_text="Go to Dashboard",
-            cta_url="http://localhost:5173/dashboard"
+            cta_url=f"{current_app.config['FRONTEND_URL']}/dashboard"
         )
         try:
             send_email(subject, investor_user.email, text_body, html_body)

@@ -493,9 +493,9 @@ def link_wallet(current_user):
                 env['WALLET_ADDRESS'] = addr
                 env['ROLE_TYPE'] = role
                 
-                # Hardhat path setup
-                blockchain_dir = r"c:\MY PROJECTS\AgroChain-Morden\Blockchain"
-                cmd = ["npx", "hardhat", "run", "scripts/grant-role.js", "--network", "localhost"]
+                # Hardhat path setup (resolved dynamically relative to this file)
+                blockchain_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'Blockchain'))
+                cmd = ["npx", "hardhat", "run", "scripts/grant-role.js", "--network", os.environ.get('HARDHAT_NETWORK', 'localhost')]
                 
                 print(f"\n[AUTO-GRANT] Launching background thread to grant {role} to {addr}...")
                 # Run the command

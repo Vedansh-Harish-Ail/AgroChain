@@ -13,9 +13,19 @@ class Config:
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'jwt-agrochain-secret-key-5678')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Force absolute path for SQLite
-    DATABASE_PATH = os.path.join(BASE_DIR, 'agrochain.db')
-    SQLALCHEMY_DATABASE_URI = f"sqlite:///{DATABASE_PATH}"
+    # Support Neon/Render PostgreSQL or fallback to local SQLite
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    if DATABASE_URL:
+        # Convert postgres:// to postgresql:// if needed for SQLAlchemy 1.4+
+        if DATABASE_URL.startswith("postgres://"):
+            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    else:
+        DATABASE_PATH = os.path.join(BASE_DIR, 'agrochain.db')
+        SQLALCHEMY_DATABASE_URI = f"sqlite:///{DATABASE_PATH}"
+
+    # Global frontend URL configuration
+    FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
     # SMS Gateway Configurations
     SMS_ENABLED = os.environ.get('SMS_ENABLED', 'False').lower() == 'true'
