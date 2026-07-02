@@ -1,6 +1,6 @@
 # AgroChain (Modernized) — Complete Project Memory
 
-**Last Updated:** *July 1, 2026, 02:30 PM IST (UTC+5:30)*
+**Last Updated:** *July 2, 2026, 09:45 PM IST (UTC+5:30)*
 
 This document is the master documentation of the **AgroChain** (Modernized) project. It contains a detailed breakdown of the project’s purpose, features, security models, data structures, backend routes, contract details, frontend screens, and step-by-step developer checklists.
 ................
@@ -406,6 +406,12 @@ Here is a comprehensive index of all key files in the AgroChain workspace:
 
 ## 9. Chronological Change Log
 
+* **July 2, 2026** (Production Deployment, Neon Postgres Migration, and Sequence Resync):
+  * **Neon PostgreSQL Migration:** Converted local SQLite database to live Neon PostgreSQL instance. Wrote and ran a bulk migration script (`migrate_to_neon.py`) with type-compatibility safety (SQLite integer-booleans to strict Postgres booleans).
+  * **Sequence Resynchronization:** Resolved `UniqueViolation` constraint errors on inserts (e.g. into `audit_logs`) by resetting sequence generators for all Postgres tables (`reset_sequences.py`) to align with existing maximum ID values.
+  * **Render Containerization:** Deployed Flask + React full-stack app on Render using a unified multi-stage Docker configuration (exposing port `5000` with the `/health` endpoint).
+  * **Diagnostics Verification:** Added and successfully verified `/api/auth/debug-db` and `/api/auth/debug-login` live endpoints, then removed them to lock down production security.
+
 * **June 30, 2026** (Dashboard Analytics, Skeletons & Contrast Optimizations):
   * **Role-Specific Dashboard Stats**: Integrated dynamic widgets in [Dashboard.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/Dashboard.jsx) fetching and rendering live stats: committed capital (Rs) for Investors, certificates issued (count) for Quality Lab Testers, and verified crops (count) for Inspectors.
   * **Vite & Landing Optimizations**: Set Landing Page window scroll listeners to passive (`{ passive: true }`) for improved responsiveness. Applied clip-path layout constraints to the hero backdrop overlay to prevent background rendering glitches.
@@ -513,3 +519,24 @@ For future scale-up and enhancement of the platform's user experience (particula
 
 ### C. Automatic Fiat Off-Ramp
 *   **Stripe / Transak Integrations**: Provide a one-click `"Withdraw to Bank"` button that automatically initiates a fiat off-ramp (converting received ETH to local currency, e.g., INR) and transfers it directly to their bank account.
+
+---
+
+## 11. Production Hosting & Database Migration (Render + Neon)
+
+The application has been successfully packaged, migrated, and hosted live in a production-grade cloud environment.
+
+### A. Production Infrastructure
+*   **Live Web Application URL**: [https://agrochain-i6zh.onrender.com](https://agrochain-i6zh.onrender.com)
+*   **Hosting Platform**: **Render.com** (using a unified, multi-stage Docker container build)
+*   **Database Platform**: **Neon Serverless PostgreSQL** (US East, AWS-backed cloud instance)
+
+### B. Database Migration & Integrity
+*   **Migration Tool**: Executed a custom Python migration script (`migrate_to_neon.py`) to transfer all existing profiles, history, and audit trails from `Backend/agrochain.db` (SQLite) directly to the Neon PostgreSQL instance.
+*   **Type Compatibility**: Handled type-casting to translate SQLite's integer boolean values (`0`/`1`) into strict PostgreSQL boolean types (`False`/`True`) for fields like `onboarding_complete` and `is_approved`.
+*   **Sequence Resynchronization**: Executed `reset_sequences.py` on the live database to synchronize all primary key sequence generators (`users_id_seq`, `audit_logs_id_seq`, etc.) to match the maximum IDs inserted during bulk migration. This resolved potential key conflicts (`UniqueViolation` errors) for future database additions.
+
+### C. Environment Configs (Render dashboard settings)
+*   `DATABASE_URL`: Connection string targeting the live Neon PostgreSQL instance.
+*   `FRONTEND_URL`: Dynamic live routing URL set to `https://agrochain-i6zh.onrender.com`.
+*   `SECRET_KEY` & `JWT_SECRET_KEY`: High-entropy encryption keys securing user JWT tokens in production.

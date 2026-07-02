@@ -1,6 +1,7 @@
 @echo off
 REM -------------------------------------------------
 REM AgroChain – presentation start script (Windows)
+REM Local testing environment. Live app: https://agrochain-i6zh.onrender.com
 REM -------------------------------------------------
 
 REM ==== 1️⃣ Cleanup ------------------------------------------------------

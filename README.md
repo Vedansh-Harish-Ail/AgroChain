@@ -167,6 +167,21 @@ start-presentation.bat
 
 ---
 
+## 🌐 Production Cloud Hosting (Render + Neon)
+
+The application has been successfully containerized and deployed live in a production cloud environment.
+
+*   **Live Web Application URL**: [https://agrochain-i6zh.onrender.com](https://agrochain-i6zh.onrender.com)
+*   **Backend + Frontend Host**: **Render.com** (Multi-stage Docker runtime with Gunicorn)
+*   **Database Platform**: **Neon Serverless PostgreSQL** (US East AWS Cloud Instance)
+
+### Database Migration Details
+The database has been fully migrated from the local SQLite `agrochain.db` to Neon Postgres using:
+1.  `migrate_to_neon.py` for schema generation and bulk data transfer (translating SQLite integer booleans to strict PostgreSQL booleans).
+2.  `reset_sequences.py` to synchronize primary key auto-increment sequences (`_id_seq`), preventing duplicate key insert collisions.
+
+---
+
 ## 💅 Styling & Aesthetic Guidelines
 
 To maintain the system's high-fidelity design language:

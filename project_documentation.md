@@ -526,6 +526,14 @@ Testing followed an incremental approach:
 ### 7.2 Ledger Assertions and Explorer Queries
 All supply chain events are recorded on the blockchain. When an event (approval, certification, rating) occurs, its transaction hash and block number are logged in the database, enabling consumers to inspect transaction proofs directly on the block explorer.
 
+### 7.3 Production Cloud Deployment & Live Operations
+To transition the AgroChain project from a local prototype to a production-grade infrastructure, a unified containerized deployment was executed on the **Render** platform, backed by a **Neon Serverless PostgreSQL** database.
+  
+*   **Multi-Stage Dockerization**: A unified `Dockerfile` was authored in the root workspace. Stage 1 compiles the Vite production React assets, while Stage 2 builds the Python Flask server environment, installs Node/Hardhat dependencies for local transaction simulation, copy-pastes the static frontend compilation, and runs Gunicorn on port `5000`.
+*   **SQLite to Neon PostgreSQL Migration**: A custom data-migration pipeline (`migrate_to_neon.py`) was run to read all existing user profiles, audit logs, and transaction structures from the local SQLite database (`agrochain.db`) and write them directly into the live Neon PostgreSQL cloud database. The script handled type conversions translating SQLite integer representations (`0`/`1`) to strict PostgreSQL boolean values (`False`/`True`).
+*   **Auto-Increment Sequence Resynchronization**: Handled primary key sequence pointer alignment by executing `reset_sequences.py` on the live database. This synchronized the serial counters (`users_id_seq`, `audit_logs_id_seq`, etc.) with the maximum IDs from the migrated data, resolving key collisions (`UniqueViolation` exceptions) and restoring operational database write capability in production.
+*   **Live Web Instance URL**: The platform is live and fully accessible at `https://agrochain-i6zh.onrender.com`.
+
 ---
 
 ## CHAPTER 8: CONCLUSION & FUTURE SCOPE

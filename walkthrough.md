@@ -35,7 +35,7 @@ graph TB
 
     subgraph Backend["Backend (Flask :5000)"]
         API["/api/* REST Endpoints"]
-        DB[(SQLite - agrochain.db)]
+        DB[(DB: SQLite / Neon PostgreSQL)]
     end
 
     subgraph Blockchain["Blockchain (Hardhat :8545)"]
@@ -266,4 +266,28 @@ The complete stakeholder verification workflow functions as follows:
 | Visual Skeleton screens (Table, Marketplace, Crop history, Dashboard Skeletons) | ✅ |
 | Role-specific dashboard stats widgets displaying real committed capital, verified crops, and certs issued counts | ✅ |
 | Proposal cancellation endpoint (removes proposal, logs INVESTMENT_CANCELLED event) | ✅ |
+
+---
+
+## 🌐 Production Hosting & Cloud Migration
+
+The application has been successfully migrated from a local developer environment to a cloud-based hosting environment.
+
+### 1. Multi-Stage Dockerization
+*   **Infrastructure**: Packaged using a multi-stage `Dockerfile` in the repository root.
+*   **Compilation**: Builds the production React static assets (Stage 1), installs Node.js and Hardhat inside a Python base image (Stage 2) for local on-chain role simulation, installs Flask requirements, and executes Gunicorn binding to port `5000`.
+
+### 2. Database Migration (SQLite to Neon PostgreSQL)
+*   **Target Database**: **Neon Serverless PostgreSQL** (AWS US-East Cloud Database).
+*   **Data Migration**: Authored and ran `migrate_to_neon.py` to securely read all rows across 9 tables from local SQLite `agrochain.db` and insert them into Neon.
+*   **Boolean Integrity**: Translated SQLite's numeric representation of booleans (`0` / `1`) into PostgreSQL strict `boolean` types (`False` / `True`) during the migration pipeline.
+*   **Primary Key Sequence Resync**: AUTHORIZED and executed a sequence-reset SQL script `reset_sequences.py` to synchronize PostgreSQL primary key sequence objects (`users_id_seq`, `audit_logs_id_seq`, etc.) to match the maximum IDs of the migrated records. This prevents duplicate key conflicts (`UniqueViolation` exceptions) during new database insertions.
+
+### 3. Deploy URL & Environment Configs
+*   **Live App URL**: [https://agrochain-i6zh.onrender.com](https://agrochain-i6zh.onrender.com)
+*   **Configs on Render**:
+    *   `DATABASE_URL`: Live Neon Postgres connection string.
+    *   `FRONTEND_URL`: Dynamic live routing URL set to `https://agrochain-i6zh.onrender.com`.
+    *   `SECRET_KEY` & `JWT_SECRET_KEY`: High-entropy encryption keys protecting sessions and tokens.
+
 

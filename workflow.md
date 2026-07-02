@@ -259,3 +259,13 @@ graph TD
    * Each log card displays the database ID, operator username, transaction timestamps, and clickable block links.
 3. **Ecosystem Analytics**:
    * Analyze crop category distributions, total active stakeholders, value locked, and system flags.
+
+---
+
+## 7. PRODUCTION LIVE OPERATIONS & ENVIRONMENT
+
+In the production cloud environment, the local development settings are updated for public access:
+1. **Live Portal**: All user workflows (registration, login, crop registration, inspector audits, quality testing, and investor proposal negotiations) occur on the live website hosted on Render: **https://agrochain-i6zh.onrender.com**.
+2. **Database Cache**: Instead of a local SQLite database file, the Flask backend API reads and caches metadata records directly from a cloud-hosted **Neon Serverless PostgreSQL** instance. All relational state changes are fully persistent across multiple container instances.
+3. **Smart Contracts**: The Web3 frontend interacts directly with your connected MetaMask wallet to sign on-chain approvals and lot certifications.
+
