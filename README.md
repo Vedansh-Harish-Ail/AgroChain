@@ -8,8 +8,8 @@ This repository represents a complete modernization of the original AgroChain ar
 
 ## 🛠️ Modern Tech Stack
 
-*   **Frontend**: React (Vite), Tailwind CSS (Dark/Light mode support), React Router, Axios, Ethers.js (v6), MetaMask wallet integration, and Lucide icons.
-*   **Backend**: Flask REST API, JWT Authentication, SQLAlchemy ORM (compatible with SQLite/PostgreSQL), and dynamic geographical assignment routers.
+*   **Frontend**: React (Vite), Tailwind CSS (Dark/Light mode support), React Router, Axios, Ethers.js (v6), MetaMask wallet integration, Lucide icons, dynamic camera QR scanner (`html5-qrcode`), and global Loading/Toast Context wrappers.
+*   **Backend**: Flask REST API, JWT Authentication with dual Phone/Email OTP, dynamic local IP resolver socket, SQLAlchemy ORM (compatible with SQLite/PostgreSQL), and geographical assignment routers.
 *   **Blockchain**: Solidity (v0.8.20+), Hardhat local network, and OpenZeppelin Access Control.
 *   **Documentation & Reporting**: `html2pdf.js` integration for standard letterheads and gold-bordered certificates with forced ink-saving print styles.
 
@@ -26,20 +26,24 @@ The platform implements strict Role-Based Access Control (RBAC) across six stake
 2.  **Farmer (`FARMER`)**:
     *   Registers cultivations (crop types, Expected Yields, GPS coordinates, land survey numbers, and evidence photos).
     *   Manages crop lifecycle states (`PENDING` $\rightarrow$ `READY_TO_HARVEST` $\rightarrow$ `HARVEST_COMPLETED` $\rightarrow$ `PRODUCT_AVAILABLE`).
+    *   Verifies signup credentials via dual-factor OTP (SMS + Email OTP).
     *   Reviews investor funding proposals and accepts/declines them.
     *   Accesses the **Document Center** to view and print official certificates.
 3.  **Agricultural Inspector (`INSPECTOR`)**:
-    *   **Admin-Only Account Creation**: Private signup is disabled; accounts are created exclusively by the Administrator with temporary credentials.
+    *   **Admin-Only Account Creation**: Private signup is disabled; accounts are created exclusively by the Administrator.
     *   **Setup Lifecycle (`PENDING_SETUP` $\rightarrow$ `ACTIVE`)**: Forces a password change on first login and requires connecting MetaMask to sign a cryptographic verification message (`personal_sign`), updating the account status to `ACTIVE`. Only `ACTIVE` inspectors receive assignments.
     *   **Kerala Location Routing Hierarchy**: Automatically assigned crop registrations using a prioritized matching model (Priority 1: same Taluk/Sub-District, Priority 2: same District, Priority 3: DISTRICT-level fallback).
     *   **Comprehensive Auditing**: Renders separate panels for photos and official evidence documents. Supports saving detailed notes and selecting the inspection method (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`) directly to the database without requiring a MetaMask connection, or approving on-chain.
+    *   **Dashboard Stats**: Tracks their count of verified crops.
 4.  **Quality Tester / Lab (`TESTER`)**:
     *   **Self-Registration**: Registers via the signup portal, providing details such as lab name, license number, accreditation details, and uploading documents.
     *   **Onboarding Approval**: Account defaults to `PENDING_APPROVAL` status. The Administrator reviews their credentials and approves them to `ACTIVE` status (`is_approved = True`).
     *   **Testing & Certification**: Only `ACTIVE` labs receive crop assignments in their district and PIN code coverage. Conducts scientific testing (moisture, purity, heavy metals, pesticide clearance) and certifies crop batches on-chain (`ProductRegistry.sol`) using MetaMask, setting grades (e.g., `Grade A+`) and listing prices in Wei. Displays warning cards if their MetaMask wallet is unlinked.
+    *   **Dashboard Stats**: Tracks their count of issued certificates.
 5.  **Dedicated Investor (`INVESTOR`)**:
     *   Browses verified crop listings in the **Funding Marketplace** and submits formal proposals (INR returns, yield margin agreements).
-    *   Tracks proposals in the **Submitted LOIs Hub** and locks/transfers funding (ETH) using the `MicroFinance.sol` smart contract escrow mechanism.
+    *   Tracks proposals in the **Submitted LOIs Hub** with support for cancelling pending proposals, and locks/transfers funding (ETH) using the `MicroFinance.sol` smart contract escrow mechanism.
+    *   **Dashboard Stats**: Tracks their total committed capital (Rs).
 6.  **Consumer / Public Buyer (`CONSUMER`)**:
     *   Explores the public agricultural directory, traces crop origins (provenance timelines), and submits ratings/reviews on-chain or walletless.
 
@@ -59,10 +63,12 @@ The platform implements strict Role-Based Access Control (RBAC) across six stake
 ### 🔍 4. Supply Chain Explorer & Dynamic QR Routing
 *   **Lookup Portal (`/explorer`)**: A dual-tab search dashboard (Crop Cultivation ID vs. Product Lot Number) displaying verified ledger statistics.
 *   **Dynamic Query Parsing**: Accessing `/explorer?lot=XXXX` or `/explorer?crop=Y` parses and displays the corresponding on-chain tracebacks on mount.
+*   **Integrated Camera QR Scanner**: Renders an interactive browser-based QR camera stream scanner (`html5-qrcode`) to scan physical packaging directly on-screen.
 *   **Physical QR Code Integration**: Scanning the QR code printed on physical crop bags redirects users directly to their lot trace pages in the browser.
 
-### 🔔 5. Real-Time Dashboard Badges
-Dashboards implement local cache validation (`localStorage`) to display live, unread notification counts on cards (e.g., pending crop updates, new incoming funding proposals, and inspection tasks).
+### 🔔 5. Real-Time Dashboard Badges & Loading overlays
+*   Dashboards implement local cache validation (`localStorage`) to display live, unread notification counts on cards (e.g., pending crop updates, new incoming funding proposals, and inspection tasks).
+*   Visual components implement structural loading skeletons (`Skeletons.jsx`) and global backdrop-blur overlay indicators during asynchronous blockchain operations.
 
 ---
 
@@ -72,8 +78,7 @@ Dashboards implement local cache validation (`localStorage`) to display live, un
 AgroChain-Morden/
 ├── Blockchain/        # Solidity contracts, Hardhat config, deploy scripts
 ├── Backend/           # Flask REST API, SQLAlchemy schemas, blueprints, DB seeds
-├── Frontend/          # React components, Tailwind styling, contract ABIs
-└── screenshots/       # Visual architecture and workflow diagrams
+└── Frontend/          # React components, Tailwind styling, contract ABIs
 ```
 
 ---

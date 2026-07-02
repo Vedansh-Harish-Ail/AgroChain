@@ -81,8 +81,10 @@ The system features:
 1.  **Kerala Geographical Verifier Allocation**: Crop listings are automatically routed to active local inspectors based on a Kerala administrative hierarchy (Priority 1: same Taluk, Priority 2: same District, Priority 3: DISTRICT-level fallback), removing the need for raw GPS distance calculations.
 2.  **MetaMask Ownership & Status Workflow**: Inspectors must progress from PENDING_SETUP to ACTIVE status by setting up passwords and linking wallets verified cryptographically on the backend using message signature verification.
 3.  **Double-Verification Gate & Lab Onboarding**: Private Quality Labs self-register with details (license, accreditation, certificates) and are reviewed/activated by the Admin via a detailed dashboard modal before receiving assignments. Smart contracts ensure a crop lot cannot receive a quality certificate unless it has been verified on-chain by a designated inspector.
-4.  **Micro-Finance Proposal System**: Implements a Letter of Intent (LOI) system where investors submit funding proposals, unlocking direct communication lines upon farmer acceptance.
-5.  **Integrated Document Center**: Farmer dashboards feature printable, clean-styled compliance certificates and batch QR codes linked to an on-chain registry explorer.
+4.  **Micro-Finance Proposal System**: Implements a Letter of Intent (LOI) system where investors submit funding proposals, unlocking direct communication lines upon farmer acceptance. Includes a proposal cancellation workflow.
+5.  **Integrated Document Center & Explorer Scanner**: Farmer dashboards feature printable compliance certificates and batch QR codes. The Blockchain Explorer integrates an HTML5 camera-based QR scanner modal and dynamic server IP detection for real-time mobile lookup tests.
+6.  **Dual-Factor OTP Registration**: Authenticates user signups using both Phone (SMS Gateway basic auth) and Email (SMTP client) verification codes.
+7.  **Skeletons & Global Loading Panel**: Enhances visual performance using tailored layout skeletons (table, marketplace, dashboard skeletons) and a global translucent backdrop blur loading panel.
 
 The result is a transparent, peer-to-peer supply chain ecosystem that restores consumer trust and supports agricultural financing.
 
@@ -616,14 +618,18 @@ def roles_allowed(*roles):
 ### Appendix B: REST API Specifications
 
 #### 1. User Authentication
-*   **Send OTP** (`POST /api/auth/send-otp`)
+*   **Send SMS OTP** (`POST /api/auth/send-otp`)
     *   *Request*: `{ "phone_number": "9895154388" }` *(also accepts `09895154388`, `919895154388`, `+919895154388`)*
     *   *Success Response*: `{ "message": "OTP sent successfully via SMS.", "phone_number": "9895154388" }`
     *   *Dev Fallback Response (gateway offline)*: `{ "message": "OTP generated. SMS delivery failed — check terminal for OTP (dev mode).", "warning": "Cannot reach SMS Gateway..." }`
     *   *Rate-limit Response*: HTTP `429` — `{ "message": "Please wait 60 seconds before requesting a new OTP." }`
+*   **Send Email OTP** (`POST /api/auth/send-email-otp`)
+    *   *Request*: `{ "email": "rajesh@gmail.com" }`
+    *   *Success Response*: `{ "message": "Verification code sent to your email.", "email": "rajesh@gmail.com" }`
+    *   *Dev Fallback Response*: Prints generated OTP code to terminal console in case of SMTP server exceptions.
 *   **Register User** (`POST /api/auth/register`) (FARMER, TESTER, CONSUMER, INVESTOR)
-    *   *Farmer Request*: `{ "name": "Rajesh Patel", "email": "rajesh@gmail.com", "phone_number": "+10000000001", "role": "FARMER", "password": "password123", "otp_code": "123456", "district": "Thrissur", "pin_code": "680001" }`
-    *   *Quality Lab Request*: `{ "name": "Dr. Anita Sharma", "email": "lab@test.com", "phone_number": "+919999999999", "role": "TESTER", "password": "password123", "otp_code": "123456", "district": "Thrissur", "pin_code": "680001", "lab_name": "Thrissur Soil and Crop Quality Testing Lab", "authorized_person": "Dr. Anita Sharma", "lab_license_number": "LIC-THR-2026-99A", "accreditation_number": "NABL-9876", "gov_reg_number": "GOV-REG-44321", "lab_certificates": ["/uploads/cert1.pdf"], "supporting_documents": ["/uploads/doc1.pdf"] }`
+    *   *Farmer Request*: `{ "name": "Rajesh Patel", "email": "rajesh@gmail.com", "phone_number": "9895154388", "role": "FARMER", "password": "password123", "email_otp": "123456", "sms_otp": "654321", "otp_method": "email", "district": "Thrissur", "pin_code": "680001" }`
+    *   *Quality Lab Request*: `{ "name": "Dr. Anita Sharma", "email": "lab@test.com", "phone_number": "+919999999999", "role": "TESTER", "password": "password123", "email_otp": "123456", "sms_otp": "654321", "otp_method": "sms", "district": "Thrissur", "pin_code": "680001", "lab_name": "Thrissur Soil and Crop Quality Testing Lab", "authorized_person": "Dr. Anita Sharma", "lab_license_number": "LIC-THR-2026-99A", "accreditation_number": "NABL-9876", "gov_reg_number": "GOV-REG-44321", "lab_certificates": ["/uploads/cert1.pdf"], "supporting_documents": ["/uploads/doc1.pdf"] }`
     *   *Response*: `{ "message": "User registered successfully!" }`
 *   **Change Password** (`POST /api/auth/change-password`)
     *   *Request*: `{ "current_password": "Temp@1234", "new_password": "NewSecurePassword123" }`
@@ -657,16 +663,24 @@ def roles_allowed(*roles):
 *   **Propose Investment** (`POST /api/finance/invest`)
     *   *Request*: `{ "farmer_id": 1, "lot_number": 1001, "amount": 50000, "profit_percentage": 12, "terms": "Repayment within 30 days of sales" }`
     *   *Response*: `{ "message": "Proposal submitted successfully!" }`
+*   **Cancel Investment Proposal** (`POST /api/finance/cancel/<id>`)
+    *   *Request*: `{}` (Empty body)
+    *   *Response*: `{ "message": "Proposal cancelled successfully!" }`
+
+#### 6. Supply Chain Explorer
+*   **Get Server IP** (`GET /api/explorer/server-ip`)
+    *   *Request*: `{}` (Empty body)
+    *   *Response*: `{ "ip": "192.168.1.15" }`
 
 ---
 
 ### Appendix C: Operational User Guide
 
 #### User Manual for Farmers
-1.  **Register Profile**: Create your account on `/register` (public signup available for Farmers, Testers, Consumers, and Investors), and verify your phone number via OTP.
+1.  **Register Profile**: Create your account on `/register` (public signup available for Farmers, Testers, Consumers, and Investors). You can request and enter either an SMS OTP or an Email OTP based on your preference.
 2.  **Register Crops**: Navigate to the **"Register Crop"** tab. Fill out the cultivation details, expected yield, Kerala geographical information (District, Taluk/Sub-District, Village), and land survey number. Upload crop photos under **Evidence Photos** and official land deeds/documents under **Evidence Documents**.
 3.  **Audit & Verification**: Wait for the assigned regional Inspector to verify your crop. Once approved, you can print your **Approval Letter** from the **Crop History** page.
-4.  **Update Timeline**: Once you harvest the crop, set the status to `READY_TO_HARVEST` or `HARVEST_COMPLETED` to queue the crop for the Quality Lab.
+4.  **Update Timeline**: Once you harvest the crop, set the status to `READY_TO_HARVEST` or `HARVEST_COMPLETED` to queue the crop for the Quality Lab. The page displays layout loading skeletons while updating.
 5.  **Print Certificate**: Once the Quality Lab certifies the crop, click **"Print Certificate & QR"** to print packaging labels.
 6.  **Accept Loans**: Go to your dashboard to review investor proposals. Accept a proposal to receive direct escrow funding.
 
@@ -685,7 +699,7 @@ def roles_allowed(*roles):
 5.  **Certify**: Click **"Approve & Certify Crop"** (requires MetaMask connected) to automatically calculate the quality grade and register the batch lot on-chain. Note that the parent crop must have been approved by an Agricultural Inspector on-chain first.
 
 #### User Manual for Consumers
-1.  **Scan/Search**: Scan a packaging QR code or enter the lot number on the Explorer page (`/explorer`).
+1.  **Scan/Search**: Tap the QR icon on the explorer lookup bar (`/explorer`) to launch the camera-based scanner modal. Alternatively, scan a packaging QR code or type the lot number manually.
 2.  **Verify**: Review the provenance timeline to check inspector coordinates, verification dates, and laboratory test grades.
 3.  **Review**: Log in to submit ratings and comments to help build community trust.
 

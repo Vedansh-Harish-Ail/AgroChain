@@ -1,6 +1,6 @@
 # AgroChain (Modernized) — Complete Project Memory
 
-**Last Updated:** *June 24, 2026, 01:19 PM IST (UTC+5:30)*
+**Last Updated:** *July 1, 2026, 02:30 PM IST (UTC+5:30)*
 
 This document is the master documentation of the **AgroChain** (Modernized) project. It contains a detailed breakdown of the project’s purpose, features, security models, data structures, backend routes, contract details, frontend screens, and step-by-step developer checklists.
 
@@ -192,8 +192,9 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 ### B. Core REST API Endpoints
 
 #### Auth Blueprint (`/api/auth`)
-* `POST /send-otp` $\rightarrow$ Generates 6-digit random code, saves to DB with 5-min expiry, enforces 60-second OTP cooldown (HTTP 429 on spam), dispatches via the `_send_sms_gate()` helper, or falls back to a dev terminal log.
-* `POST /register` $\rightarrow$ Validates registration inputs (public registration restricted to FARMER, TESTER, CONSUMER, INVESTOR roles), verifies OTP, hashes password, creates user.
+* `POST /send-otp` $\rightarrow$ Generates 6-digit random phone OTP, saves to DB with 5-min expiry, enforces 60-second cooldown (HTTP 429 on spam), dispatches via the basic-auth `_send_sms_gate()` Android API helper, or falls back to a dev terminal log.
+* `POST /send-email-otp` $\rightarrow$ Generates 6-digit random email verification code, saves to DB with 5-min expiry, dispatches HTML verification email via async SMTP client, or prints to terminal in dev mode.
+* `POST /register` $\rightarrow$ Validates registration inputs (restricted to FARMER, TESTER, CONSUMER, INVESTOR), verifies either Email OTP or SMS OTP according to chosen `otp_method` ('email' or 'sms') passed in payload, hashes password, creates user profile.
 * `POST /login` $\rightarrow$ Authenticates user credentials, logs login event, generates a JWT token containing `id` and `role` claims.
 * `GET /profile` $\rightarrow$ Decodes JWT token and returns user details.
 * `POST /change-password` $\rightarrow$ Allows authenticated users to change their password (clears `must_change_password` flag).
@@ -228,6 +229,7 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 * `GET /my-investments` $\rightarrow$ Lists all investments submitted by the investor. (Uses correct RBAC decorators to avoid context errors).
 * `GET /received-proposals` $\rightarrow$ Farmer retrieves proposals submitted for their crops.
 * `POST /update-status/<id>` $\rightarrow$ Farmer accepts proposal, setting status to `ACCEPTED` and automatically updating crop timeline to `FUNDING_COMPLETED`.
+* `POST /cancel/<id>` $\rightarrow$ Cancels a pending investment/LOI proposal, removing it from the database and logging a `INVESTMENT_CANCELLED` audit log. Restricted to the authoring investor or administrator.
 
 #### Rating Blueprint (`/api/rating`)
 * `POST /add` $\rightarrow$ Logs consumer review comment and reliability scores.
@@ -237,6 +239,7 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 * `POST /log-tx` $\rightarrow$ Indexes a new transaction on the off-chain explorer registry.
 * `GET /transactions` $\rightarrow$ Lists recently mined actions.
 * `GET /tx/<hash>` $\rightarrow$ Returns solidity events parameters and values.
+* `GET /server-ip` $\rightarrow$ Dynamically determines the local IP address of the Flask server machine to build mobile-friendly QR routing paths.
 
 ---
 
@@ -245,20 +248,17 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 Managed via React Router inside `Frontend/src/App.jsx`.
 
 ### Navigation Pages
-1. **Landing Page (`/`)** *(Updated: June 22, 2026)*: Main presentation dashboard with active system counters and metrics. Features a responsive gradient backdrop overlay behind the hero text to guarantee contrast readability against the leaf background image. Roles are showcased in a premium, interactive bento grid of static informational cards styled with spotlight glows, micro-pattern dot layers, and hover transition arrows (no redirection).
-2. **Login/Signup (`/login`, `/register`)** *(Updated: June 11, 2026, 01:00 AM)*: Signup role selection has `INSPECTOR` role removed (only Admin can create inspectors). Support username and password authentication (MetaMask optional for login).
-3. **Control Dashboard (`/dashboard`)** *(Updated: June 11, 2026, 01:10 AM)*: Role-specific consoles with notification badges.
+1. **Landing Page (`/`)** *(Updated: June 30, 2026)*: Main presentation dashboard with active system counters and metrics. Features a responsive gradient backdrop overlay behind the hero text to guarantee contrast readability against the leaf background image. Optimized scrolling with passive event listeners and fixed background positioning. Roles are showcased in a premium bento grid of informational cards styled with spotlight glows, micro-pattern dot layers, and hover transition arrows.
+2. **Login/Signup (`/login`, `/register`)** *(Updated: June 24, 2026)*: Signup role selection has `INSPECTOR` role removed. Enforces dual OTP verification (SMS OTP + Email OTP) with toggleable input panels and dev fallback outputs.
+3. **Control Dashboard (`/dashboard`)** *(Updated: June 30, 2026)*: Role-specific consoles with notification badges, proposal counters, and custom live stats widgets (displays Committed Capital for Investors, Certificates Issued for Testers, and Verified Crops for Inspectors).
    - **For Inspectors**: Blocks page with a fullscreen **First Login Change Password Modal** if `must_change_password` is enabled. Shows a **MetaMask Wallet Connection Card** requiring inspectors to connect their wallet and sign a verification message to activate their account (transitioning status from `PENDING_SETUP` to `ACTIVE`).
    - **For Admins**: Features a **Create Inspector Account** card in the Operations Console grid, launching a beautiful pop-up modal to onboard field verifiers directly.
-4. **My Crops Directory (`/farmer/crops` - `CropHistory.jsx`)** *(Updated: June 8, 2026, 06:35 PM)*: The primary farmer document hub. Allows updating timelines and displays action modals:
-   - **View Approval Letter**: Printable modal showing verifier sign-offs and coordinates.
-   - **Print Certificate & QR**: Renders batch quality certificates containing a dynamic QR Code image linking to the explorer.
-   - *Note: Both documents support direct PDF downloads using `html2pdf.js` with a forced light-mode configuration for clean, ink-saving printing.*
-5. **Investor LOI Tracking (`/investor/lois` - `SubmittedLOIs.jsx`)** *(Updated: June 8, 2026, 06:35 PM)*: Dedicated portal for investors to track all their submitted proposals. Features status-based filter tabs (Accepted, Pending, Rejected), displays unlocked farmer contact info, and allows generating formal PDF Letter of Intent agreements.
-6. **Funding Page (`/finance`)** *(Updated: June 8, 2026, 06:35 PM)*: Active product lot grid where investors click cards, view target funding amounts, submit terms, connect wallets, and trigger ETH transfers. Restricted to the `INVESTOR` role for submitting LOIs. Features dynamic `"LOI Sent (Status)"` status badges on cards and transitions the button option to `"Resend LOI / Propose New Terms"` to allow resending updated proposals.
-7. **Consumer Tracking (`/consumer/track`)** *(Updated: June 8, 2026, 06:35 PM)*: Public directory listing all farmers and crops. Tapping cards loads provenance milestones, GPS map coordinates, and allows consumers to log reviews.
-8. **Redesigned Explorer Portal (`/explorer` - `BlockchainExplorer.jsx`)** *(Updated: June 8, 2026, 06:35 PM)*: Toggled lookup panel (Crop ID / Lot number) which also decodes URL parameter scans (`?lot=1001` or `?crop=1`).
-9. **Quality Testing (`/tester/approve` - `QualityTesting.jsx`)** *(Updated: June 11, 2026, 01:00 AM)*: Pending verification queue for Inspectors and Testers. Inspector panel renders District, Taluk, Village, and separate links for Evidence Documents. Features Inspection Method dropdown, Remarks input, and a **Save Notes (No MetaMask)** action button.
+4. **My Crops Directory (`/farmer/crops` - `CropHistory.jsx`)** *(Updated: June 30, 2026)*: The primary farmer document hub. Allows updating timelines, displays visual loading skeletons, and exposes action modals for printing or downloading PDF letters and certificates with dynamic QR codes.
+5. **Investor LOI Tracking (`/investor/lois` - `SubmittedLOIs.jsx`)** *(Updated: June 30, 2026)*: Dedicated portal for investors to track submitted proposals. Supports proposal cancellation (deletes proposal, logs `INVESTMENT_CANCELLED` audit trail) and provides PDF Letter of Intent generation.
+6. **Funding Page (`/finance`)** *(Updated: June 30, 2026)*: Active product lot grid where investors submit LOI proposals, track funding, and lock/transfer ETH escrow tokens. Uses visual marketplace skeletons during data retrieval.
+7. **Consumer Tracking (`/consumer/track`)** *(Updated: June 27, 2026)*: Public directory listing all farmers and crops. Tapping cards loads provenance milestones, GPS map coordinates, and allows consumers to log reviews.
+8. **Redesigned Explorer Portal (`/explorer` - `BlockchainExplorer.jsx`)** *(Updated: June 27, 2026)*: Toggled lookup panel (Crop ID / Lot number) featuring an integrated HTML5-based camera QR Code scanner (`QrScannerModal.jsx`) and dynamic local server IP resolution.
+9. **Quality Testing (`/tester/approve` - `QualityTesting.jsx`)** *(Updated: June 30, 2026)*: Pending verification queue for Inspectors and Testers. Inspector panel renders District, Taluk, Village, and separate links for Evidence Documents. Features Inspection Method dropdown, Remarks input, a **Save Notes (No MetaMask)** action button, and custom table skeletons.
 10. **Admin Console (`/admin` - `AdminDashboard.jsx`)** *(Updated: June 11, 2026, 01:00 AM)*: Central system analytics and audit logs. Oversees registered users list, approves user authorities, and displays system-level analytical charts.
 11. **Create Inspector Modal Trigger** *(Updated: June 11, 2026, 01:10 AM)*: Integrated directly into the **Operations Console** on the main [Dashboard.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/Dashboard.jsx) page, allowing administrators to onboard field inspectors, set jurisdictions, and generate credentials.
 
@@ -374,6 +374,8 @@ Here is a comprehensive index of all key files in the AgroChain workspace:
 * **Context Stores (`Frontend/src/context/`)**:
   * [Frontend/src/context/AuthContext.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/context/AuthContext.jsx): Handles JWT user log-in sessions, verification triggers, and logs credentials to memory.
   * [Frontend/src/context/WalletContext.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/context/WalletContext.jsx): Stores active MetaMask addresses and provides Ethers.js v6 smart contract instances.
+  * [Frontend/src/context/LoadingContext.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/context/LoadingContext.jsx): Coordinates a global loading state with a premium translucent blur backdrop overlay and Sprout animation.
+  * [Frontend/src/context/ToastContext.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/context/ToastContext.jsx): Manages application notifications and custom toast message feeds.
 * **Console Pages (`Frontend/src/pages/`)**:
   * [Frontend/src/pages/LandingPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/LandingPage.jsx): Initial presentation page featuring active system counters.
   * [Frontend/src/pages/LoginPage.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/LoginPage.jsx): Sign-in UI supporting password and OTP login forms.
@@ -403,6 +405,19 @@ Here is a comprehensive index of all key files in the AgroChain workspace:
 ---
 
 ## 9. Chronological Change Log
+
+* **June 30, 2026** (Dashboard Analytics, Skeletons & Contrast Optimizations):
+  * **Role-Specific Dashboard Stats**: Integrated dynamic widgets in [Dashboard.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/pages/Dashboard.jsx) fetching and rendering live stats: committed capital (Rs) for Investors, certificates issued (count) for Quality Lab Testers, and verified crops (count) for Inspectors.
+  * **Vite & Landing Optimizations**: Set Landing Page window scroll listeners to passive (`{ passive: true }`) for improved responsiveness. Applied clip-path layout constraints to the hero backdrop overlay to prevent background rendering glitches.
+  * **Obsolete Media Exclusions**: Deleted duplicate video asset `AgroChain How It works.mp4` from the repository root (now consolidated in Frontend public directory) and cleared outdated `.PNG`/`.jpg` images from the `screenshots/` directory.
+  * **Pulsed Skeleton Screens**: Replaced the basic inline CSS loading animations with advanced skeleton frameworks (`FundingMarketplaceSkeleton`, `TableSkeleton`, `CropHistorySkeleton`, `DashboardSkeleton`, etc.) in `Skeletons.jsx`.
+
+* **June 27, 2026** (Global Loading Overlay, Camera QR Scanner & LOI Cancellation):
+  * **Embedded Camera QR Scanner**: Built [QrScannerModal.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/components/QrScannerModal.jsx) utilizing `html5-qrcode` to scan product lot QR labels via laptop/mobile camera streams, auto-populating lookups.
+  * **Global Loading Context**: Developed [LoadingContext.jsx](file:///c:/MY%20PROJECTS/AgroChain-Morden/Frontend/src/context/LoadingContext.jsx) providing a central, premium fullscreen backdrop blur overlay with spinning emerald loaders during authentication transitions and transaction mining.
+  * **Proposal Cancellation Route**: Added `POST /api/finance/cancel/<int:investment_id>` in [finance.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/finance.py) to enable investors/admins to discard pending LOIs, logging a `INVESTMENT_CANCELLED` audit log.
+  * **Dynamic IP Resolver API**: Implemented a dynamic socket endpoint `GET /api/explorer/server-ip` in [explorer.py](file:///c:/MY%20PROJECTS/AgroChain-Morden/Backend/routes/explorer.py) to resolve the backend's local network IP to auto-generate scannable QR codes for mobile network testing.
+  * **Toast Notification Context**: Added a global `ToastContext.jsx` that handles toast messages and notification rendering.
 
 * **June 24, 2026** (SMS Gateway Diagnosis & Hardened OTP Dispatch):
   * **Root Cause Diagnosis**: Identified that the SMS gateway (`SMS Gate` Android app at `192.168.1.28:8080`) was failing silently due to two critical bugs: wrong JSON field names (`textMessage.text` instead of `message`) and a broken phone format (`{9895154388}` instead of E.164 `+919895154388`).

@@ -18,17 +18,19 @@ The legacy AgroChain project (Truffle + Web3.js + vanilla HTML) has been complet
 graph TB
     subgraph Frontend["Frontend (React/Vite :3000)"]
         LP[Landing Page]
-        Auth[Login / Register]
-        Dash[Dashboard]
+        Auth[Login / Register - SMS/Email OTP]
+        Dash[Dashboard - Live Stats Widgets]
         FR[Farmer Registration]
-        CH[My Crops / Crop History]
-        QT[Inspector Pending Approvals]
+        CH[My Crops / Crop History - Skeletons]
+        QT[Inspector Pending Approvals - Table Skeletons]
         PR[Tester Product Certification]
-        FP[Investor Funding Portal]
+        FP[Investor Funding Portal - Marketplace Skeletons]
         SL[Submitted LOIs Console]
         CT[Consumer Traceability]
-        BE[Blockchain Explorer]
+        BE["Blockchain Explorer & Camera QR Scanner"]
         AD[Admin Dashboard]
+        LC["Global LoadingContext Overlay"]
+        TC["ToastContext Notification Feed"]
     end
 
     subgraph Backend["Backend (Flask :5000)"]
@@ -71,10 +73,16 @@ graph TB
    - Stores rich inspection metadata: `inspection_date`, `inspection_notes`, and `inspection_method` (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, or `HYBRID`).
 7. **Walletless Web2 Ratings for Consumers**
    - Consumers and farmers remain completely walletless. Consumers can rate farmers via SQLite (`DB_ONLY`) or on-chain using MetaMask if they choose.
-8. **Investor Letters of Intent (LOI) Portal**
-   - Investors can propose funding and returns share on certified product lots, unlocking contact info upon farmer approval.
+8. **Investor Letters of Intent (LOI) Portal & Cancellations**
+   - Investors can propose funding and returns share on certified product lots, unlocking contact info upon farmer approval. They can cancel pending proposals via the dashboard, removing the record and logging an audit event.
 9. **Printable Document Center**
    - Direct downloads for **Crop Verification Letters** and **Quality Certificates** as PDFs using `html2pdf.js` with forced light-mode formatting.
+10. **Integrated Camera QR Scanning**
+    - The Blockchain Explorer features an interactive, browser-based QR scanner using `html5-qrcode`. A dynamic socket-based local IP resolver detects the host's LAN IP to build valid QR routing targets.
+11. **Visual Loading Skeletons & Global overlays**
+    - Premium structural skeletons (`Skeletons.jsx`) prevent layouts from jumping during asynchronous operations. A global loading context blocks user interaction with a frosted overlay during critical actions.
+12. **Dual-Factor OTP Validation**
+    - Signup accounts require phone verification (SMS gateway client with Indian normalization/spam cooldown) and email verification (async SMTP server).
 
 ---
 
@@ -252,4 +260,10 @@ The complete stakeholder verification workflow functions as follows:
 | All Indian phone number formats normalised to 10-digit (handles `9895...`, `09895...`, `919895...`, `+919895...`) | ✅ |
 | OTP resend blocked within 60 seconds (HTTP 429 rate-limit enforced) | ✅ |
 | SMS gateway network errors surface descriptive messages (URLError vs HTTPError vs generic Exception) | ✅ |
+| Dual-Factor OTP verification (Phone + Email verification codes required for signup) | ✅ |
+| Global LoadingContext Translucent Overlay and Toast Notification Framework | ✅ |
+| Interactive browser camera-based QR Code Scanner modal on Blockchain Explorer | ✅ |
+| Visual Skeleton screens (Table, Marketplace, Crop history, Dashboard Skeletons) | ✅ |
+| Role-specific dashboard stats widgets displaying real committed capital, verified crops, and certs issued counts | ✅ |
+| Proposal cancellation endpoint (removes proposal, logs INVESTMENT_CANCELLED event) | ✅ |
 

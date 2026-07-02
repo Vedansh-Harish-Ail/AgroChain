@@ -41,8 +41,8 @@ graph TD
 ### Phase 1: Onboarding & Account setup
 1. **Registration & Web2 Security**:
    * Navigate to `/register` and fill in the profile form: Name, Email, Phone Number, Government ID (Aadhaar/PAN), Farm Land Title Ownership Proof URL, District, Pin Code, and Password.
-   * Click **"Send OTP"** to trigger an SMS to your number via the SMS Gate gateway (or a terminal dev-fallback if the gateway is offline). The system accepts all Indian phone formats (`9895...`, `09895...`, `+919895...`) and enforces a 60-second cooldown between OTP requests.
-   * Enter the 6-digit code to verify the phone number. Click **"Sign Up"** to create the user database entry with the role `FARMER`.
+   * **Dual-Factor OTP Verification**: The system enforces verification of both a Phone OTP (via SMS Gate gateway, with a 60-second request cooldown and E.164 normalization) and an Email OTP (sent via SMTP client). Users must request and enter these codes during registration. Dev fallback logs OTPs to the backend console terminal if networks are offline.
+   * Click **"Sign Up"** after entering valid codes to create the user database entry with the role `FARMER`.
 2. **Wallet Address Association (No MetaMask/Gas required)**:
    * Log into the Dashboard (`/dashboard`).
    * Click the **"Link Wallet"** button to associate the Farmer's active Ethereum wallet address (`wallet_address` in the database) to their profile.
@@ -183,14 +183,16 @@ graph TD
 1. **Investor Registration & Wallet Setup**:
    * Register with the `INVESTOR` role.
    * Connect MetaMask wallet. Ensure test ETH is available.
+   * The dashboard displays a "Committed Capital" live counter totaling their investment value.
 2. **Browsing Verified Crops**:
    * Navigate to the **"Funding Marketplace"** (`/finance`).
-   * Filter crops that are verified by inspectors (`verification_status == 'VERIFIED'`).
+   * Filter crops that are verified by inspectors (`verification_status == 'VERIFIED'`). Visual marketplace skeletons load details smoothly.
 3. **Submitting a Proposal (LOI)**:
    * Click **"Fund Crop"** on a chosen cultivation project.
    * Enter the proposal details: Funding Amount (INR), return yield shares, and custom terms.
    * Click **"Send Proposal"** (this logs a pending Letter of Intent in the database).
    * Track status updates on `/investor/lois`.
+   * **LOI Cancellation**: Investors can discard pending proposals directly from their LOIs tracking console by clicking the "Cancel" option. This deletes the proposal from the DB and writes a cancellation event to the system audit trail.
 4. **Funding Escrow Execution**:
    * Once the Farmer clicks "Accept" on the proposal, the status updates to `ACCEPTED`.
    * The Investor clicks **"Send Escrow Funds"** on the LOI card.
@@ -216,10 +218,10 @@ graph TD
 1. **Provenance Verification (Public Portal)**:
    * Access the public directory (`/consumer/track`) without logging in.
    * Browse available certified crops.
-2. **Physical Packing QR Scan**:
+2. **Physical Packing QR Scan & Scanner Modal**:
    * Scan the QR code printed on the physical crop packaging with a smartphone.
-   * The QR code directs the browser to the AgroChain Registry Explorer (e.g. `/explorer?lot=1001`).
-   * The page automatically loads and displays the **Batch Quality Certificate** on-chain parameters.
+   * Alternatively, access the Blockchain Explorer page (`/explorer`) and click the camera icon to launch the **Live Camera QR Code Scanner** modal. Scanning a packaging QR code decodes the URL parameters and executes an instant registry lookup.
+   * The QR code redirects/loads the **Batch Quality Certificate** and displays on-chain parameters directly.
 3. **Tracing Chain of Custody**:
    * Review the interactive timeline milestones:
      1. **Cultivation Registered**: Date, Farmer details, and GPS coordinate links.
