@@ -12,6 +12,36 @@ from eth_account.messages import encode_defunct
 
 auth_bp = Blueprint('auth', __name__)
 
+@auth_bp.route('/debug-db', methods=['GET'])
+def debug_db():
+    try:
+        from flask import current_app
+        uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', 'None')
+        masked_uri = uri
+        if '@' in uri:
+            parts = uri.split('@')
+            left = parts[0]
+            right = parts[1]
+            if ':' in left:
+                subparts = left.split(':')
+                # Mask password
+                if len(subparts) > 2:
+                    masked_uri = f"{subparts[0]}:{subparts[1]}:****@{right}"
+                else:
+                    masked_uri = f"{subparts[0]}:****@{right}"
+        
+        user_count = User.query.count()
+        return jsonify({
+            'status': 'success',
+            'database_uri': masked_uri,
+            'user_count': user_count
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
 # ---------------------------------------------------------------------------
 # Helper: Send SMS via SMS Gate Android app
 # Docs: https://sms-gate.app/api/
