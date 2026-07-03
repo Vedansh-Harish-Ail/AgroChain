@@ -540,3 +540,5 @@ The application has been successfully packaged, migrated, and hosted live in a p
 *   `DATABASE_URL`: Connection string targeting the live Neon PostgreSQL instance.
 *   `FRONTEND_URL`: Dynamic live routing URL set to `https://agrochain-i6zh.onrender.com`.
 *   `SECRET_KEY` & `JWT_SECRET_KEY`: High-entropy encryption keys securing user JWT tokens in production.
+*   `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USE_TLS`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`: Configured for SMTP / Gmail email dispatch (e.g., using `smtp.gmail.com` on SSL port `465` with a Gmail App Password) to enable real account registration verification.
+
