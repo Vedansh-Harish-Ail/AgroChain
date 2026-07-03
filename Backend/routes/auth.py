@@ -228,25 +228,13 @@ def send_email_otp():
     )
     
     try:
-        thr = send_email(subject, email, text_body, html_body)
-        if thr is None:
-            # Fallback when SMTP is not configured
-            return jsonify({
-                'message': 'Verification code generated. SMTP is not configured — check terminal or dev box.',
-                'email': email,
-                'dev_otp': otp_code
-            }), 200
+        send_email(subject, email, text_body, html_body)
     except Exception as e:
         print(f"\n--- [EMAIL DEV FALLBACK] ---")
         print(f"To: {email}")
         print(f"OTP Code: {otp_code}")
         print(f"SMTP Error: {str(e)}")
         print(f"--------------------------\n")
-        return jsonify({
-            'message': 'Verification code generated. SMTP delivery failed.',
-            'email': email,
-            'dev_otp': otp_code
-        }), 200
         
     return jsonify({
         'message': 'Verification code sent to your email.',

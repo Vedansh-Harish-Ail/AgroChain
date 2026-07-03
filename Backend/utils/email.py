@@ -1,11 +1,31 @@
 import smtplib
+import socket
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from threading import Thread
 from flask import current_app
 
+# Keep original getaddrinfo reference
+orig_getaddrinfo = socket.getaddrinfo
+
 def send_async_email(app, msg, mail_server, mail_port, username, password, use_tls):
+    # Temporarily patch socket.getaddrinfo to force IPv4 (AF_INET) for the mail server
+    def forced_getaddrinfo(*args, **kwargs):
+        if args and args[0] == mail_server:
+            new_args = list(args)
+            if len(new_args) >= 3:
+                new_args[2] = socket.AF_INET
+            else:
+                while len(new_args) < 3:
+                    new_args.append(0)
+                new_args[2] = socket.AF_INET
+            args = tuple(new_args)
+        return orig_getaddrinfo(*args, **kwargs)
+
     try:
+        # Apply the patch
+        socket.getaddrinfo = forced_getaddrinfo
+        
         if use_tls:
             server = smtplib.SMTP(mail_server, mail_port, timeout=10)
             server.starttls()
@@ -18,6 +38,9 @@ def send_async_email(app, msg, mail_server, mail_port, username, password, use_t
         print("[EMAIL SYSTEM] Email dispatched successfully!")
     except Exception as e:
         print(f"[EMAIL SYSTEM ERROR] Failed to send email: {e}")
+    finally:
+        # Restore original getaddrinfo to avoid affecting other DB/API calls
+        socket.getaddrinfo = orig_getaddrinfo
 
 def get_html_template(title, body_text, cta_text=None, cta_url=None):
     """Returns a beautiful, premium green-themed email template."""
