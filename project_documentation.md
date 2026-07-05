@@ -1,4 +1,4 @@
-# DESIGN AND IMPLEMENTATION OF AGROCHAIN: AN ANCHORED WEB3 TRANSPARENCY REGISTRY AND PEER-TO-PEER MICRO-LOAN ESCROW INFRASTRUCTURE
+# Design and Implementation of AgroChain: An Anchored Web3 Transparency Registry and Peer-to-Peer Micro-Loan Escrow Infrastructure
 
 ---
 
@@ -73,24 +73,25 @@ Lastly, we thank our peers, laboratory assistants, and family members for their 
 
 ## 5. SYSTEM ABSTRACT
 
-Modern consumer ecosystems are characterized by an information asymmetry between producers and consumers. Shoppers purchasing premium organic foods cannot verify their authenticity, exposing the supply chain to labeling fraud. Concurrently, smallholder farmers face systemic financial exclusion, driven by complex commercial lending requirements and reliance on predatory local intermediaries. 
+Today's agricultural supply chain faces a double-sided trust problem. On one end, consumers buying organic or premium food have no real way to verify where it came from or if the labels are genuine, leaving them vulnerable to fraud. On the other end, smallholder farmers are often shut out of formal financial systems due to rigid banking requirements, forcing them to rely on high-interest local money lenders. 
 
-To resolve these twin challenges, this project introduces **AgroChain**, a hybrid Web2/Web3 application that anchors supply chain data onto a public, decentralized ledger while supporting peer-to-peer (P2P) micro-loans. Using public **Ethereum Smart Contracts**, AgroChain records crop lifecycles, soil parameters, inspector audits, and laboratory grade certifications, preventing unauthorized database modifications. A local **Flask API** acts as a metadata cache to reduce blockchain RPC call overhead, while a **React (Vite)** frontend coordinates stakeholder activities.
+We built **AgroChain** to address both issues with a hybrid Web2/Web3 platform. AgroChain secures supply chain logs by anchoring key milestones directly onto a public Ethereum blockchain while offering a direct, peer-to-peer (P2P) micro-loan network for farmers. By using decentralized smart contracts, we record crop lifecycles, soil diagnostics, inspector audits, and lab grades in a way that cannot be tampered with. To make the app fast and practical, a Flask API caches blockchain metadata locally, while a clean React dashboard built with Vite helps farmers, inspectors, lab techs, and investors interact without friction.
 
-The system features:
-1.  **Kerala Geographical Verifier Allocation**: Crop listings are automatically routed to active local inspectors based on a Kerala administrative hierarchy (Priority 1: same Taluk, Priority 2: same District, Priority 3: DISTRICT-level fallback), removing the need for raw GPS distance calculations.
-2.  **MetaMask Ownership & Status Workflow**: Inspectors must progress from PENDING_SETUP to ACTIVE status by setting up passwords and linking wallets verified cryptographically on the backend using message signature verification.
-3.  **Double-Verification Gate & Lab Onboarding**: Private Quality Labs self-register with details (license, accreditation, certificates) and are reviewed/activated by the Admin via a detailed dashboard modal before receiving assignments. Smart contracts ensure a crop lot cannot receive a quality certificate unless it has been verified on-chain by a designated inspector.
-4.  **Micro-Finance Proposal System**: Implements a Letter of Intent (LOI) system where investors submit funding proposals, unlocking direct communication lines upon farmer acceptance. Includes a proposal cancellation workflow.
-5.  **Integrated Document Center & Explorer Scanner**: Farmer dashboards feature printable compliance certificates and batch QR codes. The Blockchain Explorer integrates an HTML5 camera-based QR scanner modal and dynamic server IP detection for real-time mobile lookup tests.
-6.  **Dual-Factor OTP Registration**: Authenticates user signups using both Phone (SMS Gateway basic auth) and Email (SMTP client) verification codes.
-7.  **Skeletons & Global Loading Panel**: Enhances visual performance using tailored layout skeletons (table, marketplace, dashboard skeletons) and a global translucent backdrop blur loading panel.
+Key features include:
+1.  **Automated Regional Routing**: Instead of relying on error-prone GPS distance math, crop listings are routed to nearby inspectors using Kerala's administrative hierarchy (Priority 1: same Taluk, Priority 2: same District, and Priority 3: district-level fallback).
+2.  **Cryptographic Identity Verification**: Inspectors must activate their accounts by setting a password and linking their MetaMask wallet. The backend verifies ownership cryptographically by checking their personal signature.
+3.  **Strict Verification Guardrails**: Private testing labs register with their licenses and certificates, which the admin reviews via an approval modal. To ensure data integrity, our smart contracts block labs from certifying a crop lot unless a verified inspector has approved it first.
+4.  **P2P Micro-Loans**: Investors submit funding proposals (Letters of Intent) directly to farmers. Accepting a proposal unlocks direct communication. Investors can also cancel pending proposals if needed.
+5.  **Traceability Tools**: Farmers can print compliance sheets and batch QR codes directly from their dashboard. Anyone can scan a packaging QR code using the explorer's web-camera scanner to view the crop's complete history.
+6.  **Dual-Factor Security**: Signups are protected by verifying both the user's phone number (via SMS OTP) and email (via SMTP OTP).
+7.  **Polished User Experience**: We used skeleton screens and global loading states to keep the UI smooth and responsive while waiting for blockchain transactions.
 
 The result is a transparent, peer-to-peer supply chain ecosystem that restores consumer trust and supports agricultural financing.
 
 ---
 
 ## 6. TABLE OF CONTENTS
+
 1.  **Administrative Sheets** (Title, Certificate, Declaration, Acknowledgements, Abstract)
 2.  **Chapter 1: Introduction**
     *   1.1 Research Context
@@ -137,22 +138,23 @@ The result is a transparent, peer-to-peer supply chain ecosystem that restores c
 ## CHAPTER 1: INTRODUCTION
 
 ### 1.1 Research Context
-Modern agricultural supply chains span global networks with multiple intermediaries. While this increases distribution capacity, it distances the consumer from the grower. This disconnect creates a lack of transparency, making it difficult to verify organic farming claims or fair compensation. Traditional logistics databases are centralized and easily altered, meaning they cannot guarantee tamper-proof records. Using public blockchains offers a secure alternative: transaction data is stored on a distributed ledger, providing an immutable audit trail.
+Agricultural supply chains have grown into vast, global networks. While this lets us transport food anywhere in the world, it creates a massive gap between the person who grows the food and the person who eats it. With so many middlemen involved, consumers have no reliable way to verify organic labels, fair-trade claims, or origin stories. Most tracking systems today rely on centralized databases managed by a single company. Since anyone with admin access can modify or delete these logs, they are easy to manipulate and hard to trust. Decentralized public ledgers offer a practical fix. By recording key milestones on a public blockchain, we can create an immutable, shared record that no single player can manipulate or delete.
 
 ### 1.2 System-level Problem Statement
 Traditional agricultural supply chains face four primary failures:
-1.  **Labeling Fraud**: Centralized databases allow administrators to modify quality status with simple database updates, leaving consumers unable to verify organic labeling.
-2.  **Financial Exploitation**: Smallholder farmers struggle to secure bank loans, forcing them to rely on high-interest local lending networks.
-3.  **Intermediary Cost Markups**: Multiple middlemen increase consumer prices while reducing the farmer's share of profits.
-4.  **Fragmented Documentation**: Compliance records, soil reports, and test certificates are rarely unified, making it difficult for stakeholders to verify food safety.
+1.  **Labeling Fraud**: Since traditional databases are centralized, an administrator can change a crop's status or quality rating with a simple SQL update. Consumers have no way of knowing if their premium organic food is authentic.
+2.  **Financial Barriers**: Small farmers rarely meet the rigid collateral requirements of commercial banks. Without access to fair credit, they often turn to predatory local lenders.
+3.  **Excessive Middlemen**: Too many intermediaries buy and resell crops, inflating prices for consumers while squeezing the profit margins of the actual growers.
+4.  **Scattered Records**: Soil test results, organic certifications, and inspection notes are usually kept in separate spreadsheets, paper binders, or private databases, making it hard to compile a trustworthy history.
 
 ### 1.3 Project Engineering Objectives
-*   To deploy a public Ethereum contract system that records crop lifecycles from planting to final packaging.
-*   To automate geographical inspector assignments using a priority location routing model based on sub-district (Taluk) and district levels.
-*   To secure verifier actions with cryptographic MetaMask signature ownership checks.
-*   To build a peer-to-peer micro-finance proposal system linking farmers directly with investors.
-*   To enable physical package traceability using dynamic QR codes linked to an on-chain registry explorer.
-*   To print clean, light-mode certificates with forced CSS style overrides for physical packaging.
+This project aims to build an end-to-end transparency platform with the following goals:
+*   Write and deploy Ethereum smart contracts to track a crop's journey from cultivation to packaging.
+*   Build an automatic location-routing algorithm that assigns local inspectors using Kerala's Taluk and District hierarchies.
+*   Authenticate inspectors cryptographically using MetaMask personal message signing to prevent identity spoofing.
+*   Create a direct, transparent P2P funding marketplace where investors can offer micro-loans to farmers.
+*   Develop a public blockchain explorer with a built-in QR scanner to let anyone trace crop origins instantly.
+*   Implement clean, print-friendly CSS overrides so farmers can print physical certificates and QR codes directly from the browser.
 
 ### 1.4 Core Operational Scope
 AgroChain focuses on verifying crop cultivation locations, auditing coordinates, certifying laboratory testing grades, and coordinating investor agreements. The system is designed for local agricultural cooperatives, regional inspectors, independent testing laboratories, farmers, and retail consumers.
@@ -178,45 +180,45 @@ AgroChain focuses on verifying crop cultivation locations, auditing coordinates,
 ## CHAPTER 2: LITERATURE REVIEW
 
 ### 2.1 Evaluation of IBM Food Trust
-IBM Food Trust is an enterprise blockchain platform utilizing Hyperledger Fabric. It provides supply chain visibility for major retailers. However, it is a **private, permissioned consortium** blockchain. It requires significant integration costs and does not offer accessible micro-finance tools, making it impractical for independent farming communities.
+IBM Food Trust is a major enterprise solution built on Hyperledger Fabric. It offers robust supply chain tracking for corporate retailers. However, because it runs on a private, permissioned network, it requires substantial setup costs and complex integrations. It also lacks any micro-finance options. This makes it out of reach for small, independent farming communities that need direct financial assistance and public verification.
 
 ### 2.2 Evaluation of TE-FOOD
-TE-FOOD is a public-private hybrid traceability system focused on emerging markets. It utilizes its own blockchain token (TONS) for B2B supply chain steps. While it excels in livestock tracking, its architecture is tailored for large-scale logistics operations and lacks direct investor-to-farmer proposal mechanisms or built-in, interest-free micro-finance modules.
+TE-FOOD is a hybrid supply chain tracking system designed for emerging markets, using its own utility token (ONS) for business-to-business logging. While it works well for tracking livestock, the platform is designed around large logistics operations. It does not provide a direct way for individual investors to fund farmers or support peer-to-peer micro-financing.
 
 ### 2.3 Evaluation of AgriDigital
-AgriDigital is an Australian blockchain platform designed for grain supply chain management. It connects farmers, buyers, and brokers to handle digital grain transactions and inventory tracking. It operates as a proprietary SaaS platform, which limits its public lookup capabilities and direct consumer-level rating networks.
+AgriDigital focuses on grain supply chains, connecting farmers, buyers, and brokers in Australia to manage inventory and transactions. However, because it operates as a closed, proprietary software-as-a-service (SaaS) platform, regular consumers cannot easily inspect crop details, and it lacks open community review or rating systems.
 
 ### 2.4 Critical Analysis of Traceability Protocols
-A review of existing research indicates that while enterprise traceability solutions exist, they remain siloed and focus primarily on corporate logistics. There is a lack of accessible platforms combining consumer-level traceability with direct peer-to-peer micro-finance for independent farmers. AgroChain fills this gap by deploying public Ethereum smart contracts paired with a lightweight, accessible Web2 user portal.
+Looking at existing solutions, it is clear that while enterprise-grade tracking platforms exist, they are closed, expensive, and geared entirely toward big logistics firms. There is a distinct lack of platforms that combine public consumer traceability with grassroots P2P lending. AgroChain addresses this gap by combining public Ethereum smart contracts with a simple, lightweight Web2 portal that anyone can use.
 
 ---
 
 ## CHAPTER 3: REQUIREMENTS ENGINEERING & MODELING
 
 ### 3.1 Functional Requirements Architecture
-1.  **Farmer Onboarding and Crop Registration**: Farmer registers profile, links an Ethereum wallet address (optional for ratings, required for micro-finance), and registers crops with location details (District, Taluk/Sub-District, Village), expected yields, and separate uploads for evidence photos (`evidence_photos`) and official documents (`evidence_documents`).
-2.  **Admin-Managed Inspector Creation**: Administrators create Agricultural Inspector profiles by inputting their official name, email, district, sub-district (Taluk), coverage level (`SUB_DISTRICT` or `DISTRICT`), and contact number. The system automatically generates a temporary password.
-3.  **Inspector Account Activation and Setup**:
-    - **Password Change**: Inspectors are prompted to change their temporary password on first login, which blocks dashboard access until completed.
-    - **MetaMask Cryptographic Signature Link**: Inspectors connect their MetaMask wallet and sign a verification message (`personal_sign`), which is validated cryptographically on the backend. This updates their wallet address and changes their status from `PENDING_SETUP` to `ACTIVE`.
-4.  **Geographical Priority Routing**: The system automatically assigns newly registered crops to active inspectors based on a prioritized routing model:
-    - **Priority 1**: Inspector matches the crop's sub-district (Taluk).
-    - **Priority 2**: Inspector matches the crop's district.
-    - **Priority 3**: Fallback to any active inspector with DISTRICT-level coverage.
-    - *Only inspectors with `ACTIVE` status receive crop assignments.*
-5.  **Inspector Evaluation & Verification Options**: Inspectors inspect crop details, remarks, and separated photos/deeds. They can:
-    - **Save Notes Offline**: Save detailed inspection notes and select the inspection method (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`) directly to the SQLite database without requiring a MetaMask wallet connection.
-    - **Approve/Reject On-Chain**: Conduct final blockchain transaction validation to sign approvals on-chain (contract: `FarmerRegistry.sol`) once their wallet is connected.
-6.  **Quality Lab Self-Registration & Onboarding**: Quality Labs self-register via the signup portal by providing their credentials (lab name, license number, accreditation number, government registration number) and uploading certificates and supporting documents. On registration, their account is set to `PENDING_APPROVAL` status (`is_approved = False`) and they cannot access testing features.
-7.  **Quality Lab Active Assignment & Certification**: Only Quality Labs approved by the Admin and set to `ACTIVE` status receive harvested crops in their district and PIN code. Approved labs perform scientific tests, assign grades, and certify crop lots on-chain (contract: `ProductRegistry.sol`) using MetaMask. A warning is displayed if their wallet is unlinked.
-8.  **Investor Marketplace**: Investors review certified lots, submit funding proposals (Letters of Intent), track them in a dedicated LOIs hub, and lock/transfer ETH through the microfinance escrow contract.
-9.  **Consumer Explorer**: Public lookup scans and searches crop/lot IDs to verify milestones and scan QR codes.
-10. **Admin Governance**: Administrators monitor audit trails, verify user credentials (including using a detailed review modal to inspect and approve pending Quality Labs), and manage inspector profiles.
+1.  **Farmer Sign-up and Crop Entry**: A farmer creates a profile and optionally links their Ethereum wallet (required only if they want to participate in the P2P lending marketplace). They register their crop by entering details like the location (District, Taluk, and Village), expected yield, and uploading cultivation photos and land ownership documents separately.
+2.  **Admin Creating Inspector Accounts**: Administrators register agricultural inspectors by entering their name, email, district, Taluk, coverage jurisdiction (`SUB_DISTRICT` or `DISTRICT`), and phone number. The platform generates a temporary password for the new inspector.
+3.  **Inspector Account Setup**:
+    - **Password Update**: On their first login, inspectors must update their temporary password before they can access their dashboard.
+    - **Wallet Linking**: Inspectors connect their MetaMask wallet and cryptographically sign a verification message (`personal_sign`). The backend verifies this signature to register their Ethereum address and set their status to `ACTIVE`.
+4.  **Geographical Assignment Engine**: Newly registered crops are automatically assigned to an active inspector based on location proximity:
+    - **Priority 1**: Matches the inspector who covers the crop's specific sub-district (Taluk).
+    - **Priority 2**: Matches an inspector working within the same district.
+    - **Priority 3**: Falls back to any active inspector with district-level coverage.
+    - *Only inspectors with an `ACTIVE` status will receive crop assignments.*
+5.  **Auditing and Verification Options**: Inspectors review crop records, photos, and land documents. They can:
+    - **Save Notes Locally**: Record inspection details and choose the audit type (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`) to store in the database. This does not require a MetaMask transaction.
+    - **Approve or Reject on the Ledger**: Once ready, they sign the final verification on-chain via the `FarmerRegistry` smart contract using their connected MetaMask wallet.
+6.  **Quality Lab Onboarding**: Testing labs register online by submitting their credentials (lab name, license number, NABL/government accreditation) and uploading certificates. Their accounts are set to `PENDING_APPROVAL` and remain restricted until approved by an administrator.
+7.  **Lab Certifications**: Once the admin approves a lab and sets it to `ACTIVE`, the lab receives testing requests for crops harvested within their district and ZIP code. Lab technicians run tests, assign quality grades, and write the crop lot certificate to the blockchain (via `ProductRegistry`) using MetaMask. The dashboard warns them if their wallet is disconnected.
+8.  **Investor Portal**: Investors can browse verified crop lots, submit funding proposals (Letters of Intent), manage active offers in an LOI tracker, and deposit funds through the escrow contract.
+9.  **Public Traceability Lookup**: Consumers scan packaging QR codes or enter a lot number on the explorer page to view a crop's timeline, audit logs, and certificates.
+10. **Admin Portal**: Admins monitor audit logs, review and approve pending laboratory accounts using a dedicated review panel, and manage inspector accounts.
 
 ### 3.2 Non-Functional System Guarantees
-*   **Data Integrity**: Role-Based Access Control (RBAC) is enforced using JWT session tokens and OpenZeppelin contract guards.
-*   **Blockchain Immutability**: Verification actions are locked onto the ledger and cannot be altered by database administrators.
-*   **Query Performance**: The Flask API caches transaction metadata, reducing load on the blockchain RPC node and enabling pages to render in under 1.5 seconds.
+*   **Security**: Access is secured by Role-Based Access Control (RBAC) using JWT tokens on the backend and OpenZeppelin access roles in the smart contracts.
+*   **Tamper-Proof Ledger**: Verification records and quality grades are saved on the blockchain, meaning they cannot be edited or erased, even by database admins.
+*   **Performance**: The Flask API caches blockchain event details in a local database. This cuts down on slow RPC network calls, allowing dashboards to load in under 1.5 seconds.
 
 ### 3.3 Software Stack Details
 
@@ -239,7 +241,7 @@ A review of existing research indicates that while enterprise traceability solut
 ## CHAPTER 4: ARCHITECTURAL DESIGN & DIAGRAMS
 
 ### 4.1 Multi-tier Hybrid Infrastructure
-The system structure consists of a three-tier Web3 hybrid architecture:
+AgroChain uses a three-tier Web3 hybrid architecture to split tasks between the user interface, backend server, and decentralized ledger:
 
 ```mermaid
 flowchart TD
@@ -450,13 +452,13 @@ erDiagram
 
 ## CHAPTER 5: DETAILED IMPLEMENTATION MECHANICS
 
-### 5.1 UI Architecture
-The React application coordinates user actions based on active roles. To optimize UX:
-*   **Unified Dashboard Route**: Dynamic cards load based on `user.role`, rendering regional verifications, microfinance proposals, and document shortcuts.
-*   **Document Center Formatting**: Custom print CSS rules force light-mode formatting and hide menus, headers, and backgrounds, enabling clean printing on standard paper sizes.
+### 5.1 Frontend Design and UX
+Our React interface uses a role-based structure to show stakeholders exactly what they need:
+*   **Dynamic Dashboards**: A single dashboard route checks the logged-in user's role and renders relevant cards (e.g., pending crop lists for inspectors, LOI offers for farmers, or approval queues for labs).
+*   **Print-Friendly Style Overrides**: The document center uses print-specific CSS rules that force a clean light-mode layout and hide navigation bars, sidebar panels, and backgrounds. This makes it easy for farmers to print neat packaging certificates and labels.
 
-### 5.2 Backend API Services
-The Flask server manages JWT session tokens and coordinates database operations. Access to sensitive endpoints is restricted using custom decorators:
+### 5.2 API Layer
+The Flask backend coordinates authentication, session management, and database caching. We use custom decorators to protect sensitive endpoints and verify user roles before executing requests:
 ```python
 def roles_allowed(*roles):
     def decorator(f):
@@ -469,40 +471,40 @@ def roles_allowed(*roles):
     return decorator
 ```
 
-### 5.3 Relational Cache Schemas
-The database schema uses SQLAlchemy to map application state. It has been extended to support localized Kerala administrative structures, inspector workflows, and split verification assets:
-*   **`users` table extensions**:
-    *   `sub_district` (Taluk): Defines the inspector's localized Taluk jurisdiction.
-    *   `coverage_level`: Enums `SUB_DISTRICT` or `DISTRICT` to set Inspector routing boundaries.
-    *   `must_change_password`: Boolean flag to enforce temporary credential reset on first login.
-    *   `status`: User account state (`PENDING_SETUP`, `ACTIVE`, `INACTIVE`, `SUSPENDED`, `PENDING_APPROVAL`).
-    *   `lab_name`, `authorized_person`, `lab_license_number`, `accreditation_number`, `gov_reg_number`: Specific fields for self-registered Quality Labs.
-    *   `lab_certificates` & `supporting_documents`: JSON text fields storing uploaded laboratory credentials and verification documents.
-*   **`farmers` table extensions**:
-    *   `sub_district` (Taluk) & `village`: Specific localization for cultivation mapping.
-    *   `evidence_photos` & `evidence_documents`: Stored as JSON arrays of URLs to separate physical crop imagery from official land deeds and certificates.
-    *   `assigned_inspector_id`: References the assigned `users.id` who meets the Kerala priority routing criteria.
-    *   `inspection_date`: Records the date the inspection was carried out.
-    *   `inspection_notes`: Caches text comments logged by the inspector.
-    *   `inspection_method`: Enums the audit mechanism (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`).
+### 5.3 Database Schema (Local Cache)
+We use SQLAlchemy to manage the application state. The relational database schema is extended to handle the localized Kerala routing logic, account status flows, and multi-file uploads:
+*   **`users` Table Customizations**:
+    *   `sub_district` (Taluk): Tracks the inspector's assigned Taluk.
+    *   `coverage_level`: An enum (`SUB_DISTRICT` or `DISTRICT`) that sets the boundary for routing crops to the inspector.
+    *   `must_change_password`: A boolean flag that prevents newly added inspectors from accessing the app until they update their temporary password.
+    *   `status`: Tracks the user state (`PENDING_SETUP`, `ACTIVE`, `INACTIVE`, `SUSPENDED`, `PENDING_APPROVAL`).
+    *   `lab_name`, `authorized_person`, `lab_license_number`, `accreditation_number`, `gov_reg_number`: Specific columns that hold onboarding details for self-registered Quality Labs.
+    *   `lab_certificates` & `supporting_documents`: Text fields storing serialized JSON arrays of file paths for verification audits.
+*   **`farmers` Table Customizations**:
+    *   `sub_district` (Taluk) & `village`: Pinpoints where the crop is cultivated.
+    *   `evidence_photos` & `evidence_documents`: JSON text fields that separate physical crop photos from official land records and survey deeds.
+    *   `assigned_inspector_id`: References the inspector assigned by the location-routing algorithm.
+    *   `inspection_date` & `inspection_notes`: Stores audit dates and remarks.
+    *   `inspection_method`: Tracks whether the audit was done via a `PHYSICAL_VISIT`, `PHOTO_REVIEW`, or a `HYBRID` approach.
 
-### 5.4 Solidity Smart Contracts
-1.  `FarmerRegistry.sol`: Tracks crop registration, verification status, and verifier permissions.
-2.  `ProductRegistry.sol`: Registers certified products, requiring that the parent crop registration was previously verified by the inspector.
-3.  `MicroFinance.sol`: Stores investments and terms.
-4.  `RatingSystem.sol`: Logs feedback ratings on-chain to generate reputation scores.
+### 5.4 Smart Contracts
+1.  `FarmerRegistry.sol`: Tracks cultivation records, inspector approval statuses, and authorized verifier addresses.
+2.  `ProductRegistry.sol`: Records quality grades and batch lots. It requires that a crop lot has a verified inspector approval on-chain before certification can proceed.
+3.  `MicroFinance.sol`: Handles investment offers, loan statuses, and escrow terms.
+4.  `RatingSystem.sol`: Records consumer ratings and reviews on-chain to build public trust ratings.
 
 ---
 
 ## CHAPTER 6: SYSTEM TESTING & VERIFICATIONS
 
-### 6.1 Verification Methodology
-Testing followed an incremental approach:
-1.  **Unit Testing**: Smart contract logic was validated on a local Hardhat network using Chai assertion tests. Flask route functions were verified using PyTest.
-2.  **Integration Testing**: Validated backend API data flows to ensure on-chain transactions updated corresponding SQLite records.
-3.  **System Testing**: Executed end-to-end scenarios from Farmer crop registration to Inspector approval, Lab certification, Investor proposal submission, and Consumer provenance lookups.
+### 6.1 How We Tested the System
+We tested AgroChain in three stages:
+1.  **Unit Tests**: We verified our smart contracts on a local Hardhat network using Chai assertions. For the backend API, we wrote tests using PyTest to check specific Flask route operations.
+2.  **Integration Tests**: We tested the communication between our Flask API and the local SQLite cache to ensure that blockchain events correctly update database records.
+3.  **End-to-End System Tests**: We walked through full user journeys, starting with crop registration by a farmer, inspector verification, laboratory grading, investor funding, and finally tracing the lot on the public explorer.
 
-### 6.2 Test Matrix Execution Table
+### 6.2 Verification Matrix
+Here is the summary of our system verification runs:
 
 | Test ID | Test Scenario | Inputs | Expected Output | Result |
 | :--- | :--- | :--- | :--- | :--- |
@@ -519,33 +521,33 @@ Testing followed an incremental approach:
 
 ## CHAPTER 7: RESULTS, OUTPUTS, & DISCUSSION
 
-### 7.1 UI Deployments and Modals
-*   **Farmer Document Center**: Unlocks the "View Approval Letter" button for verified crops, displaying coordinates and verifier details. Once certified, it displays the gold-bordered Batch Quality Certificate and dynamic QR code.
-*   **Marketplace Interface**: Displays active certified lots for investors to submit LOI proposals. If the logged-in user is not an investor, it displays a read-only warning card.
+### 7.1 Interface Behavior
+*   **Document and Certificate Center**: When an inspector approves a crop, the farmer's dashboard unlocks an "View Approval Letter" button to view signed verification details. After a lab technician registers the quality grade, the system shows a gold-bordered Batch Quality Certificate alongside a printable QR code label.
+*   **Investment Marketplace**: Displays all certified crop batches. Investors can use this interface to send funding proposals. If a non-investor logs in and views the page, the system displays a clear read-only warning card.
 
-### 7.2 Ledger Assertions and Explorer Queries
-All supply chain events are recorded on the blockchain. When an event (approval, certification, rating) occurs, its transaction hash and block number are logged in the database, enabling consumers to inspect transaction proofs directly on the block explorer.
+### 7.2 On-Chain Records
+Every major milestone—inspector approvals, quality grades, and user reviews—is permanently recorded on the blockchain. The transaction hashes and block heights are cached in our database, making it easy for consumers to click directly through to the block explorer and verify the transaction receipts.
 
-### 7.3 Production Cloud Deployment & Live Operations
-To transition the AgroChain project from a local prototype to a production-grade infrastructure, a unified containerized deployment was executed on the **Render** platform, backed by a **Neon Serverless PostgreSQL** database.
+### 7.3 Moving to Production
+To turn our local prototype into a live, production-ready system, we deployed the entire stack on **Render** using a serverless **Neon PostgreSQL** database:
   
-*   **Multi-Stage Dockerization**: A unified `Dockerfile` was authored in the root workspace. Stage 1 compiles the Vite production React assets, while Stage 2 builds the Python Flask server environment, installs Node/Hardhat dependencies for local transaction simulation, copy-pastes the static frontend compilation, and runs Gunicorn on port `5000`.
-*   **SQLite to Neon PostgreSQL Migration**: A custom data-migration pipeline (`migrate_to_neon.py`) was run to read all existing user profiles, audit logs, and transaction structures from the local SQLite database (`agrochain.db`) and write them directly into the live Neon PostgreSQL cloud database. The script handled type conversions translating SQLite integer representations (`0`/`1`) to strict PostgreSQL boolean values (`False`/`True`).
-*   **Auto-Increment Sequence Resynchronization**: Handled primary key sequence pointer alignment by executing `reset_sequences.py` on the live database. This synchronized the serial counters (`users_id_seq`, `audit_logs_id_seq`, etc.) with the maximum IDs from the migrated data, resolving key collisions (`UniqueViolation` exceptions) and restoring operational database write capability in production.
-*   **Live Web Instance URL**: The platform is live and fully accessible at `https://agrochain-i6zh.onrender.com`.
+*   **Containerizing the App**: We wrote a multi-stage `Dockerfile` in the root project folder. The first stage builds the production-ready React frontend using Vite. The second stage sets up the Python Flask environment, pulls in Node and Hardhat to run a local development network for transaction simulation, copies the compiled React files to be served statically, and boots up the app using Gunicorn on port `5000`.
+*   **Database Migration**: We wrote a migration script (`migrate_to_neon.py`) to move our local data. It read users, audit logs, and transactional records from SQLite (`agrochain.db`) and wrote them into our live Neon PostgreSQL cloud database. The script specifically handled data mapping issues, like converting SQLite's integer representations of booleans (`0` and `1`) into PostgreSQL's native boolean types.
+*   **Fixing Primary Key Sequences**: After migrating existing rows, new inserts failed due to key collisions. We wrote a quick script (`reset_sequences.py`) to update PostgreSQL's internal auto-increment sequences (`users_id_seq`, `audit_logs_id_seq`, etc.) to match the highest existing IDs. This resolved the unique key violations and restored database write capability.
+*   **Live Deployment**: The platform is deployed and fully operational at [https://agrochain-i6zh.onrender.com](https://agrochain-i6zh.onrender.com).
 
 ---
 
 ## CHAPTER 8: CONCLUSION & FUTURE SCOPE
 
-### 8.1 Summary of Contributions
-The **AgroChain** platform addresses transparency and financial inclusion challenges in agriculture. By combining Ethereum smart contracts with an accessible web portal, it secures the crop supply chain from registration to sale. Automated verifier routing, printable certificate generation, and P2P micro-loans improve transaction efficiency and trust between stakeholders.
+### 8.1 Project Summary
+AgroChain tackles two of the most critical issues facing smallholder farming: supply chain transparency and lack of credit. By pairing Ethereum smart contracts with a simple web application, we make it possible to trace crops securely from seed to sale. Features like automatic location-based inspector routing, printable packing labels, and peer-to-peer micro-finance remove barriers and build trust between farmers, labs, investors, and consumers.
 
-### 8.2 Future Enhancement Roadmaps
-1.  **AI-Based Crop Disease Detection**: Integrate computer vision models into the Farmer portal to scan crop leaves and diagnose diseases during registration.
-2.  **IoT Sensor Integrations**: Use smart IoT devices (temperature, soil humidity, GPS trackers) on farms and during transport to write shipping data automatically to the blockchain.
-3.  **Government land registry API integration**: Auto-verify land survey numbers directly against official state databases.
-4.  **Mobile Application**: Build Android and iOS apps using React Native to simplify offline on-site audits for Inspectors in remote locations.
+### 8.2 Future Roadmap
+1.  **AI Disease Diagnostics**: We can integrate a computer vision model into the farmer dashboard. This would let farmers upload photos of crop leaves to automatically diagnose crop diseases at the time of registration.
+2.  **IoT Integration**: Deploying temperature and humidity sensors in storage units or transport trucks would let us write shipping conditions directly to the blockchain, ensuring food safety during transit.
+3.  **Official Land Registry APIs**: Connecting the platform directly to state government land databases would allow the system to verify land survey numbers instantly, reducing the need for manual inspector reviews.
+4.  **Dedicated Mobile App**: Building a lightweight mobile application using React Native would help inspectors complete their field audits, take photos, and save notes even in remote areas with poor internet connection.
 
 ---
 
@@ -684,32 +686,32 @@ def roles_allowed(*roles):
 
 ### Appendix C: Operational User Guide
 
-#### User Manual for Farmers
-1.  **Register Profile**: Create your account on `/register` (public signup available for Farmers, Testers, Consumers, and Investors). You can request and enter either an SMS OTP or an Email OTP based on your preference.
-2.  **Register Crops**: Navigate to the **"Register Crop"** tab. Fill out the cultivation details, expected yield, Kerala geographical information (District, Taluk/Sub-District, Village), and land survey number. Upload crop photos under **Evidence Photos** and official land deeds/documents under **Evidence Documents**.
-3.  **Audit & Verification**: Wait for the assigned regional Inspector to verify your crop. Once approved, you can print your **Approval Letter** from the **Crop History** page.
-4.  **Update Timeline**: Once you harvest the crop, set the status to `READY_TO_HARVEST` or `HARVEST_COMPLETED` to queue the crop for the Quality Lab. The page displays layout loading skeletons while updating.
-5.  **Print Certificate**: Once the Quality Lab certifies the crop, click **"Print Certificate & QR"** to print packaging labels.
-6.  **Accept Loans**: Go to your dashboard to review investor proposals. Accept a proposal to receive direct escrow funding.
+#### Farmer User Guide
+1.  **Create an Account**: Go to `/register` and choose the Farmer role. You can verify your signup using either an SMS verification code or an Email verification code.
+2.  **Register Your Crop**: Go to the **Register Crop** tab. Enter your crop type, expected yield, and location details (District, Taluk, Village, and ZIP code). Upload photos of your crop under **Evidence Photos** and your land survey records under **Evidence Documents**.
+3.  **Inspector Audit**: The system will assign an inspector to review your submission. Once they approve it on the blockchain, you can print your **Approval Letter** from the **Crop History** page.
+4.  **Update Status**: When your crop is ready, update the timeline to `READY_TO_HARVEST` or `HARVEST_COMPLETED`. This moves the crop into the Quality Lab's inspection queue.
+5.  **Print Labels**: Once the lab completes testing and certifies your crop, click **Print Certificate & QR** to print packing label QR codes.
+6.  **Accept Funding**: Check your dashboard for funding proposals from investors. You can accept a proposal to receive direct escrow funding.
 
-#### User Manual for Agricultural Inspectors
-1.  **Credentials**: Since public registration is disabled for inspectors, obtain your temporary password from the Administrator.
-2.  **Account Setup**: On your first login to `/login`, you must change your temporary password on the forced fullscreen modal.
-3.  **MetaMask Signature Activation**: Connect your MetaMask wallet on the dashboard card and click **"Verify Wallet"** to cryptographically sign the ownership confirmation. This activates your status to `ACTIVE`.
-4.  **Priority Queue**: Access the pending inspection list. Crops are assigned to you based on location matching (Priority 1: same Taluk, Priority 2: same District, Priority 3: DISTRICT-level fallback).
-5.  **Save Notes & Remarks**: Review the farmer's location, GPS coordinates, and separate links for evidence documents/deeds. You can fill out inspection remarks, select the inspection method (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`), and click **"Save Notes (No MetaMask)"** to save directly to the DB, or connect MetaMask to finalize the on-chain approval.
+#### Inspector User Guide
+1.  **Log In**: Because public registration is disabled for inspectors, obtain your temporary login credentials from the administrator.
+2.  **Reset Password**: The first time you log in, you will be prompted to change your temporary password. You cannot access your dashboard until this is done.
+3.  **Link Your Wallet**: Click **Verify Wallet** on your dashboard to connect MetaMask. Cryptographically sign the message signature request. Once the backend verifies the signature, your status updates to `ACTIVE`.
+4.  **Review Assignments**: Check your verification queue. The system assigns pending crops using Kerala's regional priority routing rules.
+5.  **Add Notes and Verify**: Review the crop details, coordinates, and documents. You can write inspection notes, select your audit method (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`), and click **Save Notes (No MetaMask)** to update the database, or connect MetaMask to sign the final on-chain approval.
 
-#### User Manual for Quality Lab Testers
-1.  **Onboard**: Register with the `TESTER` role at `/register` by inputting all required laboratory specifications (lab name, license number, accreditation details, government registration number) and uploading lab certificates and supporting documents.
-2.  **Await Approval**: Await approval from the System Administrator. Your account is initially in `PENDING_APPROVAL` status and you cannot access testing operations or receive assignments.
-3.  **Active Dashboard**: Once approved, your status transitions to `ACTIVE`. Log into the dashboard. If you haven't linked or connected your MetaMask wallet, a warning card is displayed reminding you to do so.
-4.  **Review Queue**: Check the dashboard queue for regional crops marked as harvested (based on matching your district and PIN code coverage). Only active, approved Quality Labs receive crop assignments.
-5.  **Certify**: Click **"Approve & Certify Crop"** (requires MetaMask connected) to automatically calculate the quality grade and register the batch lot on-chain. Note that the parent crop must have been approved by an Agricultural Inspector on-chain first.
+#### Quality Lab User Guide
+1.  **Register**: Sign up at `/register` as a `TESTER`. You must enter your laboratory's details, including license number, accreditation details, and upload copies of your certificates.
+2.  **Wait for Approval**: Your account starts as `PENDING_APPROVAL`. You will not receive any crop assignments until the administrator approves your profile.
+3.  **Link Wallet**: Once approved, log in and connect your MetaMask wallet. If your wallet is not connected, the dashboard will display a warning.
+4.  **Review Queue**: Go to your dashboard to see crops marked as harvested within your district and ZIP code.
+5.  **Certify Lots**: Run the necessary tests, click **Approve & Certify Crop**, and sign the MetaMask transaction. This records the quality grade on-chain and generates a product lot.
 
-#### User Manual for Consumers
-1.  **Scan/Search**: Tap the QR icon on the explorer lookup bar (`/explorer`) to launch the camera-based scanner modal. Alternatively, scan a packaging QR code or type the lot number manually.
-2.  **Verify**: Review the provenance timeline to check inspector coordinates, verification dates, and laboratory test grades.
-3.  **Review**: Log in to submit ratings and comments to help build community trust.
+#### Consumer User Guide
+1.  **Trace a Product**: Go to `/explorer` and tap the QR icon on the search bar to scan a packaging QR code with your camera, or type the product's lot number manually.
+2.  **Check History**: Read through the timeline to see the inspector's notes, audit coordinates, verification dates, and laboratory quality grades.
+3.  **Rate the Product**: Log into your account to leave a rating or review, helping other shoppers identify trustworthy growers.
 
 ---
 
@@ -719,5 +721,3 @@ def roles_allowed(*roles):
 3.  **IEEE System Review**: [Role of Blockchain Technology in Agriculture Supply Chain: A Systematic Literature Review](https://ieeexplore.ieee.org/document/9972583)
 4.  **ResearchGate Review**: [Impact of Blockchain Technology In Agriculture Supply Chain: A Comprehensive Review of Applications, Challenges, and Future Directions](https://www.researchgate.net/publication/379628876_Impact_of_Blockchain_Technology_In_Agriculture_Supply_Chain_A_Comprehensive_Review_of_Applications_Challenges_and_Future_Directions)
 5.  **IEEE 3ICT Conference Paper**: [Towards a Blockchain-Based Agricultural Ecosystem: A Systematic Review](https://ieeexplore.ieee.org/document/10390311)
-
-

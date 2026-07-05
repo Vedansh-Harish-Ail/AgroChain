@@ -1,3 +1,5 @@
+import os
+import requests
 import smtplib
 import socket
 from email.mime.text import MIMEText
@@ -5,11 +7,10 @@ from email.mime.multipart import MIMEMultipart
 from threading import Thread
 from flask import current_app
 
-# Keep original getaddrinfo reference
 orig_getaddrinfo = socket.getaddrinfo
 
 def send_async_email(app, msg, mail_server, mail_port, username, password, use_tls):
-    # Temporarily patch socket.getaddrinfo to force IPv4 (AF_INET) for the mail server
+    # Force IPv4 connection to prevent network unreachable error in Docker/Render environments
     def forced_getaddrinfo(*args, **kwargs):
         if args and args[0] == mail_server:
             new_args = list(args)
@@ -23,9 +24,7 @@ def send_async_email(app, msg, mail_server, mail_port, username, password, use_t
         return orig_getaddrinfo(*args, **kwargs)
 
     try:
-        # Apply the patch
         socket.getaddrinfo = forced_getaddrinfo
-        
         if use_tls:
             server = smtplib.SMTP(mail_server, mail_port, timeout=10)
             server.starttls()
@@ -35,15 +34,36 @@ def send_async_email(app, msg, mail_server, mail_port, username, password, use_t
         server.login(username, password)
         server.send_message(msg)
         server.quit()
-        print("[EMAIL SYSTEM] Email dispatched successfully!")
+        print("[SMTP] Mail sent successfully")
     except Exception as e:
-        print(f"[EMAIL SYSTEM ERROR] Failed to send email: {e}")
+        print(f"[SMTP Error] Connection failed: {e}")
     finally:
-        # Restore original getaddrinfo to avoid affecting other DB/API calls
         socket.getaddrinfo = orig_getaddrinfo
 
+def send_async_brevo_email(brevo_api_key, sender_email, recipient, subject, text_body, html_body):
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": brevo_api_key,
+        "content-type": "application/json"
+    }
+    payload = {
+        "sender": {"name": "AgroChain", "email": sender_email},
+        "to": [{"email": recipient}],
+        "subject": subject,
+        "textContent": text_body,
+        "htmlContent": html_body or text_body
+    }
+    try:
+        res = requests.post(url, json=payload, headers=headers, timeout=10)
+        if res.status_code in [200, 201, 202]:
+            print("[Brevo API] Mail sent successfully")
+        else:
+            print(f"[Brevo API Error] Status {res.status_code}: {res.text}")
+    except Exception as e:
+        print(f"[Brevo API Error] Post failed: {e}")
+
 def get_html_template(title, body_text, cta_text=None, cta_url=None):
-    """Returns a beautiful, premium green-themed email template."""
     cta_button = ""
     if cta_text and cta_url:
         cta_button = f'''
@@ -126,6 +146,15 @@ def get_html_template(title, body_text, cta_text=None, cta_url=None):
 def send_email(subject, recipient, text_body, html_body=None):
     app = current_app._get_current_object()
     
+    brevo_api_key = os.environ.get('BREVO_API_KEY')
+    if brevo_api_key:
+        sender_email = os.environ.get('MAIL_DEFAULT_SENDER', 'agroblock.help@gmail.com')
+        thr = Thread(target=send_async_brevo_email, args=[
+            brevo_api_key, sender_email, recipient, subject, text_body, html_body
+        ])
+        thr.start()
+        return thr
+        
     mail_server = app.config.get('MAIL_SERVER')
     mail_port = app.config.get('MAIL_PORT')
     username = app.config.get('MAIL_USERNAME')
@@ -134,12 +163,11 @@ def send_email(subject, recipient, text_body, html_body=None):
     use_tls = app.config.get('MAIL_USE_TLS', True)
     
     if not mail_server or not username or not password:
-        # Fallback to dev print log if not configured
-        print(f"\n--- [MAIL DEV FALLBACK - CONFIG MISSING] ---")
+        print(f"\n--- Dev Mail Log (Config Missing) ---")
         print(f"Subject: {subject}")
         print(f"To: {recipient}")
         print(f"Body: {text_body}")
-        print(f"--------------------------------------------\n")
+        print(f"-------------------------------------\n")
         return None
         
     msg = MIMEMultipart('alternative')
