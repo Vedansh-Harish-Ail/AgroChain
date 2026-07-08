@@ -35,7 +35,7 @@ graph TB
 
     subgraph Backend["Backend (Flask :5000)"]
         API["/api/* REST Endpoints"]
-        DB[(DB: SQLite / Neon PostgreSQL)]
+        DB[(DB: SQLite / PostgreSQL (Local & Cloud))]
     end
 
     subgraph Blockchain["Blockchain (Hardhat :8545)"]
@@ -72,7 +72,7 @@ graph TB
    - Crop evidence is split into `evidence_photos` (visual proofs) and `evidence_documents` (PDF deeds, tax receipts, and soil tests).
    - Stores rich inspection metadata: `inspection_date`, `inspection_notes`, and `inspection_method` (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, or `HYBRID`).
 7. **Walletless Web2 Ratings for Consumers**
-   - Consumers and farmers remain completely walletless. Consumers can rate farmers via SQLite (`DB_ONLY`) or on-chain using MetaMask if they choose.
+   - Consumers and farmers remain completely walletless. Consumers can rate farmers via the Web2 database (`DB_ONLY`) or on-chain using MetaMask if they choose.
 8. **Investor Letters of Intent (LOI) Portal & Cancellations**
    - Investors can propose funding and returns share on certified product lots, unlocking contact info upon farmer approval. They can cancel pending proposals via the dashboard, removing the record and logging an audit event.
 9. **Printable Document Center**
@@ -185,9 +185,11 @@ npx hardhat run scripts/deploy.js --network localhost
 ### Terminal 3 — Flask Backend
 ```bash
 cd Backend
-pip install -r requirements.txt
-python seed.py --reset  # Clean-rebuild SQLite DB with mock locations and users
-python app.py           # Runs Flask on http://127.0.0.1:5000
+py -m pip install -r requirements.txt
+# Recreate tables in PostgreSQL and seed the mock data:
+py -c "from app import app, db; app.app_context().push(); db.create_all()"
+py seed.py              # Seeds the database with mock locations and users
+py app.py               # Runs Flask on http://127.0.0.1:5000
 ```
 
 ### Terminal 4 — Vite Frontend
@@ -277,11 +279,13 @@ The application has been successfully migrated from a local developer environmen
 *   **Infrastructure**: Packaged using a multi-stage `Dockerfile` in the repository root.
 *   **Compilation**: Builds the production React static assets (Stage 1), installs Node.js and Hardhat inside a Python base image (Stage 2) for local on-chain role simulation, installs Flask requirements, and executes Gunicorn binding to port `5000`.
 
-### 2. Database Migration (SQLite to Neon PostgreSQL)
-*   **Target Database**: **Neon Serverless PostgreSQL** (AWS US-East Cloud Database).
-*   **Data Migration**: Authored and ran `migrate_to_neon.py` to securely read all rows across 9 tables from local SQLite `agrochain.db` and insert them into Neon.
+### 2. Database Migration (SQLite to PostgreSQL & Neon)
+*   **Local PostgreSQL (pgAdmin 4)**: Migrated local database caching to PostgreSQL. Connection details are configured in `Backend/.env` (`DATABASE_URL=postgresql://postgres:root@localhost:5432/agrochain`).
+*   **Cloud Production Database**: **Neon Serverless PostgreSQL** (AWS US-East Cloud Database).
+*   **Data Migration Pipeline**: Authored and ran `migrate_data.py` (locally) and `migrate_to_neon.py` (in production) to read all rows across 9 tables from SQLite (`agrochain.db`) and insert them into PostgreSQL/Neon.
 *   **Boolean Integrity**: Translated SQLite's numeric representation of booleans (`0` / `1`) into PostgreSQL strict `boolean` types (`False` / `True`) during the migration pipeline.
-*   **Primary Key Sequence Resync**: AUTHORIZED and executed a sequence-reset SQL script `reset_sequences.py` to synchronize PostgreSQL primary key sequence objects (`users_id_seq`, `audit_logs_id_seq`, etc.) to match the maximum IDs of the migrated records. This prevents duplicate key conflicts (`UniqueViolation` exceptions) during new database insertions.
+*   **Primary Key Sequence Resync**: Synchronized PostgreSQL primary key sequence objects (`users_id_seq`, `audit_logs_id_seq`, etc.) to match the maximum IDs of the migrated records. This prevents duplicate key conflicts (`UniqueViolation` exceptions) during new database insertions.
+*   **Cleanup**: Once migration was completed successfully, local testing/migration scripts (`migrate_data.py`, `create_test_crop.py`, `test_email.py`, `clear_db.py`) and the unused `venv` directory were cleaned up.
 
 ### 3. Deploy URL & Environment Configs
 *   **Live App URL**: [https://agrochain-i6zh.onrender.com](https://agrochain-i6zh.onrender.com)
