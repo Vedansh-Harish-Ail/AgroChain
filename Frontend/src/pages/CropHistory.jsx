@@ -20,6 +20,20 @@ export default function CropHistory() {
   const [selectedCropForCertificate, setSelectedCropForCertificate] = useState(null);
   const [serverIp, setServerIp] = useState(null);
   const navigate = useNavigate();
+  const [nudging, setNudging] = useState({});
+
+  const handleNudge = async (cropId, roleType) => {
+    setNudging(prev => ({ ...prev, [cropId]: true }));
+    try {
+      const res = await axios.post(`/api/farmer/notify-delay/${cropId}`);
+      showToast(res.data.message || `Nudge sent to ${roleType} successfully!`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to send nudge: ' + (err.response?.data?.message || err.message), 'error');
+    } finally {
+      setNudging(prev => ({ ...prev, [cropId]: false }));
+    }
+  };
 
   const fetchCrops = async () => {
     try {
@@ -417,14 +431,14 @@ export default function CropHistory() {
                   <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
                     {crop.verification_status === 'VERIFIED' ? (
                       <div className="space-y-3">
-                        <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-950">
+                        <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2.5 rounded-xl border border-emerald-100 dark:border-emerald-955">
                           <ShieldCheck className="h-4 w-4" /> Blockchain Verified
                         </div>
 
                         <div className="grid grid-cols-1 gap-2 pt-1">
                           <button
                             onClick={() => setSelectedCropForLetter(crop)}
-                            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 py-2.5 rounded-xl transition"
+                            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 hover:bg-blue-50/50 dark:hover:bg-blue-955/30 py-2.5 rounded-xl transition"
                           >
                             <FileText className="h-4 w-4" /> View Approval Letter
                           </button>
@@ -432,7 +446,7 @@ export default function CropHistory() {
                           {matchedProduct ? (
                             <button
                               onClick={() => setSelectedCropForCertificate({ crop, product: matchedProduct })}
-                              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 py-2.5 rounded-xl transition"
+                              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60 hover:bg-amber-50/50 dark:hover:bg-amber-955/30 py-2.5 rounded-xl transition"
                             >
                               <Award className="h-4 w-4" /> Print Certificate & QR
                             </button>
@@ -441,10 +455,21 @@ export default function CropHistory() {
                               Awaiting Tester Certification
                             </div>
                           ) : null}
+
+                          {/* Nudge Tester button if action is pending for more than 14 days */}
+                          {!matchedProduct && crop.timeline_status !== 'PRODUCT_AVAILABLE' && crop.timeline_status !== 'REJECTED' && ((new Date() - new Date(crop.verification_date || crop.created_at)) / (1000 * 60 * 60 * 24)) > 14 && (
+                            <button
+                              disabled={nudging[crop.id]}
+                              onClick={() => handleNudge(crop.id, 'Quality Tester')}
+                              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-105 hover:bg-amber-200 dark:text-amber-400 dark:bg-amber-955/60 dark:hover:bg-amber-955/80 py-2.5 rounded-xl border border-amber-200 dark:border-amber-900/30 transition animate-pulse"
+                            >
+                              Nudge Tester (&gt; 14 days)
+                            </button>
+                          )}
                         </div>
                       </div>
                     ) : crop.verification_status === 'REJECTED' ? (
-                      <div className="w-full flex flex-col items-center justify-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-455 bg-rose-50 dark:bg-rose-950/30 px-3 py-3 rounded-xl border border-rose-100 dark:border-rose-950">
+                      <div className="w-full flex flex-col items-center justify-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-455 bg-rose-50 dark:bg-rose-955/30 px-3 py-3 rounded-xl border border-rose-100 dark:border-rose-955">
                         <div className="flex items-center gap-1.5 font-bold">
                           <XCircle className="h-4 w-4" /> Audit Rejected
                         </div>
@@ -455,8 +480,20 @@ export default function CropHistory() {
                         )}
                       </div>
                     ) : (
-                      <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-450 bg-amber-50 dark:bg-amber-950/30 px-3 py-2.5 rounded-xl border border-amber-100 dark:border-amber-950">
-                        <Clock className="h-4 w-4 animate-pulse" /> Pending Tester Audit
+                      <div className="space-y-2">
+                        <div className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-450 bg-amber-50 dark:bg-amber-955/30 px-3 py-2.5 rounded-xl border border-amber-100 dark:border-amber-955">
+                          <Clock className="h-4 w-4 animate-pulse" /> Pending Inspector Audit
+                        </div>
+                        {/* Nudge Inspector button if action is pending for more than 14 days */}
+                        {((new Date() - new Date(crop.created_at)) / (1000 * 60 * 60 * 24)) > 14 && (
+                          <button
+                            disabled={nudging[crop.id]}
+                            onClick={() => handleNudge(crop.id, 'Inspector')}
+                            className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-105 hover:bg-amber-200 dark:text-amber-400 dark:bg-amber-955/60 dark:hover:bg-amber-955/80 py-2.5 rounded-xl border border-amber-200 dark:border-amber-900/30 transition animate-pulse"
+                          >
+                            Nudge Inspector (&gt; 14 days)
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

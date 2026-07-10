@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
 from models import db, Farmer, AuditLog, User
 from utils.auth import roles_allowed
@@ -414,4 +414,84 @@ def update_timeline_status(current_user, crop_id):
         'message': 'Timeline status updated successfully!',
         'crop': crop.to_dict()
     }), 200
+
+
+@farmer_bp.route('/notify-delay/<int:crop_id>', methods=['POST'])
+@roles_allowed('FARMER', 'ADMIN')
+def notify_delay(current_user, crop_id):
+    from datetime import datetime, timezone
+    from utils.email import send_email, get_html_template
+    
+    crop = Farmer.query.get(crop_id)
+    if not crop:
+        return jsonify({'message': 'Crop not found'}), 404
+        
+    if crop.user_id != current_user.id and current_user.role != 'ADMIN':
+        return jsonify({'message': 'Unauthorized'}), 403
+        
+    # Check what action is pending
+    if crop.verification_status == 'PENDING':
+        # Pending Inspector action
+        inspector = crop.assigned_inspector
+        if not inspector:
+            return jsonify({'message': 'No inspector assigned to this crop yet.'}), 400
+            
+        # Send nudge email to inspector
+        subject = f"Delay Nudge: Crop ID {crop.id} Inspection Pending - AgroChain"
+        text_body = f"Hello {inspector.name},\n\nFarmer {current_user.name} has sent a nudge regarding crop ID {crop.id} ({crop.crop_type}) which has been pending inspection for more than 14 days. Please review and take action."
+        html_body = get_html_template(
+            title="Inspection Pending Delay Alert",
+            body_text=f"<p>Hello <strong>{inspector.name}</strong>,</p><p>Farmer <strong>{current_user.name}</strong> has sent you a nudge regarding <strong>Crop ID {crop.id} ({crop.crop_type})</strong>.</p><p>This crop was registered on {crop.created_at.strftime('%Y-%m-%d')} and has been pending inspection for more than 14 days. Please complete the inspection or update the notes.</p>",
+            cta_text="View Pending Inspections",
+            cta_url=f"{current_app.config['FRONTEND_URL']}/dashboard"
+        )
+        try:
+            send_email(subject, inspector.email, text_body, html_body)
+        except Exception as e:
+            print(f"Error sending nudge email to inspector: {e}")
+            
+        # Add audit log
+        audit = AuditLog(
+            user_id=current_user.id,
+            action='FARMER_NUDGED_INSPECTOR',
+            details=f"Farmer {current_user.name} sent a delay nudge to Inspector {inspector.name} for crop ID {crop.id}."
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify({'message': f'Nudge sent to Inspector {inspector.name} successfully!'}), 200
+        
+    elif crop.verification_status == 'VERIFIED' and crop.timeline_status == 'TESTER_APPROVED':
+        # Pending Tester action
+        tester = crop.assigned_tester
+        if not tester:
+            return jsonify({'message': 'No quality tester assigned to this crop yet.'}), 400
+            
+        # Send nudge email to tester
+        subject = f"Delay Nudge: Crop ID {crop.id} Quality Testing Pending - AgroChain"
+        text_body = f"Hello {tester.name},\n\nFarmer {current_user.name} has sent a nudge regarding crop ID {crop.id} ({crop.crop_type}) which has been pending quality certification for more than 14 days. Please review and take action."
+        html_body = get_html_template(
+            title="Quality Testing Pending Delay Alert",
+            body_text=f"<p>Hello <strong>{tester.name}</strong>,</p><p>Farmer <strong>{current_user.name}</strong> has sent you a nudge regarding <strong>Crop ID {crop.id} ({crop.crop_type})</strong>.</p><p>This crop was approved by the inspector on {crop.verification_date.strftime('%Y-%m-%d') if crop.verification_date else 'N/A'} and has been pending certification for more than 14 days. Please complete the quality test registration.</p>",
+            cta_text="View Ready Crops",
+            cta_url=f"{current_app.config['FRONTEND_URL']}/dashboard"
+        )
+        try:
+            send_email(subject, tester.email, text_body, html_body)
+        except Exception as e:
+            print(f"Error sending nudge email to tester: {e}")
+            
+        # Add audit log
+        audit = AuditLog(
+            user_id=current_user.id,
+            action='FARMER_NUDGED_TESTER',
+            details=f"Farmer {current_user.name} sent a delay nudge to Quality Tester {tester.name} for crop ID {crop.id}."
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify({'message': f'Nudge sent to Quality Tester {tester.name} successfully!'}), 200
+        
+    else:
+        return jsonify({'message': 'Crop is not in a pending action state.'}), 400
 

@@ -137,6 +137,20 @@ def get_analytics(current_user):
             'details': f"Investment ID {inv.id} made on a REJECTED product Lot {inv.lot_number}."
         })
         
+    # Check for crops pending inspector action for > 14 days
+    from datetime import datetime, timedelta, timezone
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=14)
+    delayed_inspections = Farmer.query.filter(
+        Farmer.verification_status == 'PENDING',
+        Farmer.created_at <= cutoff_date
+    ).all()
+    for crop in delayed_inspections:
+        inspector_name = crop.assigned_inspector.name if crop.assigned_inspector else "Unassigned"
+        fraud_warnings.append({
+            'type': 'DELAYED_INSPECTION',
+            'details': f"WARNING: Crop ID {crop.id} ({crop.crop_type}) pending inspection by {inspector_name} for > 14 days."
+        })
+
     return jsonify({
         'user_counts': {
             'farmers': farmer_count,

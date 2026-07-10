@@ -99,6 +99,7 @@ export default function Dashboard() {
   const [unreadMyCropUpdates, setUnreadMyCropUpdates] = useState(0);
   const [unreadProposals, setUnreadProposals] = useState(0);
   const [unreadUserApprovals, setUnreadUserApprovals] = useState(0);
+  const [alerts, setAlerts] = useState([]);
 
   const [currentPendingApprovalIds, setCurrentPendingApprovalIds] = useState([]);
   const [currentPendingCertIds, setCurrentPendingCertIds] = useState([]);
@@ -744,6 +745,25 @@ export default function Dashboard() {
           setUnreadMyCropUpdates(unreadMyCrops);
           setCurrentFarmerCropStatuses(currentStatusMap);
 
+          // Check for newly approved/rejected crop notifications to display as alerts
+          const newAlerts = [];
+          myCropsRes.data.forEach(c => {
+            if (c.verification_status === 'VERIFIED' || c.verification_status === 'REJECTED') {
+              const dismissedKey = `dismissed_crop_alert_${c.id}_${c.verification_status}`;
+              if (!localStorage.getItem(dismissedKey)) {
+                newAlerts.push({
+                  id: c.id,
+                  type: c.verification_status === 'VERIFIED' ? 'success' : 'error',
+                  status: c.verification_status,
+                  message: c.verification_status === 'VERIFIED' 
+                    ? `Your crop registration for ${c.crop_type} (ID: ${c.id}) has been verified and approved!`
+                    : `Your crop registration for ${c.crop_type} (ID: ${c.id}) has been rejected by the inspector.`
+                });
+              }
+            }
+          });
+          setAlerts(newAlerts);
+
           fetchProposals();
         } else if (user?.role === 'INVESTOR') {
           fetchSubmittedLOIs();
@@ -957,6 +977,41 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Farmer Crop Approval/Rejection Notification Alerts */}
+      {user?.role === 'FARMER' && alerts.length > 0 && (
+        <div className="space-y-3 mb-6 animate-in fade-in duration-300">
+          {alerts.map((alert) => (
+            <div 
+              key={`${alert.id}_${alert.status}`}
+              className={`rounded-2xl border p-4 flex justify-between items-center gap-4 transition-all duration-305 ${
+                alert.type === 'success' 
+                  ? 'border-emerald-100 bg-emerald-50/50 text-emerald-800 dark:border-emerald-950/40 dark:bg-emerald-950/20 dark:text-emerald-400' 
+                  : 'border-rose-100 bg-rose-50/50 text-rose-800 dark:border-rose-950/40 dark:bg-rose-950/20 dark:text-rose-455'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {alert.type === 'success' ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-450 shrink-0" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-455 shrink-0" />
+                )}
+                <span className="text-sm font-semibold">{alert.message}</span>
+              </div>
+              <button
+                onClick={() => {
+                  const dismissedKey = `dismissed_crop_alert_${alert.id}_${alert.status}`;
+                  localStorage.setItem(dismissedKey, 'true');
+                  setAlerts(prev => prev.filter(a => !(a.id === alert.id && a.status === alert.status)));
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold transition shrink-0 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+              >
+                Dismiss
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* MetaMask Warning Alert for Inspectors */}
       {user?.role === 'INSPECTOR' && !user?.wallet_address && (
@@ -1265,40 +1320,46 @@ export default function Dashboard() {
         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Operations Console</h3>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Public Action: Traceability */}
-          <Link to="/consumer/track" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl text-emerald-600 group-hover:scale-105 transition-transform shrink-0">
-              <Eye className="h-6 w-6" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Trace Crop Supply Chain</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Explore farms, trace crop timelines, check lab certificates, and verify ledger hashes.</p>
-            </div>
-          </Link>
+          {user?.role !== 'ADMIN' && (
+            <Link to="/consumer/track" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl text-emerald-600 group-hover:scale-105 transition-transform shrink-0">
+                <Eye className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Trace Crop Supply Chain</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Explore farms, trace crop timelines, check lab certificates, and verify ledger hashes.</p>
+              </div>
+            </Link>
+          )}
 
           {/* Public Action: Explorer */}
-          <Link to="/explorer" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
-            <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-700 dark:text-slate-300 group-hover:scale-105 transition-transform shrink-0">
-              <Cpu className="h-6 w-6" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Blockchain Explorer</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Audit blocks, verify Solidity events, track transaction addresses.</p>
-            </div>
-          </Link>
+          {user?.role !== 'ADMIN' && (
+            <Link to="/explorer" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
+              <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-700 dark:text-slate-300 group-hover:scale-105 transition-transform shrink-0">
+                <Cpu className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Blockchain Explorer</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Audit blocks, verify Solidity events, track transaction addresses.</p>
+              </div>
+            </Link>
+          )}
 
           {/* Microfinance (All users) */}
-          <Link to="/finance" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl text-amber-600 group-hover:scale-105 transition-transform shrink-0">
-              <Coins className="h-6 w-6" />
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Microfinance Portal</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Fund farmers directly with test ETH / Rupees (Rs.) and track investment metrics.</p>
-            </div>
-          </Link>
+          {user?.role !== 'ADMIN' && (
+            <Link to="/finance" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl text-amber-600 group-hover:scale-105 transition-transform shrink-0">
+                <Coins className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Microfinance Portal</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Fund farmers directly with test ETH / Rupees (Rs.) and track investment metrics.</p>
+              </div>
+            </Link>
+          )}
 
           {/* Investor Specific Action: Submitted LOIs */}
-          {(user?.role === 'INVESTOR' || user?.role === 'ADMIN') && (
+          {user?.role === 'INVESTOR' && (
             <Link 
               to="/investor/lois"
               className="relative group text-left rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4 w-full"
@@ -1319,7 +1380,7 @@ export default function Dashboard() {
           )}
 
           {/* Farmer Specific Action: Register Crops */}
-          {(user?.role === 'FARMER' || user?.role === 'ADMIN') && (
+          {user?.role === 'FARMER' && (
             <Link to="/farmer/register" className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition dark:border-slate-800 dark:bg-slate-900 flex gap-4">
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl text-emerald-600 group-hover:scale-105 transition-transform shrink-0">
                 <Sprout className="h-6 w-6" />
@@ -1332,7 +1393,7 @@ export default function Dashboard() {
           )}
 
           {/* Farmer Specific Action: My Crop */}
-          {(user?.role === 'FARMER' || user?.role === 'ADMIN') && (
+          {user?.role === 'FARMER' && (
             <Link 
               to="/farmer/crops" 
               onClick={handleClearFarmerCrops}
@@ -1354,7 +1415,7 @@ export default function Dashboard() {
           )}
 
           {/* Inspector & Tester Specific Actions: Pending Approvals */}
-          {(user?.role === 'INSPECTOR' || user?.role === 'TESTER' || user?.role === 'ADMIN') && (
+          {(user?.role === 'INSPECTOR' || user?.role === 'TESTER') && (
             <Link 
               to="/tester/approve" 
               onClick={handleClearTesterApprovals}
@@ -1380,7 +1441,7 @@ export default function Dashboard() {
           )}
 
           {/* Tester Specific Actions */}
-          {(user?.role === 'TESTER' || user?.role === 'ADMIN') && (
+          {user?.role === 'TESTER' && (
             <Link 
               to="/tester/product" 
               onClick={handleClearTesterCerts}
