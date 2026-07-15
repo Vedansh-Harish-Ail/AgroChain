@@ -147,6 +147,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const sendLoginOtp = async (email) => {
+    try {
+      const res = await axios.post('/api/auth/send-login-otp', { email });
+      return { success: true, message: res.data.message };
+    } catch (err) {
+      return {
+        success: false,
+        message: getConnectionError(err, 'Failed to send login OTP.')
+      };
+    }
+  };
+
+  const loginWithOtp = async (email, otpCode) => {
+    try {
+      const res = await axios.post('/api/auth/login-with-otp', { email, otp_code: otpCode });
+      const { token: userToken, user: userData } = res.data;
+      localStorage.setItem('token', userToken);
+      setToken(userToken);
+      setUser(userData);
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        message: getConnectionError(err, 'Failed to verify login OTP.')
+      };
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -155,7 +183,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, linkWallet, sendSmsOtp, sendEmailOtp, changePassword }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, linkWallet, sendSmsOtp, sendEmailOtp, changePassword, sendLoginOtp, loginWithOtp }}>
       {children}
     </AuthContext.Provider>
   );

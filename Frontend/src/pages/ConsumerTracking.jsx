@@ -1139,7 +1139,7 @@ export default function ConsumerTracking() {
               )}
 
               {/* Rating Submit Panel (Web2 + Web3 Hybrid) */}
-              {user && user.role === 'CONSUMER' && product && (
+              {user && (user.role === 'CONSUMER' || user.role === 'INVESTOR') && product && (
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-850 dark:bg-slate-900 space-y-4">
                   {error && (
                     <div className="rounded-xl bg-rose-50 border border-rose-100 p-3 text-[11px] text-rose-600 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-450 flex items-center gap-1.5">

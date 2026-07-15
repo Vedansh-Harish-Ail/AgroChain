@@ -51,17 +51,33 @@ def register_crop(current_user):
     village = data.get('village')
     pin_code = data.get('pin_code')
     
-    if not farm_location or not farm_size or not farming_type or not crop_type or not expected_yield or not cultivation_date_str or not land_survey_no or not district or not sub_district or not village:
-        return jsonify({'message': 'Missing required fields, including district, sub-district, and village'}), 400
+    expected_harvest_date_str = data.get('expected_harvest_date')
+    investment_start_date_str = data.get('investment_start_date')
+    investment_close_date_str = data.get('investment_close_date')
+    
+    if not farm_location or not farm_size or not farming_type or not crop_type or not expected_yield or not cultivation_date_str or not land_survey_no or not district or not sub_district or not village or not expected_harvest_date_str or not investment_start_date_str or not investment_close_date_str:
+        return jsonify({'message': 'Missing required fields, including harvest date, investment window, district, sub-district, and village'}), 400
         
     try:
         cultivation_date = datetime.fromisoformat(cultivation_date_str.replace('Z', ''))
+        expected_harvest_date = datetime.fromisoformat(expected_harvest_date_str.replace('Z', ''))
+        investment_start_date = datetime.fromisoformat(investment_start_date_str.replace('Z', ''))
+        investment_close_date = datetime.fromisoformat(investment_close_date_str.replace('Z', ''))
     except ValueError:
         return jsonify({'message': 'Invalid date format (ISO format expected)'}), 400
         
     # Prevent future cultivation start dates
     if cultivation_date.date() > datetime.utcnow().date():
         return jsonify({'message': 'Cultivation Start Date cannot be in the future'}), 400
+
+    if investment_start_date.date() < cultivation_date.date():
+        return jsonify({'message': 'Investment Start Date cannot be before the Sowing Date'}), 400
+
+    if investment_close_date.date() <= investment_start_date.date():
+        return jsonify({'message': 'Investment Close Date must be after the Investment Start Date'}), 400
+
+    if investment_close_date.date() >= expected_harvest_date.date():
+        return jsonify({'message': 'Investment Close Date must be before the Expected Harvest Date'}), 400
         
     try:
         expected_yield = int(expected_yield)
@@ -191,6 +207,9 @@ def register_crop(current_user):
         crop_type=crop_type,
         expected_yield=expected_yield,
         cultivation_date=cultivation_date,
+        expected_harvest_date=expected_harvest_date,
+        investment_start_date=investment_start_date,
+        investment_close_date=investment_close_date,
         tx_hash=tx_hash,
         block_number=block_number,
         blockchain_status=blockchain_status,
@@ -212,7 +231,7 @@ def register_crop(current_user):
     audit = AuditLog(
         user_id=current_user.id,
         action='FARMER_CROP_REGISTERED',
-        details=f"Farmer {current_user.name} registered crop {crop_type} (ID: {new_farmer_project.id}, Status: {blockchain_status}, Survey No: {land_survey_no})."
+        details=f"Registered crop {crop_type} (ID: {new_farmer_project.id}, Status: {blockchain_status}, Survey No: {land_survey_no})."
     )
     db.session.add(audit)
     db.session.commit()
@@ -324,7 +343,7 @@ def get_farmer_profiles():
 
 @farmer_bp.route('/profile/<int:user_id>', methods=['GET'])
 def get_farmer_profile_details(user_id):
-    from models import User, Rating
+    from models import User, Rating, Product
     farmer_user = User.query.get(user_id)
     if not farmer_user or farmer_user.role != 'FARMER':
         return jsonify({'message': 'Farmer profile not found'}), 404
@@ -347,6 +366,65 @@ def get_farmer_profile_details(user_id):
     else:
         overall_avg = 0.0
         rating_count = 0
+
+    # Calculate Quality Tester grade stats
+    products = Product.query.join(Farmer).filter(Farmer.user_id == user_id).all()
+    
+    grade_weights = {
+        'A+': 5,
+        'A': 4,
+        'B+': 3,
+        'B': 2,
+        'C': 1
+    }
+    
+    total_weight = 0
+    graded_count = 0
+    grade_counts = {'A+': 0, 'A': 0, 'B+': 0, 'B': 0, 'C': 0}
+    
+    for p in products:
+        grade_str = p.quality_grade or ''
+        norm = grade_str.replace('Grade ', '').strip()
+        if norm in grade_weights:
+            total_weight += grade_weights[norm]
+            graded_count += 1
+            grade_counts[norm] += 1
+            
+    avg_grade_val = round(total_weight / graded_count, 1) if graded_count > 0 else 0
+    
+    # Map back to letter grade
+    if avg_grade_val >= 4.5:
+        avg_letter_grade = 'A+'
+        quality_remark = 'Outstanding! Consistently produces premium-grade organic crops.'
+    elif avg_grade_val >= 3.5:
+        avg_letter_grade = 'A'
+        quality_remark = 'Excellent! High quality standards across most batches.'
+    elif avg_grade_val >= 2.5:
+        avg_letter_grade = 'B+'
+        quality_remark = 'Very Good! Reliable quality with consistent performance.'
+    elif avg_grade_val >= 1.5:
+        avg_letter_grade = 'B'
+        quality_remark = 'Good! Standard quality crops.'
+    elif avg_grade_val > 0:
+        avg_letter_grade = 'C'
+        quality_remark = 'Needs Attention! Has batches graded as sub-standard or rejected.'
+    else:
+        avg_letter_grade = 'N/A'
+        quality_remark = 'No quality testing records available yet.'
+
+    # Construct reviews list
+    reviews_list = []
+    for r in ratings:
+        reviews_list.append({
+            'id': r.id,
+            'comment': r.comment,
+            'reliability': r.reliability,
+            'product_quality': r.product_quality,
+            'delivery_satisfaction': r.delivery_satisfaction,
+            'rater_name': r.consumer.name if r.consumer else 'Anonymous',
+            'rater_role': r.consumer.role if r.consumer else 'Consumer',
+            'timestamp': r.timestamp.isoformat()
+        })
     
     return jsonify({
         'profile': {
@@ -359,9 +437,15 @@ def get_farmer_profile_details(user_id):
             'farming_type': farming_type,
             'crop_count': len(crops),
             'average_rating': overall_avg,
-            'rating_count': rating_count
+            'rating_count': rating_count,
+            'avg_quality_grade': avg_letter_grade,
+            'avg_quality_value': avg_grade_val,
+            'quality_remark': quality_remark,
+            'grade_counts': grade_counts,
+            'certified_crop_count': graded_count
         },
-        'crops': crop_list
+        'crops': crop_list,
+        'reviews': reviews_list
     }), 200
 
 
@@ -405,7 +489,7 @@ def update_timeline_status(current_user, crop_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='CROP_TIMELINE_UPDATED',
-        details=f"Crop {crop.id} timeline status updated to {timeline_status} by {current_user.name}."
+        details=f"Crop {crop.id} timeline status updated to {timeline_status}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -454,7 +538,7 @@ def notify_delay(current_user, crop_id):
         audit = AuditLog(
             user_id=current_user.id,
             action='FARMER_NUDGED_INSPECTOR',
-            details=f"Farmer {current_user.name} sent a delay nudge to Inspector {inspector.name} for crop ID {crop.id}."
+            details=f"Sent a delay nudge to Inspector {inspector.name} for crop ID {crop.id}."
         )
         db.session.add(audit)
         db.session.commit()
@@ -485,7 +569,7 @@ def notify_delay(current_user, crop_id):
         audit = AuditLog(
             user_id=current_user.id,
             action='FARMER_NUDGED_TESTER',
-            details=f"Farmer {current_user.name} sent a delay nudge to Quality Tester {tester.name} for crop ID {crop.id}."
+            details=f"Sent a delay nudge to Quality Tester {tester.name} for crop ID {crop.id}."
         )
         db.session.add(audit)
         db.session.commit()

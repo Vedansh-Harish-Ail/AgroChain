@@ -1,6 +1,7 @@
 # AgroChain (Modernized) — Complete Project Memory
 
-**Last Updated:** *July 2, 2026, 09:45 PM IST (UTC+5:30)*
+**Last Updated:** *July 14, 2026, 10:13 PM IST (UTC+5:30)*
+
 
 This document is the master documentation of the **AgroChain** (Modernized) project. It contains a detailed breakdown of the project’s purpose, features, security models, data structures, backend routes, contract details, frontend screens, and step-by-step developer checklists.
 ................
@@ -31,8 +32,8 @@ The platform implements strict Role-Based Access Control (RBAC) across five sepa
    - Features the **System Audit Trail** showing all backend operations, with auto-parsed transaction hashes and crop/lot IDs that link directly to the lookup explorer.
    - Displays system analytics (total farmers, testers, consumers, dedicated investors, crop category distributions, and fraud alerts).
 
-2. **Farmer (`FARMER`)** *(Updated: June 8, 2026, 06:35 PM)*:
-   - Registers crop cultivations by entering expected yields, locations, farm sizes, crop types, land survey numbers, GPS coordinates, and uploading evidence photos.
+2. **Farmer (`FARMER`)** *(Updated: July 14, 2026, 10:13 PM)*:
+   - Registers crop cultivations by entering expected yields, locations, farm sizes, crop types, land survey numbers, GPS coordinates, expected harvest dates, investment window open/close dates, and uploading evidence photos.
    - Manages crop lifecycles through a restricted timeline status.
    - Reviews Letters of Intent (proposals) submitted by investors and accepts/declines them.
    - Accesses the **Farmer Document Center** to view and print official crop approval letters and certified batch certificates containing dynamic QR codes.
@@ -175,7 +176,7 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 1. **`users`**:
    - `id` (PK), `name`, `email` (Unique), `phone_number` (Unique), `password_hash`, `role` (`ADMIN`, `FARMER`, `INSPECTOR`, `TESTER`, `CONSUMER`, `INVESTOR`), `wallet_address`, `is_approved`, `is_verified_farmer`, `government_id`, `ownership_proof_url`, `district`, `pin_code`, `coverage_pins` (Text list of pins for verifiers), `sub_district` (Taluk), `coverage_level` (`SUB_DISTRICT`, `DISTRICT`), `must_change_password` (Boolean), `status` (`PENDING_SETUP`, `ACTIVE`, `INACTIVE`, `SUSPENDED`, `PENDING_APPROVAL`), `lab_name` (Text), `authorized_person` (Text), `lab_license_number` (Text), `accreditation_number` (Text), `gov_reg_number` (Text), `lab_certificates` (Text JSON), `supporting_documents` (Text JSON).
 2. **`farmers`**:
-   - `id` (PK), `user_id` (FK $\rightarrow$ `users`), `farm_location`, `farm_size`, `farming_type`, `crop_type`, `expected_yield`, `cultivation_date`, `tx_hash`, `block_number`, `blockchain_status` (`DB_ONLY`, `VERIFIED`), `is_approved`, `timeline_status`, `land_survey_no`, `gps_latitude`, `gps_longitude`, `evidence_photos` (JSON list of URLs), `evidence_documents` (JSON list of URLs), `verification_status` (`PENDING`, `VERIFIED`, `REJECTED`), `tester_remarks`, `assigned_inspector_id` (FK), `assigned_tester_id` (FK), `tester_id` (FK), `verification_date`, `farm_address`, `district`, `sub_district` (Taluk), `village`, `pin_code`, `inspection_date`, `inspection_notes`, `inspection_method` (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`).
+   - `id` (PK), `user_id` (FK $\rightarrow$ `users`), `farm_location`, `farm_size`, `farming_type`, `crop_type`, `expected_yield`, `cultivation_date`, `expected_harvest_date`, `investment_start_date`, `investment_close_date`, `tx_hash`, `block_number`, `blockchain_status` (`DB_ONLY`, `VERIFIED`), `is_approved`, `timeline_status`, `land_survey_no`, `gps_latitude`, `gps_longitude`, `evidence_photos` (JSON list of URLs), `evidence_documents` (JSON list of URLs), `verification_status` (`PENDING`, `VERIFIED`, `REJECTED`), `tester_remarks`, `assigned_inspector_id` (FK), `assigned_tester_id` (FK), `tester_id` (FK), `verification_date`, `farm_address`, `district`, `sub_district` (Taluk), `village`, `pin_code`, `inspection_date`, `inspection_notes`, `inspection_method` (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`).
 3. **`products`**:
    - `lot_number` (PK), `farmer_id` (FK $\rightarrow$ `farmers`), `crop_name`, `quality_grade`, `price` (BigInt Wei), `test_date`, `expiry_date`, `certification_status` (`APPROVED`, `REJECTED`), `tx_hash`, `block_number`, `timestamp`.
 4. **`investments`**:
@@ -207,11 +208,12 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 * `GET /audit-logs` $\rightarrow$ Fetches recent audit logs.
 
 #### Farmer Blueprint (`/api/farmer`)
-* `POST /register` $\rightarrow$ Registers new cultivation with District, Taluk (Sub-District), and Village parameters. Assigns verifiers using Kerala Priority Assignment matching: Priority 1 (same Taluk), Priority 2 (same District), Priority 3 (any active DISTRICT-level inspector). Only active inspectors receive assignments.
+* `POST /register` $\rightarrow$ Registers new cultivation with expected harvest date, investment window open/close dates, district, Taluk (Sub-District), and village parameters. Enforces date order constraints and validates that the close date is before harvest. Assigns verifiers using Kerala Priority Assignment matching: Priority 1 (same Taluk), Priority 2 (same District), Priority 3 (any active DISTRICT-level inspector). Only active inspectors receive assignments.
 * `GET /my-crops` $\rightarrow$ Lists authenticated farmer's crops.
-* `GET /all-crops` $\rightarrow$ Publicly lists all crop projects.
+* `GET /all-crops` $\rightarrow$ Publicly lists all crop projects, returning dynamic investment status and reasons.
 * `GET /<id>` $\rightarrow$ Retrieves detailed specifications of a specific crop.
 * `POST /update-timeline/<id>` $\rightarrow$ Restricts manual timeline updates. Validates timeline status shifts (`READY_TO_HARVEST`, `HARVEST_COMPLETED`).
+* `GET /profile/<id>` $\rightarrow$ Fetches farmer profile details including weighted average grade, grade counts distribution, lab cert counts, and the stakeholder reviews feed.
 
 #### Quality Blueprint (`/api/quality`)
 * `POST /approve/<id>` $\rightarrow$ Inspector/Admin approves crop on-chain using MetaMask, logging `inspection_notes` and `inspection_method`.
@@ -220,7 +222,7 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 * `GET /pending` $\rightarrow$ Retrieves list of unapproved crop listings assigned to the verifier.
 
 #### Product Blueprint (`/api/product`)
-* `POST /register` $\rightarrow$ Registers Product lot, sets pricing, dates, and automatically updates the parent crop timeline to `PRODUCT_AVAILABLE`.
+* `POST /register` $\rightarrow$ Registers Product lot, dynamically derives the certification status from the quality grade (grade C rejects, others approve), sets pricing, dates, and automatically updates the parent crop timeline to `PRODUCT_AVAILABLE`.
 * `GET /all` $\rightarrow$ Lists all certified product lots.
 * `GET /<lot_number>` $\rightarrow$ Fetches quality grade details for a specific lot.
 
@@ -232,7 +234,7 @@ Backend runs Flask on port `5000` with an `agrochain.db` SQLite database.
 * `POST /cancel/<id>` $\rightarrow$ Cancels a pending investment/LOI proposal, removing it from the database and logging a `INVESTMENT_CANCELLED` audit log. Restricted to the authoring investor or administrator.
 
 #### Rating Blueprint (`/api/rating`)
-* `POST /add` $\rightarrow$ Logs consumer review comment and reliability scores.
+* `POST /add` $\rightarrow$ Logs consumer/investor review comment, product quality, delivery satisfaction, and reliability scores. Restricted to CONSUMER and INVESTOR roles.
 * `GET /farmer/<id>` $\rightarrow$ Calculates average scores and issues credibility badges (`Gold Premium Certified` for $\ge 4.5$).
 
 #### Explorer Blueprint (`/api/explorer`)

@@ -18,11 +18,10 @@ export default function ProductRegistration() {
     lot_number: Math.floor(1000 + Math.random() * 9000), // Random 4 digit default
     farmer_id: '',
     crop_name: '',
-    quality_grade: 'Grade A+',
+    quality_grade: 'A+',
     price_eth: '1.0', // ETH units to be converted to Wei
     test_date: new Date().toISOString().split('T')[0],
-    expiry_date: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 180 days default
-    certification_status: 'APPROVED'
+    expiry_date: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 180 days default
   });
 
   const [loading, setLoading] = useState(false);
@@ -70,6 +69,9 @@ export default function ProductRegistration() {
       const testTimestamp = Math.floor(new Date(formData.test_date).getTime() / 1000);
       const expiryTimestamp = Math.floor(new Date(formData.expiry_date).getTime() / 1000);
 
+      // Derive status automatically: grade C rejects the lot, others approve
+      const derivedStatus = formData.quality_grade === 'C' ? 'REJECTED' : 'APPROVED';
+
       // 1. Call Smart Contract `registerProduct`
       const tx = await contracts.productRegistry.registerProduct(
         lotNumber,
@@ -79,7 +81,7 @@ export default function ProductRegistration() {
         priceWei,
         testTimestamp,
         expiryTimestamp,
-        formData.certification_status
+        derivedStatus
       );
 
       setTxDetails({ step: 'broadcasting', hash: tx.hash });
@@ -116,7 +118,7 @@ export default function ProductRegistration() {
         price: priceWei.toString(), // Save stringified BigInt
         test_date: formData.test_date,
         expiry_date: formData.expiry_date,
-        certification_status: formData.certification_status,
+        certification_status: derivedStatus,
         tx_hash: tx.hash,
         block_number: blockNumber
       });
@@ -230,10 +232,11 @@ export default function ProductRegistration() {
                 onChange={handleInputChange}
                 className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 bg-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
               >
-                <option value="Grade A+">Grade A+ (Premium Organic)</option>
-                <option value="Grade A">Grade A (High Quality)</option>
-                <option value="Grade B">Grade B (Standard)</option>
-                <option value="Grade C">Grade C (Sub-Standard)</option>
+                <option value="A+">Grade A+ (Premium Organic)</option>
+                <option value="A">Grade A (High Quality)</option>
+                <option value="B+">Grade B+ (Very Good)</option>
+                <option value="B">Grade B (Standard)</option>
+                <option value="C">Grade C (Sub-Standard / Reject)</option>
               </select>
             </div>
           </div>
@@ -264,17 +267,18 @@ export default function ProductRegistration() {
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Quality Certification Status
+                Derived Certification Status
               </label>
-              <select
-                name="certification_status"
-                value={formData.certification_status}
-                onChange={handleInputChange}
-                className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 bg-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-              >
-                <option value="APPROVED">APPROVED (Certify and List)</option>
-                <option value="REJECTED">REJECTED (Inspect Fail)</option>
-              </select>
+              <div className={`rounded-xl border py-3 px-3 sm:text-sm font-semibold flex items-center justify-between h-[46px] ${
+                formData.quality_grade === 'C' 
+                  ? 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-450' 
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-455'
+              }`}>
+                <span>{formData.quality_grade === 'C' ? 'REJECTED (Inspect Fail)' : 'APPROVED (Certify and List)'}</span>
+                <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-white dark:bg-slate-900 border select-none">
+                  Auto-derived from grade
+                </span>
+              </div>
             </div>
           </div>
 

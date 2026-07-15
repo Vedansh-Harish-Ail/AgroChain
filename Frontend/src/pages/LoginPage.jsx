@@ -5,13 +5,17 @@ import { useLoading } from '../context/LoadingContext';
 import { Mail, Lock, Eye, EyeOff, Sparkles, SunIcon as Sunburst } from 'lucide-react';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, sendLoginOtp, loginWithOtp } = useAuth();
   const { showLoading, hideLoading } = useLoading();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isOtpLogin, setIsOtpLogin] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpMessage, setOtpMessage] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -28,6 +32,46 @@ export default function LoginPage() {
       navigate('/dashboard');
     } else {
       setError(result.message);
+    }
+  };
+
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      setError("Email address is required.");
+      return;
+    }
+    setError("");
+    setOtpMessage("");
+    showLoading("Sending OTP to your email...");
+    setLoading(true);
+    const res = await sendLoginOtp(email);
+    setLoading(false);
+    hideLoading();
+    if (res.success) {
+      setOtpSent(true);
+      setOtpMessage("A login code has been sent to your email. Check your inbox (or console in dev mode).");
+    } else {
+      setError(res.message);
+    }
+  };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    if (!otpCode) {
+      setError("Please enter the OTP code.");
+      return;
+    }
+    setError("");
+    showLoading("Verifying code...");
+    setLoading(true);
+    const res = await loginWithOtp(email, otpCode);
+    setLoading(false);
+    hideLoading();
+    if (res.success) {
+      navigate('/dashboard');
+    } else {
+      setError(res.message);
     }
   };
 
@@ -80,14 +124,14 @@ export default function LoginPage() {
               <Sunburst className="h-8 w-8" />
             </div>
             <h2 className="text-3xl font-medium mb-1.5 tracking-tight text-slate-900 dark:text-white">
-              Welcome Back
+              {isOtpLogin ? "OTP Password Bypass" : "Welcome Back"}
             </h2>
             <p className="text-left text-slate-500 dark:text-slate-400 text-sm">
-              Sign in to access your AgroChain portal
+              {isOtpLogin ? "Receive a one-time passcode in your registered email to log in." : "Sign in to access your AgroChain portal"}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+          <form onSubmit={isOtpLogin ? (otpSent ? handleOtpSubmit : handleSendOtp) : handleSubmit} className="flex flex-col gap-4" noValidate>
             <div>
               <label htmlFor="email" className="block text-sm mb-2 font-semibold text-slate-700 dark:text-slate-300">
                 Email Address
@@ -100,48 +144,116 @@ export default function LoginPage() {
                   type="email"
                   id="email"
                   placeholder="name@example.com"
-                  className="text-sm w-full py-2.5 pl-10 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
+                  className="text-sm w-full py-2.5 pl-10 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-60"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isOtpLogin && otpSent}
                   required
                 />
               </div>
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm mb-2 font-semibold text-slate-700 dark:text-slate-300">
-                Password
-              </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Lock className="h-5 w-5 text-slate-400" />
+            {isOtpLogin ? (
+              <>
+                {otpSent && (
+                  <div>
+                    <label htmlFor="otpCode" className="block text-sm mb-2 font-semibold text-slate-700 dark:text-slate-300">
+                      Enter 6-Digit Email OTP
+                    </label>
+                    <div className="relative">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <Lock className="h-5 w-5 text-slate-400" />
+                      </div>
+                      <input
+                        type="text"
+                        id="otpCode"
+                        placeholder="123456"
+                        className="text-sm w-full py-2.5 pl-10 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 font-mono tracking-widest text-center"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value)}
+                        maxLength={6}
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOtpLogin(false);
+                      setError("");
+                      setOtpMessage("");
+                      setOtpSent(false);
+                      setOtpCode("");
+                    }}
+                    className="text-xs text-emerald-600 hover:underline font-semibold"
+                  >
+                    Sign in with Password
+                  </button>
                 </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="password"
-                  placeholder="••••••••"
-                  className="text-sm w-full py-2.5 pl-10 pr-10 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
-                </button>
-              </div>
-            </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label htmlFor="password" className="block text-sm mb-2 font-semibold text-slate-700 dark:text-slate-300">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <Lock className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      placeholder="••••••••"
+                      className="text-sm w-full py-2.5 pl-10 pr-10 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="size-4" />
+                      ) : (
+                        <Eye className="size-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOtpLogin(true);
+                      setError("");
+                      setOtpMessage("");
+                      setOtpSent(false);
+                      setOtpCode("");
+                    }}
+                    className="text-xs text-emerald-600 hover:underline font-semibold"
+                  >
+                    Forgot Password? Login with Email OTP
+                  </button>
+                </div>
+              </>
+            )}
 
             {error && (
               <div className="p-3 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/30">
                 {error}
+              </div>
+            )}
+
+            {otpMessage && (
+              <div className="p-3 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30">
+                {otpMessage}
               </div>
             )}
 
@@ -153,7 +265,7 @@ export default function LoginPage() {
               {loading ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
               ) : (
-                "Sign In"
+                isOtpLogin ? (otpSent ? "Verify & Sign In" : "Send Login OTP") : "Sign In"
               )}
             </button>
 

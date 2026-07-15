@@ -268,6 +268,11 @@ The complete stakeholder verification workflow functions as follows:
 | Visual Skeleton screens (Table, Marketplace, Crop history, Dashboard Skeletons) | ✅ |
 | Role-specific dashboard stats widgets displaying real committed capital, verified crops, and certs issued counts | ✅ |
 | Proposal cancellation endpoint (removes proposal, logs INVESTMENT_CANCELLED event) | ✅ |
+| Crop registration validates Expected Harvest and Investment window boundaries | ✅ |
+| Investment status calculated dynamically (OPEN/CLOSED) based on timelines, inspector approvals, and current dates | ✅ |
+| Standardized quality tester grades (A+, A, B+, B, C) with automatic rejection on Grade C | ✅ |
+| Farmer profile details include weighted averages, remarks, grade counts, and reviews feed | ✅ |
+| Transaction hashes sliced to 66 chars to satisfy database constraint lengths | ✅ |
 
 ---
 

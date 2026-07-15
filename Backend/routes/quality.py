@@ -56,7 +56,7 @@ def approve_crop(current_user, crop_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='FARMER_CROP_APPROVED',
-        details=f"Agricultural Inspector {current_user.name} verified and approved crop ID {crop_id} with remarks: {inspection_notes}."
+        details=f"Verified and approved crop ID {crop_id} with remarks: {inspection_notes}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -127,7 +127,7 @@ def reject_crop(current_user, crop_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='FARMER_CROP_REJECTED',
-        details=f"Agricultural Inspector {current_user.name} rejected crop ID {crop_id} with remarks: {inspection_notes}."
+        details=f"Rejected crop ID {crop_id} with remarks: {inspection_notes}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -164,7 +164,10 @@ def get_pending_crops(current_user):
         from sqlalchemy import or_
         # Show crops explicitly assigned to this inspector
         # PLUS unassigned pending crops in the inspector's district/sub-district
-        filters = [Farmer.assigned_inspector_id == current_user.id]
+        filters = [
+            (Farmer.assigned_inspector_id == current_user.id) &
+            (Farmer.is_approved == False)
+        ]
         
         if current_user.coverage_level == 'DISTRICT' and current_user.district:
             # District-level inspectors see all pending crops in their district
@@ -241,7 +244,7 @@ def save_notes(current_user, crop_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='INSPECTOR_SAVED_NOTES',
-        details=f"Agricultural Inspector {current_user.name} uploaded inspection notes for crop ID {crop_id}."
+        details=f"Uploaded inspection notes for crop ID {crop_id}."
     )
     db.session.add(audit)
     db.session.commit()

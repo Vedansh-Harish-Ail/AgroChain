@@ -150,6 +150,12 @@ class Farmer(db.Model):
     assigned_inspector_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     assigned_tester_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
+    # Investment Lifecycle and Harvest Planning fields
+    expected_harvest_date = db.Column(db.DateTime, nullable=True)
+    investment_start_date = db.Column(db.DateTime, nullable=True)
+    investment_close_date = db.Column(db.DateTime, nullable=True)
+    investment_status = db.Column(db.String(50), default='CLOSED') # OPEN / CLOSED
+
     # Relationships
     tester = db.relationship('User', foreign_keys=[tester_id])
     assigned_inspector = db.relationship('User', foreign_keys=[assigned_inspector_id])
@@ -158,6 +164,42 @@ class Farmer(db.Model):
     investments = db.relationship('Investment', backref='farmer', lazy=True)
     ratings = db.relationship('Rating', backref='farmer', lazy=True)
     crop_updates = db.relationship('CropUpdate', backref='farmer', lazy=True, cascade="all, delete-orphan")
+
+    def calculate_investment_status(self):
+        from datetime import datetime, timezone
+        
+        # If not verified
+        if not self.is_approved or self.verification_status != 'VERIFIED':
+            return 'CLOSED', 'Crop is pending agricultural inspector verification.'
+            
+        # If timeline status indicates harvest or completion
+        if self.timeline_status in ['TESTER_APPROVED', 'READY_TO_HARVEST', 'HARVEST_COMPLETED', 'PRODUCT_AVAILABLE', 'REJECTED']:
+            return 'CLOSED', f"Crop has reached harvest/certification stage ({self.timeline_status})."
+            
+        # If already funded
+        if self.timeline_status == 'FUNDING_COMPLETED':
+            return 'CLOSED', 'Funding has already been completed.'
+            
+        # Check dates
+        start = self.investment_start_date
+        close = self.investment_close_date
+        
+        # Safe timezone naive comparisons
+        now_naive = datetime.utcnow()
+        if start and start.tzinfo is not None:
+            start = start.replace(tzinfo=None)
+        if close and close.tzinfo is not None:
+            close = close.replace(tzinfo=None)
+            
+        if start and now_naive < start:
+            return 'CLOSED', f"Investment window opens on {start.strftime('%d-%b-%Y')}."
+            
+        if close and now_naive >= close:
+            return 'CLOSED', f"Investment window closed on {close.strftime('%d-%b-%Y')}."
+            
+        if close:
+            return 'OPEN', f"Investment is open. Deadline is {close.strftime('%d-%b-%Y')}."
+        return 'OPEN', 'Investment is open.'
 
     def to_dict(self):
         # Calculate average rating
@@ -171,6 +213,8 @@ class Farmer(db.Model):
         else:
             overall_avg = 0.0
             rating_count = 0
+
+        inv_status, inv_reason = self.calculate_investment_status()
 
         return {
             'id': self.id,
@@ -212,7 +256,12 @@ class Farmer(db.Model):
             'assigned_inspector_id': self.assigned_inspector_id,
             'assigned_inspector_name': self.assigned_inspector.name if self.assigned_inspector else None,
             'assigned_tester_id': self.assigned_tester_id,
-            'assigned_tester_name': self.assigned_tester.name if self.assigned_tester else None
+            'assigned_tester_name': self.assigned_tester.name if self.assigned_tester else None,
+            'expected_harvest_date': self.expected_harvest_date.isoformat() if self.expected_harvest_date else None,
+            'investment_start_date': self.investment_start_date.isoformat() if self.investment_start_date else None,
+            'investment_close_date': self.investment_close_date.isoformat() if self.investment_close_date else None,
+            'investment_status': inv_status,
+            'investment_status_reason': inv_reason
         }
 
 
@@ -249,9 +298,20 @@ class Product(db.Model):
             overall_avg = 0.0
             rating_count = 0
 
+        inv_status = 'CLOSED'
+        inv_reason = 'Farmer project not found'
+        expected_harvest = None
+        investment_close = None
+        
+        if self.farmer:
+            inv_status, inv_reason = self.farmer.calculate_investment_status()
+            expected_harvest = self.farmer.expected_harvest_date.isoformat() if self.farmer.expected_harvest_date else None
+            investment_close = self.farmer.investment_close_date.isoformat() if self.farmer.investment_close_date else None
+
         return {
             'lot_number': self.lot_number,
             'farmer_id': self.farmer_id,
+            'farmer_user_id': self.farmer.user_id if self.farmer else None,
             'farmer_name': self.farmer.user.name if self.farmer and self.farmer.user else None,
             'crop_name': self.crop_name,
             'quality_grade': self.quality_grade,
@@ -264,7 +324,11 @@ class Product(db.Model):
             'timestamp': self.timestamp.isoformat(),
             'average_rating': overall_avg,
             'rating_count': rating_count,
-            'created_at': self.created_at.isoformat()
+            'created_at': self.created_at.isoformat(),
+            'expected_harvest_date': expected_harvest,
+            'investment_close_date': investment_close,
+            'investment_status': inv_status,
+            'investment_status_reason': inv_reason
         }
 
 
@@ -387,6 +451,12 @@ class AuditLog(db.Model):
             'id': self.id,
             'user_id': self.user_id,
             'user_name': self.user.name if self.user else 'System',
+            'user_role': self.user.role if self.user else None,
+            'user_wallet': self.user.wallet_address if self.user else None,
+            'user_district': self.user.district if self.user else None,
+            'user_pin_code': self.user.pin_code if self.user else None,
+            'user_lab_name': self.user.lab_name if self.user else None,
+            'user_accreditation_number': self.user.accreditation_number if self.user else None,
             'action': self.action,
             'details': self.details,
             'timestamp': self.timestamp.isoformat()

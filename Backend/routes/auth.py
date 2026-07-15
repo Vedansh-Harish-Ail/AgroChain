@@ -363,7 +363,7 @@ def register():
     audit = AuditLog(
         user_id=new_user.id,
         action='USER_REGISTERED',
-        details=f"User {name} registered with role {role} and phone {phone_number}."
+        details=f"Registered account as {role} with phone {phone_number}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -397,7 +397,7 @@ def login():
     audit = AuditLog(
         user_id=user.id,
         action='USER_LOGIN',
-        details=f"User {user.name} logged in."
+        details="Logged in to the dashboard."
     )
     db.session.add(audit)
     db.session.commit()
@@ -432,7 +432,7 @@ def change_password(current_user):
     audit = AuditLog(
         user_id=current_user.id,
         action='USER_PASSWORD_CHANGED',
-        details=f"User {current_user.name} changed their password."
+        details="Successfully changed account password."
     )
     db.session.add(audit)
     db.session.commit()
@@ -562,3 +562,114 @@ def get_upload(filename):
     from flask import send_from_directory
     upload_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'uploads')
     return send_from_directory(upload_folder, filename)
+
+
+# ---------------------------------------------------------------------------
+# Forgot Login: OTP-based Login bypass via Email
+# ---------------------------------------------------------------------------
+@auth_bp.route('/send-login-otp', methods=['POST'])
+def send_login_otp():
+    data = request.get_json() or {}
+    email = data.get('email')
+    
+    if not email:
+        return jsonify({'message': 'Email address is required'}), 400
+        
+    email = email.strip().lower()
+    
+    # Check if user exists
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'message': 'No user registered with this email address.'}), 404
+        
+    # Generate 6-digit OTP code
+    otp_code = f"{random.randint(100000, 999999)}"
+    
+    # Save OTP to database (delete existing first)
+    existing_otp = OTPVerification.query.filter_by(email=email).first()
+    if existing_otp:
+        db.session.delete(existing_otp)
+        db.session.commit()
+        
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=5)
+    new_otp = OTPVerification(
+        email=email,
+        otp_code=otp_code,
+        expires_at=expires_at
+    )
+    db.session.add(new_otp)
+    db.session.commit()
+    
+    # Send email
+    from utils.email import send_email, get_html_template
+    
+    subject = "AgroChain Login OTP Code"
+    text_body = f"Your AgroChain login verification code is: {otp_code}. Valid for 5 minutes."
+    html_body = get_html_template(
+        title="Login Verification OTP",
+        body_text=f"<p>We received a request to log in to your AgroChain account via OTP. Please use the following code to sign in:</p><div style='font-size: 28px; font-weight: bold; letter-spacing: 4px; text-align: center; margin: 20px 0; color: #059669;'>{otp_code}</div><p>This code is valid for 5 minutes. If you did not request this login, please change your password or contact support.</p>"
+    )
+    
+    try:
+        send_email(subject, email, text_body, html_body)
+    except Exception as e:
+        print(f"\n--- [LOGIN EMAIL DEV FALLBACK] ---")
+        print(f"To: {email}")
+        print(f"OTP Code: {otp_code}")
+        print(f"SMTP Error: {str(e)}")
+        print(f"--------------------------------\n")
+        
+    return jsonify({
+        'message': 'Login verification code sent to your email.'
+    }), 200
+
+
+@auth_bp.route('/login-with-otp', methods=['POST'])
+def login_with_otp():
+    data = request.get_json() or {}
+    email = data.get('email')
+    otp_code = data.get('otp_code')
+    
+    if not email or not otp_code:
+        return jsonify({'message': 'Email and OTP code are required'}), 400
+        
+    email = email.strip().lower()
+    otp_code = otp_code.strip()
+    
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'message': 'No user registered with this email address.'}), 404
+        
+    # Query OTP record
+    record = OTPVerification.query.filter_by(email=email).first()
+    if not record or record.otp_code != otp_code:
+        return jsonify({'message': 'Invalid login OTP code.'}), 400
+        
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    if record.expires_at < now:
+        db.session.delete(record)
+        db.session.commit()
+        return jsonify({'message': 'Login OTP code has expired.'}), 400
+        
+    # Clear the OTP code
+    db.session.delete(record)
+    db.session.commit()
+    
+    # Generate token
+    token = generate_token(user.id, user.role)
+    
+    # Audit log
+    audit = AuditLog(
+        user_id=user.id,
+        action='USER_LOGIN_OTP',
+        details="Logged in to the dashboard using Email OTP."
+    )
+    db.session.add(audit)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Login successful',
+        'token': token,
+        'user': user.to_dict()
+    }), 200
+

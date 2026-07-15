@@ -5,7 +5,7 @@ from utils.auth import roles_allowed
 rating_bp = Blueprint('rating', __name__)
 
 @rating_bp.route('/add', methods=['POST'])
-@roles_allowed('CONSUMER', 'ADMIN')
+@roles_allowed('CONSUMER', 'INVESTOR', 'ADMIN')
 def add_rating(current_user):
     data = request.get_json() or {}
     

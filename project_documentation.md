@@ -196,7 +196,7 @@ Looking at existing solutions, it is clear that while enterprise-grade tracking 
 ## CHAPTER 3: REQUIREMENTS ENGINEERING & MODELING
 
 ### 3.1 Functional Requirements Architecture
-1.  **Farmer Sign-up and Crop Entry**: A farmer creates a profile and optionally links their Ethereum wallet (required only if they want to participate in the P2P lending marketplace). They register their crop by entering details like the location (District, Taluk, and Village), expected yield, and uploading cultivation photos and land ownership documents separately.
+1.  **Farmer Sign-up and Crop Entry**: A farmer creates a profile and optionally links their Ethereum wallet (required only if they want to participate in the P2P lending marketplace). They register their crop by entering details like the location (District, Taluk, and Village), expected yield, expected harvest date, and investment window start/close dates, and uploading cultivation photos and land ownership documents separately. The system enforces logical validations: the investment window must open on or after the cultivation date, must be at least 1 day wide, and must close before the expected harvest date.
 2.  **Admin Creating Inspector Accounts**: Administrators register agricultural inspectors by entering their name, email, district, Taluk, coverage jurisdiction (`SUB_DISTRICT` or `DISTRICT`), and phone number. The platform generates a temporary password for the new inspector.
 3.  **Inspector Account Setup**:
     - **Password Update**: On their first login, inspectors must update their temporary password before they can access their dashboard.
@@ -210,8 +210,8 @@ Looking at existing solutions, it is clear that while enterprise-grade tracking 
     - **Save Notes Locally**: Record inspection details and choose the audit type (`PHYSICAL_VISIT`, `PHOTO_REVIEW`, `HYBRID`) to store in the database. This does not require a MetaMask transaction.
     - **Approve or Reject on the Ledger**: Once ready, they sign the final verification on-chain via the `FarmerRegistry` smart contract using their connected MetaMask wallet.
 6.  **Quality Lab Onboarding**: Testing labs register online by submitting their credentials (lab name, license number, NABL/government accreditation) and uploading certificates. Their accounts are set to `PENDING_APPROVAL` and remain restricted until approved by an administrator.
-7.  **Lab Certifications**: Once the admin approves a lab and sets it to `ACTIVE`, the lab receives testing requests for crops harvested within their district and ZIP code. Lab technicians run tests, assign quality grades, and write the crop lot certificate to the blockchain (via `ProductRegistry`) using MetaMask. The dashboard warns them if their wallet is disconnected.
-8.  **Investor Portal**: Investors can browse verified crop lots, submit funding proposals (Letters of Intent), manage active offers in an LOI tracker, and deposit funds through the escrow contract.
+7.  **Lab Certifications**: Once the admin approves a lab and sets it to `ACTIVE`, the lab receives testing requests for crops harvested within their district and ZIP code. Lab technicians run tests, assign quality grades from standardized options (`A+`, `A`, `B+`, `B`, `C`), and write the crop lot certificate to the blockchain (via `ProductRegistry`) using MetaMask. If the tester assigns a `C` grade, the lot is automatically marked as `REJECTED` and the crop window closes; otherwise it is `APPROVED`. The dashboard warns them if their wallet is disconnected.
+8.  **Investor Portal**: Investors can browse verified crop lots, view dynamic investment windows and deadlines, submit funding proposals (Letters of Intent), manage active offers in an LOI tracker, and deposit funds through the escrow contract. If the window is closed, LOI submissions are blocked.
 9.  **Public Traceability Lookup**: Consumers scan packaging QR codes or enter a lot number on the explorer page to view a crop's timeline, audit logs, and certificates.
 10. **Admin Portal**: Admins monitor audit logs, review and approve pending laboratory accounts using a dedicated review panel, and manage inspector accounts.
 
@@ -416,6 +416,9 @@ erDiagram
         string gps_longitude
         int assigned_inspector_id
         int assigned_tester_id
+        datetime expected_harvest_date
+        datetime investment_start_date
+        datetime investment_close_date
     }
     PRODUCTS {
         int lot_number PK
@@ -425,6 +428,7 @@ erDiagram
         int price
         string test_date
         string expiry_date
+        string certification_status
     }
     INVESTMENTS {
         int id PK
@@ -658,8 +662,44 @@ def roles_allowed(*roles):
 
 #### 3. Crop Management
 *   **Register Cultivation** (`POST /api/farmer/register`)
-    *   *Request*: `{ "crop_type": "Wheat", "farming_type": "Organic", "expected_yield": "5000", "land_survey_no": "242/A", "gps_latitude": "10.5204", "gps_longitude": "76.8567", "farm_location": "Thrissur Farm", "district": "Thrissur", "sub_district": "Chavakkad", "village": "Chavakkad Central", "pin_code": "680001", "evidence_photos": ["/uploads/img1.jpg"], "evidence_documents": ["/uploads/doc1.pdf"] }`
+    *   *Request*: `{ "crop_type": "Wheat", "farming_type": "Organic", "expected_yield": "5000", "land_survey_no": "242/A", "gps_latitude": "10.5204", "gps_longitude": "76.8567", "farm_location": "Thrissur Farm", "district": "Thrissur", "sub_district": "Chavakkad", "village": "Chavakkad Central", "pin_code": "680001", "expected_harvest_date": "2026-10-15", "investment_start_date": "2026-07-20", "investment_close_date": "2026-09-30", "evidence_photos": ["/uploads/img1.jpg"], "evidence_documents": ["/uploads/doc1.pdf"] }`
     *   *Response*: `{ "message": "Crop registered successfully", "id": 1 }`
+*   **Get Farmer Profile Details** (`GET /api/farmer/profile/<id>`)
+    *   *Response*:
+        ```json
+        {
+          "profile": {
+            "id": 1,
+            "name": "Rajesh Patel",
+            "email": "farmer@gmail.com",
+            "wallet_address": "0x...",
+            "is_approved": true,
+            "location": "Aluva, Ernakulam, Kerala",
+            "farming_type": "Organic",
+            "crop_count": 3,
+            "average_rating": 4.5,
+            "rating_count": 2,
+            "avg_quality_grade": "A+",
+            "avg_quality_value": 4.5,
+            "quality_remark": "Outstanding! Consistently produces premium-grade organic crops.",
+            "grade_counts": { "A+": 1, "A": 1, "B+": 0, "B": 0, "C": 0 },
+            "certified_crop_count": 2
+          },
+          "crops": [ ... ],
+          "reviews": [
+            {
+              "id": 1,
+              "comment": "Excellent quality!",
+              "reliability": 5,
+              "product_quality": 5,
+              "delivery_satisfaction": 4,
+              "rater_name": "Amit Kumar",
+              "rater_role": "Consumer",
+              "timestamp": "2026-07-14T16:05:00Z"
+            }
+          ]
+        }
+        ```
 
 #### 4. Quality Inspection
 *   **Save Notes Offline** (`POST /api/quality/save-notes/<id>`)

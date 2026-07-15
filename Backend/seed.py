@@ -159,6 +159,7 @@ def seed_database(reset=False):
         
         # Seed crop projects
         print("Seeding crop projects...")
+        crop1_cult_date = datetime.now(timezone.utc) - timedelta(days=45)
         crop1 = Farmer(
             user_id=farmer.id,
             farm_location="Aluva, Ernakulam, Kerala",
@@ -167,8 +168,11 @@ def seed_database(reset=False):
             farming_type="Organic",
             crop_type="Basmati Rice",
             expected_yield=2500,
-            cultivation_date=datetime.now(timezone.utc) - timedelta(days=45),
-            tx_hash="0x5f87b8b4081c7e9976378baea28db3f7b98d1a1b1c7e9976378baea28db3f7b98d",
+            cultivation_date=crop1_cult_date,
+            expected_harvest_date=crop1_cult_date + timedelta(days=90),
+            investment_start_date=crop1_cult_date + timedelta(days=5),
+            investment_close_date=crop1_cult_date + timedelta(days=75),
+            tx_hash="0x5f87b8b4081c7e9976378baea28db3f7b98d1a1b1c7e9976378baea28db3f7b98d"[:66],
             block_number=12,
             blockchain_status="VERIFIED",
             is_approved=True,
@@ -194,6 +198,7 @@ def seed_database(reset=False):
         )
         db.session.add(crop1)
         
+        crop2_cult_date = datetime.now(timezone.utc) - timedelta(days=60)
         crop2 = Farmer(
             user_id=farmer.id,
             farm_location="Kalamassery, Kochi, Kerala",
@@ -202,7 +207,10 @@ def seed_database(reset=False):
             farming_type="Organic",
             crop_type="Alphonso Mango",
             expected_yield=1200,
-            cultivation_date=datetime.now(timezone.utc) - timedelta(days=60),
+            cultivation_date=crop2_cult_date,
+            expected_harvest_date=crop2_cult_date + timedelta(days=90),
+            investment_start_date=crop2_cult_date + timedelta(days=5),
+            investment_close_date=crop2_cult_date + timedelta(days=45), # Already closed (closed 15 days ago)
             tx_hash="0xa9b8c7d6e5f43210123456789abcdef0123456789abcdef0123456789abcdef0",
             block_number=15,
             blockchain_status="VERIFIED",
@@ -230,6 +238,7 @@ def seed_database(reset=False):
         db.session.add(crop2)
         
         # This one is DB_ONLY (Lazy Wallet demonstration)
+        crop3_cult_date = datetime.now(timezone.utc) - timedelta(days=10)
         crop3 = Farmer(
             user_id=farmer.id,
             farm_location="Edappally, Kochi, Kerala",
@@ -238,7 +247,10 @@ def seed_database(reset=False):
             farming_type="Non-Organic",
             crop_type="Organic Cotton",
             expected_yield=1800,
-            cultivation_date=datetime.now(timezone.utc) - timedelta(days=10),
+            cultivation_date=crop3_cult_date,
+            expected_harvest_date=crop3_cult_date + timedelta(days=120),
+            investment_start_date=crop3_cult_date + timedelta(days=5),
+            investment_close_date=crop3_cult_date + timedelta(days=100),
             tx_hash=None,
             block_number=None,
             blockchain_status="DB_ONLY",
@@ -264,6 +276,7 @@ def seed_database(reset=False):
         crop_types = ["Premium Wheat", "Organic Sugarcane", "Yellow Turmeric", "Sweet Corn", "Organic Soybeans"]
         locations = ["Thrissur", "Palakkad", "Kottayam", "Alappuzha", "Kollam"]
         for i, f_user in enumerate(additional_farmers):
+            add_cult_date = datetime.now(timezone.utc) - timedelta(days=30 + i * 5)
             crop = Farmer(
                 user_id=f_user.id,
                 farm_location=f"{locations[i]}, Kerala, India",
@@ -272,7 +285,10 @@ def seed_database(reset=False):
                 farming_type="Organic",
                 crop_type=crop_types[i],
                 expected_yield=2000 + i * 200,
-                cultivation_date=datetime.now(timezone.utc) - timedelta(days=30 + i * 5),
+                cultivation_date=add_cult_date,
+                expected_harvest_date=add_cult_date + timedelta(days=90),
+                investment_start_date=add_cult_date + timedelta(days=5),
+                investment_close_date=add_cult_date + timedelta(days=75),
                 tx_hash=f"0x{i+3}f87b8b4081c7e9976378baea28db3f7b98d1a1b1c7e9976378baea28db3f7b98d"[:66],
                 block_number=13 + i,
                 blockchain_status="VERIFIED",
@@ -318,7 +334,7 @@ def seed_database(reset=False):
             test_date=datetime.now(timezone.utc) - timedelta(days=5),
             expiry_date=datetime.now(timezone.utc) + timedelta(days=30),
             certification_status="APPROVED",
-            tx_hash="0xcd8e7f6a5b4c3d2e1f0a9b8c7d6e5f43210123456789abcdef0123456789abcde",
+            tx_hash="0xcd8e7f6a5b4c3d2e1f0a9b8c7d6e5f43210123456789abcdef0123456789abcde"[:66],
             block_number=22
         )
         db.session.add(product2)
@@ -376,7 +392,7 @@ def seed_database(reset=False):
         print("Seeding explorer records...")
         tx_list = [
             Transaction(
-                tx_hash="0x5f87b8b4081c7e9976378baea28db3f7b98d1a1b1c7e9976378baea28db3f7b98d",
+                tx_hash="0x5f87b8b4081c7e9976378baea28db3f7b98d1a1b1c7e9976378baea28db3f7b98d"[:66],
                 block_number=12,
                 from_address=farmer.wallet_address,
                 to_address="0x0000000000000000000000000000000000000000",

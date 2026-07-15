@@ -129,6 +129,9 @@ export default function FarmerRegistration() {
     crop_type: '',
     expected_yield: '',
     cultivation_date: new Date().toISOString().split('T')[0],
+    expected_harvest_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    investment_start_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    investment_close_date: new Date(Date.now() + 75 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     land_survey_no: '',
     gps_latitude: '',
     gps_longitude: ''
@@ -284,6 +287,25 @@ export default function FarmerRegistration() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    if (name === 'cultivation_date') {
+      const sowingTime = new Date(value).getTime();
+      if (!isNaN(sowingTime)) {
+        const harvestDate = new Date(sowingTime + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const startOpenDate = new Date(sowingTime + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const closeOpenDate = new Date(sowingTime + 75 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        setFormData(prev => ({
+          ...prev,
+          cultivation_date: value,
+          expected_harvest_date: harvestDate,
+          investment_start_date: startOpenDate,
+          investment_close_date: closeOpenDate
+        }));
+        return;
+      }
+    }
+    
     setFormData({ ...formData, [name]: value });
   };
 
@@ -597,6 +619,30 @@ export default function FarmerRegistration() {
       return;
     }
 
+    if (!formData.expected_harvest_date || !formData.investment_start_date || !formData.investment_close_date) {
+      setError('Expected Harvest Date and Investment Window dates are required.');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.investment_start_date < formData.cultivation_date) {
+      setError('Investment Start Date cannot be before the Sowing/Cultivation Date.');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.investment_close_date <= formData.investment_start_date) {
+      setError('Investment Close Date must be after the Investment Start Date.');
+      setLoading(false);
+      return;
+    }
+
+    if (formData.investment_close_date >= formData.expected_harvest_date) {
+      setError('Investment Close Date must be before the Expected Harvest Date.');
+      setLoading(false);
+      return;
+    }
+
     if (!formData.gps_latitude || !formData.gps_longitude) {
       setError('Please select your farm location on the map.');
       setLoading(false);
@@ -763,6 +809,67 @@ export default function FarmerRegistration() {
                   required
                   max={new Date().toISOString().split('T')[0]}
                   value={formData.cultivation_date}
+                  onChange={handleInputChange}
+                  className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pt-2 pb-2">Harvest & Investment Planning</h3>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Expected Harvest Date
+              </label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Calendar className="h-5 w-5 text-slate-400" />
+                </div>
+                <input
+                  type="date"
+                  name="expected_harvest_date"
+                  required
+                  value={formData.expected_harvest_date}
+                  onChange={handleInputChange}
+                  className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Investment Window Open
+              </label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Calendar className="h-5 w-5 text-slate-400" />
+                </div>
+                <input
+                  type="date"
+                  name="investment_start_date"
+                  required
+                  value={formData.investment_start_date}
+                  onChange={handleInputChange}
+                  className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Investment Window Close
+              </label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Calendar className="h-5 w-5 text-slate-400" />
+                </div>
+                <input
+                  type="date"
+                  name="investment_close_date"
+                  required
+                  value={formData.investment_close_date}
                   onChange={handleInputChange}
                   className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
                 />

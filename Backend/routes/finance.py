@@ -23,8 +23,10 @@ def make_investment(current_user):
     farmer = Farmer.query.get(farmer_id)
     if not farmer:
         return jsonify({'message': 'Farmer project not found'}), 404
-    if not farmer.is_approved:
-        return jsonify({'message': 'Farmer cultivation must be verified first'}), 400
+        
+    inv_status, inv_reason = farmer.calculate_investment_status()
+    if inv_status != 'OPEN':
+        return jsonify({'message': f"Investment is closed. Reason: {inv_reason}"}), 400
         
     # Verify Lot exists
     product = Product.query.get(lot_number)
@@ -55,7 +57,7 @@ def make_investment(current_user):
     audit = AuditLog(
         user_id=current_user.id,
         action='PROPOSAL_SUBMITTED',
-        details=f"Investor {current_user.name} submitted a funding proposal for Farmer {farmer_id} Lot {lot_number} with Rs. {amount}."
+        details=f"Submitted a funding proposal for Farmer {farmer_id} Lot {lot_number} with Rs. {amount}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -143,7 +145,7 @@ def update_investment_status(current_user, investment_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='INVESTMENT_STATUS_UPDATED',
-        details=f"Investment ID {investment_id} status changed to {status} by {current_user.name}."
+        details=f"Investment ID {investment_id} status changed to {status}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -209,7 +211,7 @@ def update_investment_tx(current_user, investment_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='INVESTMENT_TX_UPDATED',
-        details=f"Investment ID {investment_id} transaction hash set to {tx_hash} by Investor {current_user.name}."
+        details=f"Investment ID {investment_id} transaction hash set to {tx_hash}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -243,7 +245,7 @@ def cancel_investment(current_user, investment_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='INVESTMENT_CANCELLED',
-        details=f"Investor {current_user.name} cancelled the funding proposal (ID {investment_id}) for Lot {investment.lot_number}."
+        details=f"Cancelled the funding proposal (ID {investment_id}) for Lot {investment.lot_number}."
     )
     db.session.add(audit)
     db.session.commit()

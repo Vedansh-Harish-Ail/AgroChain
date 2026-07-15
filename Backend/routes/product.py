@@ -17,12 +17,18 @@ def register_product(current_user):
     price = data.get('price')
     test_date_str = data.get('test_date')
     expiry_date_str = data.get('expiry_date')
-    certification_status = data.get('certification_status') # APPROVED / REJECTED
     tx_hash = data.get('tx_hash')
     block_number = data.get('block_number')
     
-    if not lot_number or not farmer_id or not crop_name or not quality_grade or price is None or not test_date_str or not expiry_date_str or not certification_status:
+    if not lot_number or not farmer_id or not crop_name or not quality_grade or price is None or not test_date_str or not expiry_date_str:
         return jsonify({'message': 'Missing required fields'}), 400
+        
+    # Derive status automatically: if grade is C, reject the lot.
+    norm_grade = quality_grade.replace('Grade ', '').strip()
+    if norm_grade == 'C':
+        certification_status = 'REJECTED'
+    else:
+        certification_status = 'APPROVED'
         
     # Check if lot already exists
     if Product.query.get(lot_number):
@@ -72,7 +78,7 @@ def register_product(current_user):
     audit = AuditLog(
         user_id=current_user.id,
         action='PRODUCT_LOT_CREATED',
-        details=f"Quality Lab Tester {current_user.name} certified product Lot {lot_number} for farmer ID {farmer_id}."
+        details=f"Certified product Lot {lot_number} for farmer ID {farmer_id}."
     )
     db.session.add(audit)
     db.session.commit()

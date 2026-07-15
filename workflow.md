@@ -51,11 +51,12 @@ graph TD
 ### Phase 2: Cultivation Registration
 1. **Crop Listing Entry**:
    * Navigate to the **"Register Crop"** portal.
-   * Input the cultivation specs: Crop Type (e.g. Organic Wheat), Expected Yield (kg), Land Survey Deed Number, GPS Coordinates (Latitude & Longitude), Farm Location Address, and upload evidence images.
+   * Input the cultivation specs: Crop Type (e.g. Organic Wheat), Expected Yield (kg), Land Survey Deed Number, GPS Coordinates (Latitude & Longitude), Expected Harvest Date, Investment Window Start Date, Investment Window Close Date, Farm Location Address, and upload evidence images.
    * Submit the form. This creates a record in the `farmers` database table:
      * `verification_status` is set to `'PENDING'`
      * `timeline_status` is set to `'PENDING'`
      * `blockchain_status` is set to `'DB_ONLY'`
+     * `expected_harvest_date`, `investment_start_date`, and `investment_close_date` are recorded. Dynamic status is computed based on current date bounds.
      * `assigned_inspector_id` and `assigned_tester_id` are auto-allocated based on matching District and Pin Code coverage. The designated tester must be in `ACTIVE` status (approved by the Admin) to receive assignments.
 
 ### Phase 3: Land & Audit Verification (Inspector Audit)
@@ -158,10 +159,10 @@ graph TD
    * Conduct scientific lab assessments (moisture levels, heavy metal presence, organic purity, pesticide screening).
 4. **One-Click Automated Certification**:
    * Select a crop from the list.
-   * Click **"Approve & Certify Crop"** on the Quality Testing Portal (`/tester/approve`).
+   * Click **"Approve & Certify Crop"** on the Quality Testing Portal.
    * This executes the `productRegistry.registerProduct` smart contract (requires MetaMask connected).
-   * It registers the product lot number, crop name, certified grade (`Grade A+`), pricing details in Wei, test timestamps, and expiry date.
-   * The backend database matches the crop ID to the newly certified lot number, moving the status to `PRODUCT_AVAILABLE` (Certified).
+   * It registers the product lot number, crop name, certified grade (`Grade A+` / `Grade A` / `Grade B+` / `Grade B` / `Grade C`), pricing details in Wei, test timestamps, and expiry date. If `Grade C` is selected, the certification status is automatically set to `REJECTED` and the investment window is closed. Other grades set the status to `APPROVED`.
+   * The backend database matches the crop ID to the newly certified lot number, updating the status accordingly.
 
 ---
 
@@ -187,10 +188,12 @@ graph TD
 2. **Browsing Verified Crops**:
    * Navigate to the **"Funding Marketplace"** (`/finance`).
    * Filter crops that are verified by inspectors (`verification_status == 'VERIFIED'`). Visual marketplace skeletons load details smoothly.
+   * Clicking a crop loads its details into a two-tab side panel:
+     * **Farmer & Genuinity Report**: Shows the Inspector's notes, land deeds, the Farmer's Quality Tester track record (weighted average grade, batch count, evaluative remark, and grade distribution bar chart), and comments from both consumers and investors.
+     * **LOI Proposal Wizard**: Allows the investor to type in proposal terms.
 3. **Submitting a Proposal (LOI)**:
-   * Click **"Fund Crop"** on a chosen cultivation project.
    * Enter the proposal details: Funding Amount (INR), return yield shares, and custom terms.
-   * Click **"Send Proposal"** (this logs a pending Letter of Intent in the database).
+   * Click **"Send Proposal"** (this logs a pending Letter of Intent in the database). Submitting is blocked and disabled if the investment window is closed (reason displayed on status banner).
    * Track status updates on `/investor/lois`.
    * **LOI Cancellation**: Investors can discard pending proposals directly from their LOIs tracking console by clicking the "Cancel" option. This deletes the proposal from the DB and writes a cancellation event to the system audit trail.
 4. **Funding Escrow Execution**:

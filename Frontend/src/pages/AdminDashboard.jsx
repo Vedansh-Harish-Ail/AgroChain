@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Settings, ShieldAlert, Users, LineChart, FileText, CheckCircle2, XCircle, ArrowLeft, UserPlus, Award, X, ExternalLink, Printer, Download, AlertCircle } from 'lucide-react';
+import { Settings, ShieldAlert, Users, LineChart, FileText, CheckCircle2, XCircle, ArrowLeft, UserPlus, Award, X, ExternalLink, Printer, Download, AlertCircle, Search, Copy, MapPin, Building, Clock, ShieldCheck, Check, Sprout } from 'lucide-react';
 import axios from 'axios';
 import { useWallet } from '../context/WalletContext';
 import { ethers } from 'ethers';
@@ -23,6 +23,40 @@ export default function AdminDashboard() {
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState(null);
   const [previewType, setPreviewType] = useState('');
   const [alertMessage, setAlertMessage] = useState(null);
+  const [copiedLogId, setCopiedLogId] = useState(null);
+  const [allCrops, setAllCrops] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
+  const [cropSearchQuery, setCropSearchQuery] = useState('');
+  const [cropSearchInput, setCropSearchInput] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchingInProgress, setSearchingInProgress] = useState(false);
+
+  const handleCopyWallet = (wallet, logId) => {
+    if (!wallet) return;
+    navigator.clipboard.writeText(wallet);
+    setCopiedLogId(logId);
+    setTimeout(() => {
+      setCopiedLogId(null);
+    }, 2000);
+  };
+
+  const handleTriggerSearch = (customVal) => {
+    const val = typeof customVal === 'string' ? customVal : cropSearchInput;
+    if (!val.trim()) return;
+    setSearchingInProgress(true);
+    setHasSearched(true);
+    setTimeout(() => {
+      setCropSearchQuery(val);
+      setSearchingInProgress(false);
+    }, 1000);
+  };
+
+  const handleClearSearch = () => {
+    setCropSearchInput('');
+    setCropSearchQuery('');
+    setHasSearched(false);
+    setSearchingInProgress(false);
+  };
 
   const handleOpenPreview = (url) => {
     if (!url) return;
@@ -199,6 +233,88 @@ export default function AdminDashboard() {
     return <span>{parts}</span>;
   };
 
+  const escapeRegExp = (string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+
+  const highlightText = (text, search) => {
+    if (!search || !text) return text;
+    const parts = String(text).split(new RegExp(`(${escapeRegExp(search)})`, 'gi'));
+    return (
+      <span>
+        {parts.map((part, i) => 
+          part.toLowerCase() === search.toLowerCase() ? (
+            <mark key={i} className="bg-yellow-250 dark:bg-yellow-800/80 text-slate-900 dark:text-white px-0.5 rounded-sm">
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        )}
+      </span>
+    );
+  };
+
+  const DashboardSkeleton = () => {
+    return (
+      <div className="space-y-8 animate-pulse">
+        {/* Analytics Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-28 bg-slate-200 dark:bg-slate-800/60 rounded-2xl p-5 space-y-3">
+              <div className="flex justify-between items-center">
+                <div className="h-4 w-24 bg-slate-300 dark:bg-slate-700/60 rounded"></div>
+                <div className="h-8 w-8 bg-slate-300 dark:bg-slate-700/60 rounded-lg"></div>
+              </div>
+              <div className="h-6 w-16 bg-slate-300 dark:bg-slate-700/60 rounded"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Search Registry Skeleton */}
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-2 flex-1">
+              <div className="h-5 w-48 bg-slate-200 dark:bg-slate-800/60 rounded-lg"></div>
+              <div className="h-4 w-72 bg-slate-200 dark:bg-slate-800/60 rounded-lg"></div>
+            </div>
+            <div className="h-10 w-64 bg-slate-200 dark:bg-slate-800/60 rounded-xl"></div>
+          </div>
+          <div className="h-24 bg-slate-100 dark:bg-slate-950/40 rounded-xl"></div>
+        </div>
+
+        {/* Logs & MetaMask Ledger Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column Skeleton */}
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="h-5 w-48 bg-slate-200 dark:bg-slate-800/60 rounded-lg"></div>
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-20 bg-slate-100 dark:bg-slate-955/20 rounded-xl p-3 space-y-2">
+                  <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800/60 rounded"></div>
+                  <div className="h-4 w-full bg-slate-200 dark:bg-slate-800/60 rounded"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Column Skeleton */}
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="h-5 w-48 bg-slate-200 dark:bg-slate-800/60 rounded-lg"></div>
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="h-20 bg-slate-100 dark:bg-slate-955/20 rounded-xl p-3 space-y-2">
+                  <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800/60 rounded"></div>
+                  <div className="h-4 w-full bg-slate-200 dark:bg-slate-800/60 rounded"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const loadAdminData = async () => {
     try {
       const uRes = await axios.get('/api/admin/users');
@@ -209,6 +325,12 @@ export default function AdminDashboard() {
 
       const analyticsRes = await axios.get('/api/admin/analytics');
       setAnalytics(analyticsRes.data);
+
+      const cropsRes = await axios.get('/api/quality/pending');
+      setAllCrops(cropsRes.data);
+
+      const productsRes = await axios.get('/api/product/all');
+      setAllProducts(productsRes.data);
     } catch (err) {
       console.error(err);
       setError('Failed to fetch administrative records.');
@@ -567,9 +689,7 @@ export default function AdminDashboard() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-500 border-t-transparent"></div>
-        </div>
+        <DashboardSkeleton />
       ) : (
         <>
           {isApprovalsView ? (
@@ -915,23 +1035,629 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* Audit Trail */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
-                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <FileText className="h-5 w-5 text-purple-600" /> System Audit Trail
-                </h3>
-                
-                <div className="space-y-4 max-h-[500px] overflow-y-auto no-scrollbar pr-1">
-                  {logs.map((log) => (
-                    <div key={log.id} className="border-b border-slate-100 dark:border-slate-800 pb-3 text-xs space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold text-purple-600 dark:text-purple-400">{log.action}</span>
-                        <span className="text-[10px] text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+              {/* Crop Traceability Search Registry */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 transition-all duration-300">
+                <style>{`
+                  @keyframes progressShimmer {
+                    0% { left: -40%; }
+                    100% { left: 100%; }
+                  }
+                  .animate-progressShimmer {
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    width: 40%;
+                    border-radius: 9999px;
+                    background: linear-gradient(90deg, #10b981, #6366f1);
+                    animation: progressShimmer 1.2s infinite linear;
+                  }
+                `}</style>
+
+                {!hasSearched ? (
+                  /* Centered Search Layout (Default State) */
+                  <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-6">
+                    <div className="relative">
+                      <div className="h-16 w-16 rounded-full bg-emerald-50 dark:bg-emerald-955/20 text-emerald-600 dark:text-emerald-450 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/40 shadow-sm animate-pulse">
+                        <Sprout className="h-8 w-8 text-emerald-600 dark:text-emerald-455" />
                       </div>
-                      <p className="text-slate-600 dark:text-slate-455 leading-tight">{renderLogDetails(log.details)}</p>
-                      <p className="text-[9px] text-slate-400">Trigger: {log.user_name}</p>
+                      <Search className="absolute -bottom-1 -right-1 h-5 w-5 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900 rounded-full p-1 border border-slate-200 dark:border-slate-700 shadow-xs" />
                     </div>
-                  ))}
+
+                    <div className="space-y-2 max-w-md">
+                      <h3 className="text-lg md:text-xl font-extrabold text-slate-900 dark:text-white">
+                        Unified Crop Lifecycle & Traceability Search
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        Trace the custody chain of any crop batch. Enter a Crop ID, Lot Number, Farmer Name, Inspector Name, or Laboratory details.
+                      </p>
+                    </div>
+
+                    {/* Centered Large Search Input Box with Search Button & View All Link */}
+                    <div className="flex flex-col items-center w-full max-w-md space-y-3">
+                      <div className="relative w-full flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            placeholder="Search ID, Lot, Farmer, Inspector, Lab..."
+                            value={cropSearchInput}
+                            onChange={(e) => setCropSearchInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleTriggerSearch();
+                              }
+                            }}
+                            className="w-full pl-10 pr-4 py-3 text-xs md:text-sm rounded-xl border border-slate-250 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-850 dark:text-slate-200 font-semibold"
+                            autoFocus
+                          />
+                          <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                        </div>
+                        <button
+                          onClick={() => handleTriggerSearch()}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-3 rounded-xl text-xs transition duration-200 shadow-xs"
+                        >
+                          Search
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setSearchingInProgress(true);
+                          setHasSearched(true);
+                          setCropSearchInput('');
+                          setTimeout(() => {
+                            setCropSearchQuery('');
+                            setSearchingInProgress(false);
+                          }, 1000);
+                        }}
+                        className="text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-350 text-xs font-bold transition hover:underline cursor-pointer"
+                      >
+                        View All Registered Crops
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Header & Results Layout (Search Active State) */
+                  <div className="space-y-6 animate-fadeIn">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-base md:text-lg">
+                          <Sprout className="h-5.5 w-5.5 text-emerald-600 dark:text-emerald-450" /> Unified Crop Lifecycle & Traceability Search
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Search and audit the end-to-end custody chain of any crop batch registered in the network.</p>
+                      </div>
+                      
+                      {/* Search Input Box with Search Button (Top-Right position) */}
+                      <div className="relative w-full md:w-96 flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            placeholder="Search ID, Lot, Farmer..."
+                            value={cropSearchInput}
+                            onChange={(e) => setCropSearchInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleTriggerSearch();
+                              }
+                            }}
+                            className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-slate-250 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-850 dark:text-slate-200"
+                          />
+                          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                          <button
+                            onClick={handleClearSearch}
+                            className="absolute right-3 top-2 text-xs text-slate-400 hover:text-slate-650 dark:hover:text-slate-200"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => handleTriggerSearch()}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-2 rounded-xl text-[10px] transition duration-200 shadow-sm"
+                        >
+                          Search
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Results / Loading Area */}
+                    {searchingInProgress ? (
+                      /* Progressive Loading Bar */
+                      <div className="flex flex-col items-center justify-center py-16 px-4 text-center space-y-4">
+                        <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold animate-pulse text-xs tracking-wider uppercase">
+                          <div className="h-2 w-2 animate-ping rounded-full bg-indigo-600 dark:bg-indigo-400"></div>
+                          Scanning Blockchain Custody Ledger...
+                        </div>
+                        
+                        <div className="w-full max-w-sm h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
+                          <div className="animate-progressShimmer"></div>
+                        </div>
+                        
+                        <p className="text-[10px] text-slate-400 italic">Verifying farmer registration, inspector signatures, and laboratory accreditation...</p>
+                      </div>
+                    ) : (
+                      /* Results List */
+                      <div className="space-y-6 max-h-[500px] overflow-y-auto pr-1 no-scrollbar">
+                        {(() => {
+                          const filteredSearchCrops = allCrops.filter(crop => {
+                            if (!cropSearchQuery) return true;
+                            const query = cropSearchQuery.trim().toLowerCase();
+                            const matchedProduct = allProducts.find(p => p.farmer_id === crop.id);
+                            const lotStr = matchedProduct ? String(matchedProduct.lot_number) : '';
+                            
+                            return (
+                              String(crop.id) === query ||
+                              (crop.crop_type && crop.crop_type.toLowerCase().includes(query)) ||
+                              (crop.farmer_name && crop.farmer_name.toLowerCase().includes(query)) ||
+                              (crop.assigned_inspector_name && crop.assigned_inspector_name.toLowerCase().includes(query)) ||
+                              (crop.assigned_tester_name && crop.assigned_tester_name.toLowerCase().includes(query)) ||
+                              lotStr === query
+                            );
+                          });
+
+                          if (filteredSearchCrops.length === 0) {
+                            return (
+                              <div className="text-center py-10 text-slate-400 text-xs italic">
+                                No matching crop or lot records found for "{cropSearchQuery}".
+                              </div>
+                            );
+                          }
+
+                          const getStatusBadge = (status, approved) => {
+                            const sUpper = status ? status.toUpperCase() : '';
+                            if (sUpper === 'REJECTED' || approved === false) {
+                              return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-955/20 dark:text-rose-400 dark:border-rose-900/30';
+                            }
+                            if (sUpper === 'VERIFIED' || sUpper === 'APPROVED' || approved === true) {
+                              return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-955/20 dark:text-emerald-400 dark:border-emerald-900/30';
+                            }
+                            return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-955/25 dark:text-amber-450 dark:border-amber-900/30';
+                          };
+
+                          return filteredSearchCrops.map((crop) => {
+                            const matchedProduct = allProducts.find(p => p.farmer_id === crop.id);
+
+                            return (
+                              <div key={`crop-search-${crop.id}`} className="border border-slate-150 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/20 dark:bg-slate-900/10 space-y-4 hover:shadow-xs transition duration-200 animate-fadeIn">
+                                {/* Heading: ID & Info */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                                  <div className="space-y-1">
+                                    <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5 flex-wrap">
+                                      <span className="bg-indigo-50 text-indigo-700 dark:bg-indigo-955/40 dark:text-indigo-405 border border-indigo-100 dark:border-indigo-900 px-2 py-0.5 rounded-md font-mono text-xs">
+                                        ID: {highlightText(crop.id, cropSearchQuery)}
+                                      </span>
+                                      <span className="text-slate-800 dark:text-slate-200">{highlightText(crop.crop_type, cropSearchQuery)}</span>
+                                      <span className="text-xs text-slate-455 font-normal">({highlightText(crop.farming_type, cropSearchQuery)})</span>
+                                    </h4>
+                                    {crop.tx_hash && (
+                                      <p className="text-[9px] text-slate-400 font-mono flex items-center gap-1">
+                                        <span>Anchor Tx:</span>
+                                        <a
+                                          href={`/explorer`}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            navigate('/explorer', { state: { searchQuery: crop.tx_hash } });
+                                          }}
+                                          className="text-indigo-600 dark:text-indigo-405 hover:underline"
+                                        >
+                                          {crop.tx_hash.substring(0, 16)}...
+                                        </a>
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {matchedProduct ? (
+                                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-955/20 dark:text-emerald-450 dark:border-emerald-900/45 uppercase">
+                                        Lot #{highlightText(matchedProduct.lot_number, cropSearchQuery)} ({highlightText(matchedProduct.quality_grade, cropSearchQuery)})
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-955/20 dark:text-amber-450 dark:border-amber-900/30 uppercase">
+                                        Lab Testing Pending
+                                      </span>
+                                    )}
+                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase ${getStatusBadge(crop.timeline_status, crop.is_approved)}`}>
+                                      {highlightText(crop.timeline_status.replace(/_/g, ' '), cropSearchQuery)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* 3-Step Stepper Layout */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                                  {/* Step 1: Farmer Cultivation */}
+                                  <div className="space-y-2 md:border-r md:border-slate-100 md:dark:border-slate-800 pr-0 md:pr-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-5 w-5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-955/25 dark:text-emerald-455 border border-emerald-250 dark:border-emerald-900/50 flex items-center justify-center font-bold text-[10px]">
+                                        1
+                                      </div>
+                                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                                        <Sprout className="h-3.5 w-3.5 text-emerald-600" /> Cultivation Register
+                                      </span>
+                                    </div>
+                                    <div className="pl-7 text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
+                                      <p>Farmer Name: <strong className="text-slate-700 dark:text-slate-350">{highlightText(crop.farmer_name, cropSearchQuery)}</strong></p>
+                                      <p>Address: <span className="text-slate-600 dark:text-slate-400">{highlightText(crop.farm_address || crop.farm_location, cropSearchQuery)}</span></p>
+                                      <p>District: {highlightText(crop.district, cropSearchQuery)}</p>
+                                      <p>Land Survey No: <span className="font-mono">{highlightText(crop.land_survey_no || 'N/A', cropSearchQuery)}</span></p>
+                                      <p>Plant Date: {new Date(crop.cultivation_date).toLocaleDateString()}</p>
+                                      {crop.wallet_address && (
+                                        <div className="flex items-center gap-1 text-[9px] text-slate-400 pt-0.5">
+                                          <span className="font-mono bg-white dark:bg-slate-800 px-1 py-0.2 rounded border border-slate-200 dark:border-slate-700">
+                                            {crop.wallet_address.substring(0, 6)}...{crop.wallet_address.substring(crop.wallet_address.length - 4)}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Step 2: Inspector Field Verification */}
+                                  <div className="space-y-2 md:border-r md:border-slate-100 md:dark:border-slate-800 pr-0 md:pr-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-[10px] border ${
+                                        crop.verification_status === 'VERIFIED'
+                                          ? 'bg-emerald-50 text-emerald-600 border-emerald-250 dark:bg-emerald-955/25 dark:text-emerald-455 border-emerald-250 dark:border-emerald-900/50'
+                                          : crop.verification_status === 'REJECTED'
+                                          ? 'bg-rose-50 text-rose-600 border-rose-250 dark:bg-rose-955/20 dark:text-rose-455 dark:border-rose-900/30'
+                                          : 'bg-amber-50 text-amber-600 border-amber-250 dark:bg-amber-955/20 dark:text-amber-450 dark:border-amber-900/30'
+                                      }`}>
+                                        2
+                                      </div>
+                                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                                        <ShieldCheck className="h-3.5 w-3.5 text-cyan-555" /> Inspector Audit
+                                      </span>
+                                    </div>
+                                    <div className="pl-7 text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
+                                      <p>Inspector: <strong className="text-slate-700 dark:text-slate-300">{highlightText(crop.assigned_inspector_name || 'Unassigned', cropSearchQuery)}</strong></p>
+                                      <p>Status: <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${getStatusBadge(crop.verification_status, crop.is_approved)}`}>{highlightText(crop.verification_status, cropSearchQuery)}</span></p>
+                                      <p>Audit Method: {highlightText(crop.inspection_method || 'N/A', cropSearchQuery)}</p>
+                                      <p>Audit Date: {crop.inspection_date ? new Date(crop.inspection_date).toLocaleDateString() : 'Pending'}</p>
+                                      <div className="mt-1 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-855 p-1.5 rounded text-[9px] italic leading-tight text-slate-600 dark:text-slate-400">
+                                        Notes: "{highlightText(crop.inspection_notes || 'No audit notes registered.', cropSearchQuery)}"
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Step 3: Quality Lab Certification */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`h-5 w-5 rounded-full flex items-center justify-center font-bold text-[10px] border ${
+                                        matchedProduct && matchedProduct.certification_status === 'APPROVED'
+                                          ? 'bg-emerald-50 text-emerald-600 border-emerald-250 dark:bg-emerald-955/25 dark:text-emerald-450 border-emerald-250 dark:border-emerald-900/50'
+                                          : matchedProduct && matchedProduct.certification_status === 'REJECTED'
+                                          ? 'bg-rose-50 text-rose-600 border-rose-250 dark:bg-rose-955/20 dark:text-rose-455 dark:border-rose-900/30'
+                                          : 'bg-amber-50 text-amber-600 border-amber-250 dark:bg-amber-955/20 dark:text-amber-505 dark:border-amber-900/30'
+                                      }`}>
+                                        3
+                                      </div>
+                                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                                        <Award className="h-3.5 w-3.5 text-amber-550" /> Lab Certification
+                                      </span>
+                                    </div>
+                                    <div className="pl-7 text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
+                                      <p>Tester: <strong className="text-slate-700 dark:text-slate-300">{highlightText(crop.assigned_tester_name || 'Unassigned', cropSearchQuery)}</strong></p>
+                                      <p>Status: <span className={`px-1.5 py-0.2 rounded font-bold text-[8px] uppercase ${matchedProduct ? getStatusBadge(matchedProduct.certification_status, null) : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'}`}>{highlightText(matchedProduct ? matchedProduct.certification_status : 'PENDING', cropSearchQuery)}</span></p>
+                                      {matchedProduct ? (
+                                        <>
+                                          <p>Grade: <strong className="text-emerald-605 dark:text-emerald-455 font-bold">{highlightText(matchedProduct.quality_grade, cropSearchQuery)}</strong></p>
+                                          <p>Test Date: {new Date(matchedProduct.test_date).toLocaleDateString()}</p>
+                                          <div className="mt-1 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-855 p-1.5 rounded text-[9px] italic leading-tight text-slate-600 dark:text-slate-400">
+                                            Remarks: "{highlightText(crop.tester_remarks || 'No testing remarks registered.', cropSearchQuery)}"
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <p className="text-slate-400 italic">Awaiting Lab results</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Double Column Grid: Activity Logs & MetaMask Ledger */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Column: Verification & Inspector Activity Logs */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-sm md:text-base">
+                      <ShieldCheck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" /> Activity & Blockchain Verification Logs
+                    </h3>
+                    <span className="text-[10px] md:text-[11px] font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900">
+                      {logs.filter(log => log.action !== 'USER_LOGIN' && log.action !== 'USER_LOGOUT').length} Operations
+                    </span>
+                  </div>
+
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto no-scrollbar pr-1">
+                    {(() => {
+                      const displayLogs = logs.filter(log => log.action !== 'USER_LOGIN' && log.action !== 'USER_LOGOUT');
+                      if (displayLogs.length === 0) {
+                        return (
+                          <div className="text-center py-8 text-slate-400 text-xs italic">
+                            No verification or inspector activity logs recorded yet.
+                          </div>
+                        );
+                      }
+                      return displayLogs.map((log) => {
+                        const actionUpper = log.action ? log.action.toUpperCase() : '';
+                        
+                        // Determine action badge styles
+                        let badgeClass = 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+                        if (actionUpper.includes('APPROVED') || actionUpper.includes('VERIFIED') || actionUpper.includes('SUCCESS') || actionUpper.includes('CERTIFIED')) {
+                          badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900';
+                        } else if (actionUpper.includes('REJECTED') || actionUpper.includes('DECLINED') || actionUpper.includes('CANCEL') || actionUpper.includes('SUSPICION') || actionUpper.includes('FRAUD')) {
+                          badgeClass = 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-955/20 dark:text-rose-455 dark:border-rose-900/30';
+                        } else if (actionUpper.includes('REGISTER') || actionUpper.includes('CREATE') || actionUpper.includes('ADD') || actionUpper.includes('SUBMIT')) {
+                          badgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900';
+                        } else if (actionUpper.includes('LOGIN')) {
+                          badgeClass = 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-955/20 dark:text-blue-455 dark:border-blue-900/30';
+                        }
+
+                        // Format Role display name and styles
+                        let roleLabel = 'System';
+                        let roleBadgeClass = 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+                        if (log.user_role === 'ADMIN') {
+                          roleLabel = 'System Administrator';
+                          roleBadgeClass = 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300';
+                        } else if (log.user_role === 'INSPECTOR') {
+                          roleLabel = 'Agriculture Inspector';
+                          roleBadgeClass = 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300';
+                        } else if (log.user_role === 'TESTER') {
+                          roleLabel = 'Quality Tester';
+                          roleBadgeClass = 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300';
+                        } else if (log.user_role === 'FARMER') {
+                          roleLabel = 'Farmer';
+                          roleBadgeClass = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300';
+                        } else if (log.user_role === 'INVESTOR') {
+                          roleLabel = 'Investor';
+                          roleBadgeClass = 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300';
+                        } else if (log.user_role === 'CONSUMER') {
+                          roleLabel = 'Consumer';
+                          roleBadgeClass = 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+                        }
+
+                        const formattedDate = new Date(log.timestamp).toLocaleString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        });
+
+                        // Determine highlighting based on role
+                        let cardHighlightClass = 'border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30';
+                        let roleIcon = null;
+                        
+                        if (log.user_role === 'TESTER') {
+                          cardHighlightClass = 'border-l-4 border-l-amber-500 border-y-slate-150 border-r-slate-150 dark:border-y-slate-800 dark:border-r-slate-800 bg-amber-50/10 dark:bg-amber-955/5';
+                          roleIcon = <Award className="h-4 w-4 text-amber-600 dark:text-amber-405 shrink-0" />;
+                        } else if (log.user_role === 'INVESTOR') {
+                          cardHighlightClass = 'border-l-4 border-l-emerald-500 border-y-slate-150 border-r-slate-150 dark:border-y-slate-800 dark:border-r-slate-800 bg-emerald-50/10 dark:bg-emerald-955/5';
+                          roleIcon = <LineChart className="h-4 w-4 text-emerald-600 dark:text-emerald-405 shrink-0" />;
+                        } else if (log.user_role === 'INSPECTOR') {
+                          cardHighlightClass = 'border-l-4 border-l-cyan-500 border-y-slate-150 border-r-slate-150 dark:border-y-slate-800 dark:border-r-slate-800 bg-cyan-50/10 dark:bg-cyan-955/5';
+                          roleIcon = <ShieldCheck className="h-4 w-4 text-cyan-600 dark:text-cyan-405 shrink-0" />;
+                        }
+
+                        return (
+                          <div key={log.id} className={`border rounded-xl p-3.5 space-y-3 shadow-2xs hover:shadow-xs transition duration-200 ${cardHighlightClass}`}>
+                            {/* Header: Action & Timestamp */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100/50 dark:border-slate-800/50 pb-2">
+                              <div className="flex items-center gap-1.5">
+                                {roleIcon}
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${badgeClass}`}>
+                                  {log.action}
+                                </span>
+                              </div>
+                              <span className="text-[9px] text-slate-400 flex items-center gap-1 font-mono">
+                                <Clock className="h-3 w-3" /> {formattedDate}
+                              </span>
+                            </div>
+
+                            {/* Action Details Description */}
+                            <p className="text-xs text-slate-650 dark:text-slate-300 leading-relaxed font-medium">
+                              {renderLogDetails(log.details)}
+                            </p>
+
+                            {/* Actor Meta Data Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-100/50 dark:border-slate-800/50 text-[10px] text-slate-500 dark:text-slate-400">
+                              {/* Column 1: Who */}
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300">{log.user_name || 'System'}</span>
+                                  {log.user_role && (
+                                    <span className={`text-[8px] font-bold px-1 py-0.2 rounded-xs ${roleBadgeClass}`}>
+                                      {roleLabel}
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                {/* MetaMask details */}
+                                {log.user_wallet ? (
+                                  <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                                    <span className="font-mono text-[9px] bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                                      {log.user_wallet.substring(0, 6)}...{log.user_wallet.substring(log.user_wallet.length - 4)}
+                                    </span>
+                                    <button
+                                      onClick={() => handleCopyWallet(log.user_wallet, log.id)}
+                                      className="p-0.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                                      title="Copy Wallet Address"
+                                    >
+                                      {copiedLogId === log.id ? (
+                                        <Check className="h-2.5 w-2.5 text-emerald-600" />
+                                      ) : (
+                                        <Copy className="h-2.5 w-2.5" />
+                                      )}
+                                    </button>
+                                    <a
+                                      href={`/explorer`}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        navigate('/explorer', { state: { searchQuery: log.user_wallet } });
+                                      }}
+                                      className="p-0.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                                      title="View in Explorer"
+                                    >
+                                      <ExternalLink className="h-2.5 w-2.5" />
+                                    </a>
+                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" title="Registered MetaMask Account" />
+                                  </div>
+                                ) : (
+                                  log.user_role && (
+                                    <div className="text-[9px] text-slate-400 italic">No MetaMask Linked</div>
+                                  )
+                                )}
+                              </div>
+
+                              {/* Column 2: Where / Coverage */}
+                              <div className="space-y-1">
+                                {log.user_role === 'INSPECTOR' && log.user_district && (
+                                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800/40 p-1.5 rounded border border-slate-100 dark:border-slate-800">
+                                    <MapPin className="h-3 w-3 text-cyan-505 shrink-0" />
+                                    <span>Coverage: <strong className="text-slate-705 dark:text-slate-205">{log.user_district}</strong>{log.user_pin_code && ` (${log.user_pin_code})`}</span>
+                                  </div>
+                                )}
+                                {log.user_role === 'TESTER' && log.user_lab_name && (
+                                  <div className="flex items-start gap-1 bg-white dark:bg-slate-800/40 p-1.5 rounded border border-slate-100 dark:border-slate-800">
+                                    <Building className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
+                                    <span className="truncate">
+                                      Lab: <strong className="text-slate-700 dark:text-slate-202" title={log.user_lab_name}>{log.user_lab_name}</strong>
+                                      {log.user_accreditation_number && <span className="text-[8px] text-slate-400 block font-semibold">Accred: #{log.user_accreditation_number}</span>}
+                                    </span>
+                                  </div>
+                                )}
+                                {log.user_role === 'FARMER' && log.user_district && (
+                                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800/40 p-1.5 rounded border border-slate-100 dark:border-slate-800">
+                                    <MapPin className="h-3 w-3 text-emerald-505 shrink-0" />
+                                    <span>District: <strong className="text-slate-700 dark:text-slate-202">{log.user_district}</strong></span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+
+                {/* Right Column: MetaMask On-Chain Ledger */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 text-sm md:text-base">
+                      <Award className="h-5 w-5 text-indigo-650 dark:text-indigo-400" /> MetaMask On-Chain Ledger
+                    </h3>
+                    <span className="text-[10px] md:text-[11px] font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900">
+                      {logs.filter(log => log.details && (/(0x[a-fA-F0-9]{64})/).test(log.details)).length} Ledger Transactions
+                    </span>
+                  </div>
+
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto no-scrollbar pr-1">
+                    {(() => {
+                      const metaMaskLogs = logs.filter(log => log.details && (/(0x[a-fA-F0-9]{64})/).test(log.details));
+                      if (metaMaskLogs.length === 0) {
+                        return (
+                          <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs italic">
+                            No MetaMask smart contract transactions recorded yet.
+                          </div>
+                        );
+                      }
+                      return metaMaskLogs.map((log) => {
+                        const txMatch = log.details.match(/(0x[a-fA-F0-9]{64})/);
+                        const txHash = txMatch ? txMatch[0] : null;
+                        
+                        const formattedDate = new Date(log.timestamp).toLocaleString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        });
+
+                        return (
+                          <div key={`tx-${log.id}`} className="border border-slate-100 dark:border-slate-800 rounded-xl p-3.5 bg-slate-50/20 dark:bg-slate-900/20 space-y-3 hover:shadow-xs transition duration-200">
+                            {/* Top: Log Action & Date */}
+                            <div className="flex justify-between items-center text-[10px] text-slate-400 border-b border-slate-100/50 dark:border-slate-800/50 pb-2">
+                              <span className="font-bold text-indigo-650 dark:text-indigo-400 tracking-wide uppercase">
+                                {log.action.replace(/_/g, ' ')}
+                              </span>
+                              <span className="flex items-center gap-1 font-mono text-[9px]">
+                                <Clock className="h-3 w-3" /> {formattedDate}
+                              </span>
+                            </div>
+
+                            {/* Event Summary */}
+                            <p className="text-xs font-medium text-slate-650 dark:text-slate-350">
+                              {renderLogDetails(log.details)}
+                            </p>
+
+                            {/* Transaction Details Box */}
+                            {txHash && (
+                              <div className="bg-white dark:bg-slate-800/60 border border-slate-150 dark:border-slate-800 rounded-lg p-2.5 space-y-2 text-[10px]">
+                                {/* Tx Hash Row */}
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-slate-400 font-semibold">Tx Hash</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded text-slate-655 dark:text-slate-350 border border-slate-100 dark:border-slate-800">
+                                      {txHash.substring(0, 10)}...{txHash.substring(txHash.length - 8)}
+                                    </span>
+                                    <button
+                                      onClick={() => handleCopyWallet(txHash, `txhash-${log.id}`)}
+                                      className="p-0.5 hover:text-indigo-650 dark:hover:text-indigo-400 transition"
+                                      title="Copy Transaction Hash"
+                                    >
+                                      {copiedLogId === `txhash-${log.id}` ? (
+                                        <Check className="h-3 w-3 text-emerald-600" />
+                                      ) : (
+                                        <Copy className="h-3 w-3 text-slate-400" />
+                                      )}
+                                    </button>
+                                    <a
+                                      href={`/explorer`}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        navigate('/explorer', { state: { searchQuery: txHash } });
+                                      }}
+                                      className="p-0.5 hover:text-indigo-650 dark:hover:text-indigo-400 transition"
+                                      title="Search in Blockchain Explorer"
+                                    >
+                                      <ExternalLink className="h-3 w-3 text-slate-400" />
+                                    </a>
+                                  </div>
+                                </div>
+
+                                {/* Wallet Row */}
+                                {log.user_wallet && (
+                                  <div className="flex items-center justify-between gap-2 border-t border-slate-100/50 dark:border-slate-800/50 pt-1.5">
+                                    <span className="text-slate-400 font-semibold">Signer Wallet</span>
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded text-slate-655 dark:text-slate-300">
+                                        {log.user_wallet.substring(0, 6)}...{log.user_wallet.substring(log.user_wallet.length - 4)}
+                                      </span>
+                                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-1" title="Confirmed On-Chain Account" />
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Status Badge */}
+                                <div className="flex items-center justify-between gap-2 border-t border-slate-100/50 dark:border-slate-800/50 pt-1.5">
+                                  <span className="text-slate-400 font-semibold">Ledger Status</span>
+                                  <span className="px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-700 font-bold uppercase tracking-wider text-[8px] dark:bg-emerald-950/40 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-900">
+                                    MINED / SUCCESS
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                 </div>
               </div>
             </div>

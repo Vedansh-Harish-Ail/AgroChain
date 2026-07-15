@@ -55,7 +55,7 @@ def approve_user(current_user, user_id):
     audit = AuditLog(
         user_id=current_user.id,
         action='USER_APPROVED_BY_ADMIN',
-        details=f"Admin {current_user.name} approved user {user.name} (Role: {user.role})."
+        details=f"Approved user {user.name} (Role: {user.role})."
     )
     db.session.add(audit)
     db.session.commit()
@@ -84,7 +84,7 @@ def verify_farmer(current_user, user_id):
     audit = AuditLog(
         user_id=current_user.id,
         action=action,
-        details=f"Admin {current_user.name} set verification status for farmer {user.name} to {verify}."
+        details=f"Set verification status for farmer {user.name} to {verify}."
     )
     db.session.add(audit)
     db.session.commit()
@@ -219,7 +219,7 @@ def create_inspector(current_user):
     audit = AuditLog(
         user_id=current_user.id,
         action='INSPECTOR_CREATED_BY_ADMIN',
-        details=f"Admin {current_user.name} created Inspector {name} (Email: {email}, District: {district}, Taluk: {sub_district}, Coverage: {coverage_level})."
+        details=f"Created Inspector {name} (Email: {email}, District: {district}, Taluk: {sub_district}, Coverage: {coverage_level})."
     )
     db.session.add(audit)
     db.session.commit()
@@ -310,7 +310,7 @@ def create_tester(current_user):
     audit = AuditLog(
         user_id=current_user.id,
         action='TESTER_CREATED_BY_ADMIN',
-        details=f"Admin {current_user.name} created Quality Lab Tester {name} (Email: {email}, Lab: {lab_name}, District: {district}, Taluk: {sub_district})."
+        details=f"Created Quality Lab Tester {name} (Email: {email}, Lab: {lab_name}, District: {district}, Taluk: {sub_district})."
     )
     db.session.add(audit)
     db.session.commit()
