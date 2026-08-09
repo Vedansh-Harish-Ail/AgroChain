@@ -126,7 +126,7 @@ def build_docx(md_path, docx_path):
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         table.autofit = False
         
-        set_table_borders(table, color="1F4E79", sz="6")
+        set_table_borders(table, color="000000", sz="4")
         
         col_max_lens = [max(len(r[c]) for r in rows) for c in range(num_cols)]
         total_len = sum(col_max_lens) or 1
@@ -154,18 +154,15 @@ def build_docx(md_path, docx_path):
                     p.paragraph_format.line_spacing = 1.1
                     
                     if r_idx == 0:
-                        set_cell_background(cell, "1F4E79")
+                        set_cell_background(cell, "F2F2F2")
                         add_formatted_runs(p, cell_value)
                         for run in p.runs:
                             run.bold = True
-                            run.font.color.rgb = RGBColor(255, 255, 255)
+                            run.font.color.rgb = RGBColor(0, 0, 0)
                             run.font.name = 'Calibri'
                             run.font.size = Pt(10.5)
                     else:
-                        if r_idx % 2 == 1:
-                            set_cell_background(cell, "F4F6F9")
-                        else:
-                            set_cell_background(cell, "FFFFFF")
+                        set_cell_background(cell, "FFFFFF")
                         add_formatted_runs(p, cell_value)
                         for run in p.runs:
                             run.font.name = 'Calibri'
