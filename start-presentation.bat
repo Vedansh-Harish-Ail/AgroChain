@@ -23,6 +23,8 @@ REM ==== 5️⃣ Deploy Smart Contracts ----------------------------------------
 echo Deploying Smart Contracts...
 cd Blockchain
 call npx hardhat run scripts/deploy.js --network localhost
+echo Funding wallets and granting role authorizations on-chain...
+call npx hardhat run scripts/setup-localhost.js --network localhost
 cd ..
 
 REM ==== 6️⃣ Configure Backend ---------------------------------------------

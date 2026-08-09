@@ -148,6 +148,14 @@ export default function FarmerRegistration() {
   const [searchLoading, setSearchLoading] = useState(false);
   const navigate = useNavigate();
 
+  const getMinHarvestDate = (cultivationDateStr) => {
+    if (!cultivationDateStr) return '';
+    const date = new Date(cultivationDateStr);
+    if (isNaN(date.getTime())) return '';
+    date.setMonth(date.getMonth() + 2);
+    return date.toISOString().split('T')[0];
+  };
+
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
@@ -287,14 +295,14 @@ export default function FarmerRegistration() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     if (name === 'cultivation_date') {
       const sowingTime = new Date(value).getTime();
       if (!isNaN(sowingTime)) {
         const harvestDate = new Date(sowingTime + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const startOpenDate = new Date(sowingTime + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const closeOpenDate = new Date(sowingTime + 75 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
+
         setFormData(prev => ({
           ...prev,
           cultivation_date: value,
@@ -305,7 +313,7 @@ export default function FarmerRegistration() {
         return;
       }
     }
-    
+
     setFormData({ ...formData, [name]: value });
   };
 
@@ -469,6 +477,23 @@ export default function FarmerRegistration() {
     if (files.length === 0) return;
 
     setError('');
+
+    // Limit maximum files to 5
+    if (evidencePhotos.length + files.length > 5) {
+      setError('Maximum 5 evidence photos can be uploaded.');
+      e.target.value = '';
+      return;
+    }
+
+    // Limit maximum file size to 10MB
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const oversized = files.filter(f => f.size > maxSize);
+    if (oversized.length > 0) {
+      setError('Each photo must be under 10MB in size.');
+      e.target.value = '';
+      return;
+    }
+
     const newItems = files.map(file => {
       const tempId = Math.random().toString(36).substring(7);
       return {
@@ -502,12 +527,12 @@ export default function FarmerRegistration() {
         console.error("Error uploading photo:", err);
         const isNetworkErr = !err.response && err.request;
         setEvidencePhotos(prev =>
-          prev.map(p => p.id === item.id ? { 
-            ...p, 
-            status: 'error', 
-            error: isNetworkErr 
-              ? 'Connection failed. Check if a VPN is ON.' 
-              : (err.response?.data?.message || "Failed to upload") 
+          prev.map(p => p.id === item.id ? {
+            ...p,
+            status: 'error',
+            error: isNetworkErr
+              ? 'Connection failed. Check if a VPN is ON.'
+              : (err.response?.data?.message || "Failed to upload")
           } : p)
         );
         if (isNetworkErr) {
@@ -538,6 +563,23 @@ export default function FarmerRegistration() {
     if (files.length === 0) return;
 
     setError('');
+
+    // Limit maximum files to 5
+    if (evidenceDocuments.length + files.length > 5) {
+      setError('Maximum 5 evidence documents can be uploaded.');
+      e.target.value = '';
+      return;
+    }
+
+    // Limit maximum file size to 10MB
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const oversized = files.filter(f => f.size > maxSize);
+    if (oversized.length > 0) {
+      setError('Each document must be under 10MB in size.');
+      e.target.value = '';
+      return;
+    }
+
     const newItems = files.map(file => {
       const tempId = Math.random().toString(36).substring(7);
       return {
@@ -570,12 +612,12 @@ export default function FarmerRegistration() {
         console.error("Error uploading document:", err);
         const isNetworkErr = !err.response && err.request;
         setEvidenceDocuments(prev =>
-          prev.map(d => d.id === item.id ? { 
-            ...d, 
-            status: 'error', 
-            error: isNetworkErr 
-              ? 'Connection failed. Check if a VPN is ON.' 
-              : (err.response?.data?.message || "Failed to upload") 
+          prev.map(d => d.id === item.id ? {
+            ...d,
+            status: 'error',
+            error: isNetworkErr
+              ? 'Connection failed. Check if a VPN is ON.'
+              : (err.response?.data?.message || "Failed to upload")
           } : d)
         );
         if (isNetworkErr) {
@@ -621,6 +663,13 @@ export default function FarmerRegistration() {
 
     if (!formData.expected_harvest_date || !formData.investment_start_date || !formData.investment_close_date) {
       setError('Expected Harvest Date and Investment Window dates are required.');
+      setLoading(false);
+      return;
+    }
+
+    const minHarvestDateStr = getMinHarvestDate(formData.cultivation_date);
+    if (formData.expected_harvest_date < minHarvestDateStr) {
+      setError('Expected Harvest Date must be at least 2 months after the Sowing/Cultivation Start Date.');
       setLoading(false);
       return;
     }
@@ -692,8 +741,8 @@ export default function FarmerRegistration() {
       console.error(err);
       hideLoading();
       const isNetworkErr = !err.response && err.request;
-      setError(isNetworkErr 
-        ? 'Connection failed. Check if a VPN is ON.' 
+      setError(isNetworkErr
+        ? 'Connection failed. Check if a VPN is ON.'
         : (err.response?.data?.message || 'Failed to save crop details.')
       );
       setLoading(false);
@@ -708,8 +757,9 @@ export default function FarmerRegistration() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Header section (full width) */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900 mb-8">
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={() => navigate(-1)}
@@ -727,27 +777,35 @@ export default function FarmerRegistration() {
         </div>
 
         {/* Info Box explaining the decentralized audit setup */}
-        <div className="mb-6 rounded-2xl bg-emerald-50/50 border border-emerald-100 p-4 dark:bg-emerald-950/10 dark:border-emerald-900/30 flex gap-3">
+        <div className="rounded-2xl bg-emerald-50/50 border border-emerald-100 p-4 dark:bg-emerald-950/10 dark:border-emerald-900/30 flex gap-3">
           <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Simplified Web3 Architecture</p>
-            <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
-              No blockchain wallet is required for farmers. Once you submit your crop details, land survey proof, and GPS coordinates, 
+            <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed colur:red">
+              Once you submit your crop details, land survey proof, and GPS coordinates,
               an authorized quality testing inspector will inspect the details and sign the verification record directly on the blockchain.
             </p>
           </div>
         </div>
+      </div>
 
-        {error && (
-          <div className="mb-6 rounded-xl bg-rose-50 p-4 text-sm text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 font-medium">
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="mb-6 rounded-xl bg-rose-50 p-4 text-sm text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 font-medium">
+          {error}
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2">Crop Specifications</h3>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column (Inputs) - Spans 7 cols on lg */}
+        <div className="lg:col-span-7 space-y-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-xl">
+
+          {/* Crop Specifications Section */}
+          <div className="space-y-6">
+            <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-xs text-emerald-600 font-bold">1</span>
+              <span>Crop Specifications</span>
+            </h3>
+
             <div>
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Crop Name / Type
@@ -759,467 +817,454 @@ export default function FarmerRegistration() {
                 value={formData.crop_type}
                 onChange={handleInputChange}
                 className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                placeholder="Basmati Rice, Alphonso Mango, etc."
+                placeholder="Basmati Rice, Ragi ,Wheet etc."
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Farming Type
-              </label>
-              <select
-                name="farming_type"
-                value={formData.farming_type}
-                onChange={handleInputChange}
-                className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 bg-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-              >
-                <option value="Organic">Organic Farming</option>
-                <option value="Non-Organic">Non-Organic Farming</option>
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Expected Yield (in kg)
+                </label>
+                <input
+                  type="number"
+                  name="expected_yield"
+                  required
+                  value={formData.expected_yield}
+                  onChange={handleInputChange}
+                  className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                  placeholder="e.g. 2500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Cultivation Start Date
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <Calendar className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="date"
+                    name="cultivation_date"
+                    required
+                    max={new Date().toISOString().split('T')[0]}
+                    value={formData.cultivation_date}
+                    onChange={handleInputChange}
+                    className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* Harvest & Investment Planning Section */}
+          <div className="space-y-6">
+            <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pt-2 pb-2 flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-xs text-emerald-600 font-bold">2</span>
+              <span>Harvest & Investment Planning</span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Expected Harvest Date
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <Calendar className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="date"
+                    name="expected_harvest_date"
+                    required
+                    min={getMinHarvestDate(formData.cultivation_date)}
+                    value={formData.expected_harvest_date}
+                    onChange={handleInputChange}
+                    className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 p-4 space-y-1">
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Auto-Decided Investment Window</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Based on your Cultivation Date, the investment window opens on <span className="font-semibold text-emerald-600 dark:text-emerald-450">{new Date(formData.investment_start_date).toLocaleDateString()}</span> and closes on <span className="font-semibold text-emerald-600 dark:text-emerald-450">{new Date(formData.investment_close_date).toLocaleDateString()}</span>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Land & Location Details Section */}
+          <div className="space-y-6">
+            <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pt-2 pb-2 flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-xs text-emerald-600 font-bold">3</span>
+              <span>Land & Location Details</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Land Survey Number
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <FileText className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    name="land_survey_no"
+                    required
+                    value={formData.land_survey_no}
+                    onChange={handleInputChange}
+                    className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                    placeholder="e.g. SUR-109/42-B"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Farm Size / Area
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <Compass className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    name="farm_size"
+                    required
+                    value={formData.farm_size}
+                    onChange={handleInputChange}
+                    className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                    placeholder="e.g. 5 Hectares"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  District
+                </label>
+                <select
+                  name="district"
+                  required
+                  value={formData.district}
+                  onChange={handleDistrictChange}
+                  className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 bg-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
+                >
+                  <option value="">Select District</option>
+                  {Object.keys(KERALA_LOCATIONS).map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Taluk (Sub-District)
+                </label>
+                <select
+                  name="sub_district"
+                  required
+                  disabled={!formData.district}
+                  value={formData.sub_district}
+                  onChange={handleTalukChange}
+                  className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 bg-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm disabled:opacity-50"
+                >
+                  <option value="">Select Taluk</option>
+                  {formData.district && Object.keys(KERALA_LOCATIONS[formData.district]).map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Village
+                </label>
+                <select
+                  name="village"
+                  required
+                  disabled={!formData.sub_district}
+                  value={formData.village}
+                  onChange={handleVillageChange}
+                  className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 bg-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm disabled:opacity-50"
+                >
+                  <option value="">Select Village</option>
+                  {formData.district && formData.sub_district && KERALA_LOCATIONS[formData.district][formData.sub_district].map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Expected Yield (in kg)
+                Farm Location Address in words
               </label>
               <input
-                type="number"
-                name="expected_yield"
+                type="text"
+                name="farm_location"
                 required
-                value={formData.expected_yield}
+                value={formData.farm_location}
                 onChange={handleInputChange}
                 className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                placeholder="e.g. 2500"
+                placeholder="e.g. Survey No. 45, Near Riverside"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Cultivation Start Date
-              </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Calendar className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="date"
-                  name="cultivation_date"
-                  required
-                  max={new Date().toISOString().split('T')[0]}
-                  value={formData.cultivation_date}
-                  onChange={handleInputChange}
-                  className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                />
-              </div>
-            </div>
           </div>
+        </div>
 
-          <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pt-2 pb-2">Harvest & Investment Planning</h3>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Expected Harvest Date
-              </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Calendar className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="date"
-                  name="expected_harvest_date"
-                  required
-                  value={formData.expected_harvest_date}
-                  onChange={handleInputChange}
-                  className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                />
-              </div>
-            </div>
+        {/* Right Column (Map, Files, and Submit button) - Spans 5 cols on lg */}
+        <div className="lg:col-span-5 space-y-6">
+          {/* Map Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-4">
+            <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-xs text-emerald-600 font-bold">4</span>
+              <span>Farm Geolocation</span>
+            </h3>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Investment Window Open
-              </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Calendar className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="date"
-                  name="investment_start_date"
-                  required
-                  value={formData.investment_start_date}
-                  onChange={handleInputChange}
-                  className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Investment Window Close
-              </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Calendar className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="date"
-                  name="investment_close_date"
-                  required
-                  value={formData.investment_close_date}
-                  onChange={handleInputChange}
-                  className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
-          <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pt-2 pb-2">Land & Verification Details</h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Land Survey Number
-              </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <FileText className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  name="land_survey_no"
-                  required
-                  value={formData.land_survey_no}
-                  onChange={handleInputChange}
-                  className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                  placeholder="e.g. SUR-109/42-B"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Farm Size / Area
-              </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Compass className="h-5 w-5 text-slate-400" />
-                </div>
-                <input
-                  type="text"
-                  name="farm_size"
-                  required
-                  value={formData.farm_size}
-                  onChange={handleInputChange}
-                  className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                  placeholder="e.g. 5 Hectares"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Farm Location Address in words
-            </label>
-            <input
-              type="text"
-              name="farm_location"
-              required
-              value={formData.farm_location}
-              onChange={handleInputChange}
-              className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-              placeholder="e.g. Survey No. 45, Near Riverside"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                District
-              </label>
-              <select
-                name="district"
-                required
-                value={formData.district}
-                onChange={handleDistrictChange}
-                className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 bg-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-              >
-                <option value="">Select District</option>
-                {Object.keys(KERALA_LOCATIONS).map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Taluk (Sub-District)
-              </label>
-              <select
-                name="sub_district"
-                required
-                disabled={!formData.district}
-                value={formData.sub_district}
-                onChange={handleTalukChange}
-                className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 bg-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm disabled:opacity-50"
-              >
-                <option value="">Select Taluk</option>
-                {formData.district && Object.keys(KERALA_LOCATIONS[formData.district]).map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Village
-              </label>
-              <select
-                name="village"
-                required
-                disabled={!formData.sub_district}
-                value={formData.village}
-                onChange={handleVillageChange}
-                className="block w-full rounded-xl border border-slate-200 py-3 px-3 text-slate-900 bg-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm disabled:opacity-50"
-              >
-                <option value="">Select Village</option>
-                {formData.district && formData.sub_district && KERALA_LOCATIONS[formData.district][formData.sub_district].map(v => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Select Farm Coordinates on Map
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Pinpoint Farm Coordinates
               </label>
               {formData.gps_latitude && formData.gps_longitude && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30 font-mono">
-                  <MapPin className="h-3.5 w-3.5 text-emerald-600" />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/30 font-mono">
+                  <MapPin className="h-3 w-3 text-emerald-600 animate-pulse" />
                   <span>{formData.gps_latitude}, {formData.gps_longitude}</span>
                 </span>
               )}
             </div>
 
             {/* Map Search Bar */}
-            <div className="mb-3">
-              <div className="flex gap-2">
-                <div className="relative flex-grow">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Search className="h-4 w-4 text-slate-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Search location (e.g. Aluva railway station, Munnar)..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleSearchSubmit(e);
-                      }
-                    }}
-                    className="block w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white text-xs"
-                  />
+            <div className="flex gap-2">
+              <div className="relative flex-grow">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Search className="h-4 w-4 text-slate-400" />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSearchSubmit}
-                  disabled={searchLoading}
-                  className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white dark:text-slate-200 text-xs font-semibold hover:bg-slate-800 dark:hover:bg-slate-750 transition disabled:opacity-50 flex items-center gap-1 shrink-0"
-                >
-                  {searchLoading ? (
-                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  ) : (
-                    <span>Search</span>
-                  )}
-                </button>
+                <input
+                  type="text"
+                  placeholder="Search location (e.g. Aluva, Munnar)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSearchSubmit(e);
+                    }
+                  }}
+                  className="block w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white text-xs"
+                />
               </div>
+              <button
+                type="button"
+                onClick={handleSearchSubmit}
+                disabled={searchLoading}
+                className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white dark:text-slate-200 text-xs font-semibold hover:bg-slate-800 dark:hover:bg-slate-750 transition disabled:opacity-50 flex items-center gap-1 shrink-0"
+              >
+                {searchLoading ? (
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                ) : (
+                  <span>Search</span>
+                )}
+              </button>
             </div>
 
-            <div 
-              ref={mapRef} 
+            <div
+              ref={mapRef}
               className="w-full h-72 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-inner z-10"
               style={{ minHeight: '280px' }}
             />
-            
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2 flex items-center gap-1">
-              <Info className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-              Click anywhere on the map to select your farm location, or drag the marker to adjust coordinates.
+
+            <p className="text-[11px] text-slate-450 dark:text-slate-500 flex items-start gap-1">
+              <Info className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
+              <span>Click anywhere on the map to select your farm location, or drag the marker to adjust coordinates.</span>
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              Evidence Photos (Crop / land photos)
-            </label>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-              {evidencePhotos.map((photo, idx) => {
-                const previewSrc = photo.localPreview || photo.url;
-                const isUploading = photo.status === 'uploading';
-                const isError = photo.status === 'error';
-                
-                return (
-                  <div key={photo.id || idx} className={`relative rounded-2xl overflow-hidden aspect-square border bg-slate-100 flex flex-col justify-end transition-all ${
-                    isError ? 'border-rose-300 dark:border-rose-900/50' : 'border-slate-200 dark:border-slate-800'
-                  }`}>
-                    {previewSrc ? (
-                      <a 
-                        href={photo.url || '#'} 
-                        target={photo.url ? "_blank" : undefined} 
-                        rel="noopener noreferrer" 
-                        onClick={e => { if (!photo.url) e.preventDefault(); }}
-                        className={`absolute inset-0 h-full w-full block hover:opacity-90 transition ${!photo.url ? 'cursor-default' : ''}`}
-                      >
-                        <img src={previewSrc} alt="Evidence preview" className="h-full w-full object-cover" />
-                      </a>
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-950">
-                        <FileText className="h-8 w-8 text-slate-400" />
-                      </div>
-                    )}
-                    
-                    {/* Status Overlays */}
-                    {isUploading && (
-                      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] flex flex-col items-center justify-center text-white p-2">
-                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent mb-1"></div>
-                        <span className="text-[9px] font-medium">Uploading...</span>
-                      </div>
-                    )}
-                    
-                    {isError && (
-                      <div className="absolute inset-0 bg-rose-950/60 backdrop-blur-[1px] flex flex-col items-center justify-center text-white p-2 text-center">
-                        <AlertCircle className="h-5 w-5 text-rose-450 mb-1" />
-                        <span className="text-[9px] font-semibold text-rose-205">Upload Failed</span>
-                      </div>
-                    )}
+          {/* Evidence Uploads Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-6">
+            <h3 className="text-md font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-xs text-emerald-600 font-bold">5</span>
+              <span>Upload Verification Proof</span>
+            </h3>
 
-                    <div className="absolute inset-x-0 bottom-0 bg-slate-900/60 backdrop-blur-[1px] px-2 py-1 text-[10px] text-white font-medium truncate select-none pointer-events-none">
-                      {photo.name || getFileTypeLabel(photo.url, idx)}
-                    </div>
-                    
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(idx)}
-                      className="absolute top-1 right-1 p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition z-10"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                );
-              })}
+            {/* Photos Section */}
+            <div className="space-y-3">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Evidence Photos (Crop / Land)
+              </label>
+
+              {evidencePhotos.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
+                  {evidencePhotos.map((photo, idx) => {
+                    const previewSrc = photo.localPreview || photo.url;
+                    const isUploading = photo.status === 'uploading';
+                    const isError = photo.status === 'error';
+
+                    return (
+                      <div key={photo.id || idx} className={`relative rounded-xl overflow-hidden aspect-square border bg-slate-100 flex flex-col justify-end transition-all ${isError ? 'border-rose-300 dark:border-rose-900/50' : 'border-slate-200 dark:border-slate-800'
+                        }`}>
+                        {previewSrc ? (
+                          <a
+                            href={photo.url || '#'}
+                            target={photo.url ? "_blank" : undefined}
+                            rel="noopener noreferrer"
+                            onClick={e => { if (!photo.url) e.preventDefault(); }}
+                            className={`absolute inset-0 h-full w-full block hover:opacity-90 transition ${!photo.url ? 'cursor-default' : ''}`}
+                          >
+                            <img src={previewSrc} alt="Evidence preview" className="h-full w-full object-cover" />
+                          </a>
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-955">
+                            <FileText className="h-6 w-6 text-slate-400" />
+                          </div>
+                        )}
+
+                        {/* Status Overlays */}
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] flex flex-col items-center justify-center text-white p-1">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mb-1"></div>
+                            <span className="text-[8px] font-medium">Uploading...</span>
+                          </div>
+                        )}
+
+                        {isError && (
+                          <div className="absolute inset-0 bg-rose-950/60 backdrop-blur-[1px] flex flex-col items-center justify-center text-white p-1 text-center">
+                            <AlertCircle className="h-4 w-4 text-rose-450 mb-1" />
+                            <span className="text-[8px] font-semibold text-rose-200">Failed</span>
+                          </div>
+                        )}
+
+                        <div className="absolute inset-x-0 bottom-0 bg-slate-900/60 backdrop-blur-[1px] px-1.5 py-0.5 text-[8px] text-white font-medium truncate select-none pointer-events-none">
+                          {photo.name || getFileTypeLabel(photo.url, idx)}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(idx)}
+                          className="absolute top-1 right-1 p-0.5 bg-rose-600 text-white rounded-full hover:bg-rose-750 transition z-10"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-xl p-4 transition text-center bg-slate-50/50 dark:bg-slate-900/10">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  disabled={uploading}
+                />
+                <div className="pointer-events-none flex flex-col items-center justify-center min-h-[72px]">
+                  {uploading ? (
+                    <>
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent mb-1"></div>
+                      <p className="text-xs font-semibold text-emerald-650">Uploading image(s)...</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 text-slate-400 mx-auto mb-1" />
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Upload Image Proof</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">PNG, JPG up to 10MB</p>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="relative border-2 border-dashed border-slate-250 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-2xl p-6 transition text-center bg-slate-50/50 dark:bg-slate-900/30">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                disabled={uploading}
-              />
-              <div className="pointer-events-none flex flex-col items-center justify-center min-h-[96px]">
-                {uploading ? (
-                  <>
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent mb-2"></div>
-                    <p className="text-sm font-semibold text-emerald-650">Uploading selected image(s)...</p>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Drag & Drop files or click to upload</p>
-                    <p className="text-xs text-slate-400 mt-1">PNG, JPG up to 10MB</p>
-                  </>
-                )}
+            {/* Documents Section */}
+            <div className="space-y-3">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Evidence Documents (Soil reports, deeds, receipts)
+              </label>
+
+              {evidenceDocuments.length > 0 && (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar">
+                  {evidenceDocuments.map((doc, idx) => {
+                    const isUploading = doc.status === 'uploading';
+                    const isError = doc.status === 'error';
+
+                    return (
+                      <div key={doc.id || idx} className={`flex items-center justify-between p-2 rounded-lg border text-[11px] transition-all ${isError
+                        ? 'border-rose-200 bg-rose-50/30 dark:border-rose-950/40 dark:bg-rose-950/10'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955'
+                        }`}>
+                        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 min-w-0 flex-1 mr-2">
+                          {isUploading ? (
+                            <div className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent shrink-0"></div>
+                          ) : isError ? (
+                            <AlertCircle className="h-3 w-3 text-rose-500 shrink-0" />
+                          ) : (
+                            <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          )}
+                          <span className="truncate font-medium text-slate-800 dark:text-slate-200">
+                            {doc.name || getFileTypeLabel(doc.url, idx)}
+                          </span>
+                          {isUploading && (
+                            <span className="text-[9px] text-slate-400 font-normal shrink-0">(Uploading...)</span>
+                          )}
+                          {isError && (
+                            <span className="text-[9px] text-rose-500 font-normal shrink-0">(Failed)</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeDoc(idx)}
+                          className="p-0.5 bg-rose-600 text-white rounded-full hover:bg-rose-750 transition shrink-0"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-xl p-4 transition text-center bg-slate-50/50 dark:bg-slate-900/10">
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={handleDocChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  disabled={uploadingDocs}
+                />
+                <div className="pointer-events-none flex flex-col items-center justify-center min-h-[72px]">
+                  {uploadingDocs ? (
+                    <>
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent mb-1"></div>
+                      <p className="text-xs font-semibold text-emerald-650">Uploading document(s)...</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 text-slate-400 mx-auto mb-1" />
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Upload PDF / DOC Proof</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">PDF, DOC, XLS up to 10MB</p>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              Evidence Documents (Soil reports, land deeds, tax receipts)
-            </label>
-            
-            <div className="space-y-2 mb-4">
-              {evidenceDocuments.map((doc, idx) => {
-                const isUploading = doc.status === 'uploading';
-                const isError = doc.status === 'error';
-                
-                return (
-                  <div key={doc.id || idx} className={`flex items-center justify-between p-3 rounded-xl border text-xs transition-all ${
-                    isError 
-                      ? 'border-rose-200 bg-rose-50/30 dark:border-rose-950/40 dark:bg-rose-950/10' 
-                      : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950'
-                  }`}>
-                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 min-w-0 flex-1 mr-2">
-                      {isUploading ? (
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent shrink-0"></div>
-                      ) : isError ? (
-                        <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
-                      ) : (
-                        <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
-                      )}
-                      <span className="truncate font-medium text-slate-800 dark:text-slate-200">
-                        {doc.name || getFileTypeLabel(doc.url, idx)}
-                      </span>
-                      {isUploading && (
-                        <span className="text-[10px] text-slate-400 font-normal shrink-0 ml-1">(Uploading...)</span>
-                      )}
-                      {isError && (
-                        <span className="text-[10px] text-rose-500 font-normal shrink-0 ml-1">(Failed)</span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeDoc(idx)}
-                      className="p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 transition shrink-0"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="relative border-2 border-dashed border-slate-250 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-2xl p-6 transition text-center bg-slate-50/50 dark:bg-slate-900/30">
-              <input
-                type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx"
-                onChange={handleDocChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                disabled={uploadingDocs}
-              />
-              <div className="pointer-events-none flex flex-col items-center justify-center min-h-[96px]">
-                {uploadingDocs ? (
-                  <>
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent mb-2"></div>
-                    <p className="text-sm font-semibold text-emerald-650">Uploading selected document(s)...</p>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Drag & Drop files or click to upload</p>
-                    <p className="text-xs text-slate-400 mt-1">PDF, DOC, XLS up to 10MB</p>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4">
+          {/* Submit Action Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-xl">
             <button
               type="submit"
               disabled={loading || uploading}
-              className="w-full flex justify-center items-center gap-2 rounded-xl py-3.5 text-sm font-bold text-white shadow-md transition-all duration-300 disabled:opacity-50 bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20"
+              className="w-full flex justify-center items-center gap-2 rounded-xl py-3.5 text-sm font-bold text-white shadow-md transition-all duration-300 disabled:opacity-50 bg-emerald-600 hover:bg-emerald-500 shadow-emerald-650/20"
             >
               {loading ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
@@ -1231,18 +1276,17 @@ export default function FarmerRegistration() {
               )}
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
 
       {/* Custom Alert Modal */}
       {alertMessage && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center transform scale-100 transition-all duration-300">
-            <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full ${
-              alertMessage.type === 'success' 
-                ? 'bg-emerald-100 dark:bg-emerald-950/50' 
-                : 'bg-amber-100 dark:bg-amber-950/50'
-            }`}>
+            <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full ${alertMessage.type === 'success'
+              ? 'bg-emerald-100 dark:bg-emerald-950/50'
+              : 'bg-amber-100 dark:bg-amber-950/50'
+              }`}>
               {alertMessage.type === 'success' ? (
                 <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-450" />
               ) : (

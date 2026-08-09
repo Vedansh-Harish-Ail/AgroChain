@@ -4,6 +4,15 @@ from utils.auth import roles_allowed
 
 quality_bp = Blueprint('quality', __name__)
 
+@quality_bp.route('/crop/<int:crop_id>', methods=['GET'])
+@roles_allowed('TESTER', 'ADMIN')
+def get_crop_for_certification(current_user, crop_id):
+    """Fetch crop details for the quality tester certification form (auto-fill on Crop ID entry)."""
+    crop = Farmer.query.filter_by(id=crop_id, is_approved=True).first()
+    if not crop:
+        return jsonify({'message': 'No approved crop found with this ID.'}), 404
+    return jsonify({'crop': crop.to_dict()}), 200
+
 @quality_bp.route('/approve/<int:crop_id>', methods=['POST'])
 @roles_allowed('INSPECTOR', 'ADMIN')
 def approve_crop(current_user, crop_id):
@@ -43,6 +52,7 @@ def approve_crop(current_user, crop_id):
     crop.inspection_notes = inspection_notes
     crop.inspection_method = inspection_method
     crop.timeline_status = 'TESTER_APPROVED'
+    crop.investment_start_date = datetime.now(timezone.utc)
     
     if tx_hash:
         crop.tx_hash = tx_hash
@@ -51,6 +61,31 @@ def approve_crop(current_user, crop_id):
         crop.block_number = block_number
         
     db.session.commit()
+
+    # Automatically create a PENDING Product record so investors can view and fund it in the marketplace
+    from models import Product
+    import random
+    from datetime import timedelta
+    
+    existing_product = Product.query.filter_by(farmer_id=crop.id).first()
+    if not existing_product:
+        # Generate a unique 4-digit lot number
+        lot_number = random.randint(1000, 9999)
+        while Product.query.get(lot_number) is not None:
+            lot_number = random.randint(1000, 9999)
+            
+        pending_product = Product(
+            lot_number=lot_number,
+            farmer_id=crop.id,
+            crop_name=crop.crop_type,
+            quality_grade='Grade Pending',
+            price=1000000000000000000,
+            test_date=datetime.now(timezone.utc),
+            expiry_date=crop.expected_harvest_date or (datetime.now(timezone.utc) + timedelta(days=180)),
+            certification_status='PENDING'
+        )
+        db.session.add(pending_product)
+        db.session.commit()
     
     # Audit log
     audit = AuditLog(
@@ -166,36 +201,46 @@ def get_pending_crops(current_user):
         # PLUS unassigned pending crops in the inspector's district/sub-district
         filters = [
             (Farmer.assigned_inspector_id == current_user.id) &
-            (Farmer.is_approved == False)
+            (Farmer.is_approved == False) &
+            (Farmer.verification_status == 'PENDING')
         ]
         
         if current_user.coverage_level == 'DISTRICT' and current_user.district:
             # District-level inspectors see all pending crops in their district
             filters.append(
                 (Farmer.district == current_user.district) &
-                (Farmer.is_approved == False)
+                (Farmer.is_approved == False) &
+                (Farmer.verification_status == 'PENDING')
             )
         elif current_user.coverage_level == 'SUB_DISTRICT' and current_user.sub_district:
             # Sub-district-level inspectors see pending crops in their sub-district
             filters.append(
                 (Farmer.sub_district == current_user.sub_district) &
                 (Farmer.district == current_user.district) &
-                (Farmer.is_approved == False)
+                (Farmer.is_approved == False) &
+                (Farmer.verification_status == 'PENDING')
             )
         elif current_user.district:
             # Fallback: match by district
             filters.append(
                 (Farmer.district == current_user.district) &
-                (Farmer.is_approved == False)
+                (Farmer.is_approved == False) &
+                (Farmer.verification_status == 'PENDING')
             )
         
         crops = Farmer.query.filter(or_(*filters)).all()
     elif current_user.role == 'TESTER':
-        crops = Farmer.query.filter(
+        all_crops = Farmer.query.filter(
             Farmer.is_approved == True,
             Farmer.assigned_tester_id == current_user.id,
-            Farmer.timeline_status.in_(['READY_TO_HARVEST', 'HARVEST_COMPLETED', 'PRODUCT_AVAILABLE'])
+            Farmer.timeline_status.in_(['READY_TO_HARVEST', 'HARVEST_COMPLETED'])
         ).all()
+        from models import Product
+        crops = []
+        for crop in all_crops:
+            has_product = Product.query.filter_by(farmer_id=crop.id).first() is not None
+            if not has_product:
+                crops.append(crop)
     else:
         crops = []
     return jsonify([crop.to_dict() for crop in crops]), 200

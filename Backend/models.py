@@ -173,8 +173,21 @@ class Farmer(db.Model):
             return 'CLOSED', 'Crop is pending agricultural inspector verification.'
             
         # If timeline status indicates harvest or completion
-        if self.timeline_status in ['TESTER_APPROVED', 'READY_TO_HARVEST', 'HARVEST_COMPLETED', 'PRODUCT_AVAILABLE', 'REJECTED']:
+        if self.timeline_status in ['READY_TO_HARVEST', 'HARVEST_COMPLETED', 'PRODUCT_AVAILABLE', 'REJECTED']:
             return 'CLOSED', f"Crop has reached harvest/certification stage ({self.timeline_status})."
+            
+        # Check proximity to expected harvest date (close within 5 days)
+        now_naive = datetime.utcnow()
+        if self.expected_harvest_date:
+            harvest_date = self.expected_harvest_date
+            if harvest_date.tzinfo is not None:
+                harvest_date = harvest_date.replace(tzinfo=None)
+            days_to_harvest = (harvest_date.date() - now_naive.date()).days
+            if days_to_harvest <= 5:
+                if days_to_harvest < 0:
+                    return 'CLOSED', 'Expected harvest date has already passed.'
+                else:
+                    return 'CLOSED', f"Crop is nearing harvest date ({days_to_harvest} days remaining)."
             
         # If already funded
         if self.timeline_status == 'FUNDING_COMPLETED':
@@ -215,9 +228,12 @@ class Farmer(db.Model):
             rating_count = 0
 
         inv_status, inv_reason = self.calculate_investment_status()
+        product = self.products[0] if self.products else None
+        lot_number = product.lot_number if product else None
 
         return {
             'id': self.id,
+            'product_lot_number': lot_number,
             'user_id': self.user_id,
             'farmer_name': self.user.name if self.user else None,
             'farm_location': self.farm_location,
@@ -328,7 +344,14 @@ class Product(db.Model):
             'expected_harvest_date': expected_harvest,
             'investment_close_date': investment_close,
             'investment_status': inv_status,
-            'investment_status_reason': inv_reason
+            'investment_status_reason': inv_reason,
+            'land_survey_no': self.farmer.land_survey_no if self.farmer else None,
+            'farming_type': self.farmer.farming_type if self.farmer else None,
+            'expected_yield': self.farmer.expected_yield if self.farmer else None,
+            'cultivation_date': self.farmer.cultivation_date.isoformat() if self.farmer and self.farmer.cultivation_date else None,
+            'inspector_name': self.farmer.assigned_inspector.name if self.farmer and self.farmer.assigned_inspector else None,
+            'inspection_date': self.farmer.inspection_date.isoformat() if self.farmer and self.farmer.inspection_date else None,
+            'inspection_notes': self.farmer.inspection_notes if self.farmer else None
         }
 
 

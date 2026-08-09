@@ -70,6 +70,17 @@ def register_crop(current_user):
     if cultivation_date.date() > datetime.utcnow().date():
         return jsonify({'message': 'Cultivation Start Date cannot be in the future'}), 400
 
+    # Expected harvest date must be at least 2 months after cultivation start date
+    import calendar
+    target_month = cultivation_date.month - 1 + 2
+    target_year = cultivation_date.year + target_month // 12
+    target_month = target_month % 12 + 1
+    target_day = min(cultivation_date.day, calendar.monthrange(target_year, target_month)[1])
+    min_harvest_date = datetime(target_year, target_month, target_day)
+
+    if expected_harvest_date.date() < min_harvest_date.date():
+        return jsonify({'message': 'Expected Harvest Date must be at least 2 months after the Sowing/Cultivation Start Date'}), 400
+
     if investment_start_date.date() < cultivation_date.date():
         return jsonify({'message': 'Investment Start Date cannot be before the Sowing Date'}), 400
 

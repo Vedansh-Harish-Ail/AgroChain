@@ -133,6 +133,7 @@ export default function QualityTesting() {
   const [remarks, setRemarks] = useState('');
   const [inspectionMethod, setInspectionMethod] = useState('PHYSICAL_VISIT');
   const [physicallyVisited, setPhysicallyVisited] = useState(false);
+  const [testerAssured, setTesterAssured] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
@@ -396,7 +397,7 @@ export default function QualityTesting() {
 
     try {
       showLoading('Broadcasting quality certification transaction on-chain...');
-      const lotNumber = Math.floor(1000 + Math.random() * 9000);
+      const lotNumber = crop.product_lot_number || Math.floor(1000 + Math.random() * 9000);
       const cropId = crop.id;
       const cropName = crop.crop_type;
       const qualityGrade = 'Grade A+';
@@ -759,6 +760,7 @@ export default function QualityTesting() {
                         setRemarks('');
                         setError('');
                         setPhysicallyVisited(false);
+                        setTesterAssured(false);
                       }}
                       className={`border-b border-slate-100 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition ${
                         selectedCrop?.id === crop.id ? 'bg-emerald-50/40 dark:bg-emerald-950/20' : ''
@@ -797,8 +799,11 @@ export default function QualityTesting() {
 
               <div className="space-y-4 text-sm">
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                  <span className="text-slate-400 font-medium">Crop ID</span>
-                  <span className="font-mono font-semibold">{selectedCrop.id}</span>
+                  <span className="text-slate-400 font-medium">Crop ID / Lot ID</span>
+                  <span className="font-mono font-semibold">
+                    #{selectedCrop.id}
+                    {selectedCrop.product_lot_number && ` / #${selectedCrop.product_lot_number}`}
+                  </span>
                 </div>
                 <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                   <span className="text-slate-400 font-medium">Farmer Name</span>
@@ -986,34 +991,45 @@ export default function QualityTesting() {
                             </button>
                           )
                         ) : (
-                          <div className="grid grid-cols-2 gap-3">
-                            <button
-                              onClick={() => handleCertifyReject(selectedCrop)}
-                              disabled={loading || isActionDisabled}
-                              className="flex justify-center items-center gap-1.5 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-955/30 dark:hover:bg-rose-950/20 text-xs font-bold transition disabled:opacity-50"
-                            >
-                              {loading ? (
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-rose-600 border-t-transparent"></div>
-                              ) : (
+                          <>
+                            <div className="pt-2 pb-1">
+                              <label className="flex items-start gap-3 cursor-pointer p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl hover:bg-slate-100/50 dark:hover:bg-slate-800/80 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={testerAssured}
+                                  onChange={(e) => setTesterAssured(e.target.checked)}
+                                  className="mt-0.5 h-4 w-4 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
+                                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-355 select-none leading-relaxed">
+                                  I declare that I have personally visited the cultivation site, inspected the crop lot, and verified the harvest quality using standard laboratory tests.
+                                </span>
+                              </label>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <button
+                                onClick={() => handleCertifyReject(selectedCrop)}
+                                disabled={loading || isActionDisabled || !testerAssured}
+                                className="flex justify-center items-center gap-1.5 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-955/30 dark:hover:bg-rose-950/20 text-xs font-bold transition disabled:opacity-50"
+                              >
+                                {loading ? (
+                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-rose-600 border-t-transparent"></div>
+                                ) : (
+                                  <>
+                                    <XCircle className="h-4 w-4" /> Reject Lot
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => navigate('/tester/product', { state: { cropId: selectedCrop.id, cropName: selectedCrop.crop_type } })}
+                                disabled={loading || isActionDisabled}
+                                className="flex justify-center items-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold transition disabled:opacity-50"
+                              >
                                 <>
-                                  <XCircle className="h-4 w-4" /> Reject Lot
+                                  <CheckCircle className="h-4 w-4" /> Approve &amp; Certify
                                 </>
-                              )}
-                            </button>
-                            <button
-                              onClick={() => handleCertifyAuto(selectedCrop)}
-                              disabled={loading || isActionDisabled}
-                              className="flex justify-center items-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold transition disabled:opacity-50"
-                            >
-                              {loading ? (
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4" /> Approve Lot
-                                </>
-                              )}
-                            </button>
-                          </div>
+                              </button>
+                            </div>
+                          </>
                         )}
                       </div>
                     );

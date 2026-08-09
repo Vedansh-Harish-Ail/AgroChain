@@ -43,8 +43,8 @@ export default function FundingPage() {
   const loadData = async () => {
     try {
       const pRes = await axios.get('/api/product/all');
-      // Filter for approved products
-      const approvedProducts = pRes.data.filter(p => p.certification_status === 'APPROVED');
+      // Filter for both approved and pending (inspector-verified) crop lots
+      const approvedProducts = pRes.data.filter(p => p.certification_status === 'APPROVED' || p.certification_status === 'PENDING');
       setProducts(approvedProducts);
 
       // Auto-select crop lot if passed via state
@@ -223,8 +223,12 @@ export default function FundingPage() {
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex flex-wrap gap-2 items-center">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 uppercase">
-                                {product.quality_grade}
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                product.certification_status === 'PENDING'
+                                  ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-250/20'
+                                  : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-250/20'
+                              }`}>
+                                {product.certification_status === 'PENDING' ? 'Verified (Quality Pending)' : product.quality_grade}
                               </span>
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase ${
                                 product.investment_status === 'OPEN'
@@ -394,19 +398,19 @@ export default function FundingPage() {
                         <div className="flex justify-between">
                           <span className="text-slate-400">Assigned Inspector</span>
                           <span className="font-semibold text-slate-800 dark:text-slate-200">
-                            {selectedProduct.inspector_name || 'Inspector Rajiv Kumar'}
+                            {selectedProduct.inspector_name || 'Inspector Assigned'}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-400">Inspection Date</span>
                           <span className="font-mono">
-                            {selectedProduct.inspection_date ? new Date(selectedProduct.inspection_date).toLocaleDateString() : 'Decentralized Inspector Verified'}
+                            {selectedProduct.inspection_date ? new Date(selectedProduct.inspection_date).toLocaleDateString() : 'N/A'}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-400">Inspection Notes</span>
                           <span className="font-medium text-slate-800 dark:text-slate-200 text-right max-w-[180px]">
-                            {selectedProduct.inspection_notes || 'Physical land inspection completed. Soil parameters and crop possession match registry records.'}
+                            {selectedProduct.inspection_notes || 'No inspection notes provided.'}
                           </span>
                         </div>
                       </div>
@@ -507,23 +511,29 @@ export default function FundingPage() {
                       <div className="rounded-xl bg-slate-50 dark:bg-slate-950 p-3.5 border border-slate-200 dark:border-slate-850 space-y-2">
                         <div className="flex justify-between">
                           <span className="text-slate-400">Land Survey No.</span>
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedProduct.land_survey_no || 'SUR-BAS-2026-101'}</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedProduct.land_survey_no || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-400">Farming Method</span>
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedProduct.farming_type || 'Organic'}</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 capitalize">{selectedProduct.farming_type || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-400">Expected Yield</span>
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedProduct.expected_yield || 2500} kg</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {selectedProduct.expected_yield ? `${selectedProduct.expected_yield.toLocaleString()} kg` : 'N/A'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-400">Sowing Date</span>
-                          <span className="font-mono">{new Date(selectedProduct.cultivation_date).toLocaleDateString()}</span>
+                          <span className="font-mono">
+                            {selectedProduct.cultivation_date ? new Date(selectedProduct.cultivation_date).toLocaleDateString() : 'N/A'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-400">Expected Harvest</span>
-                          <span className="font-mono">{new Date(selectedProduct.expected_harvest_date).toLocaleDateString()}</span>
+                          <span className="font-mono">
+                            {selectedProduct.expected_harvest_date ? new Date(selectedProduct.expected_harvest_date).toLocaleDateString() : 'N/A'}
+                          </span>
                         </div>
                       </div>
                     </div>

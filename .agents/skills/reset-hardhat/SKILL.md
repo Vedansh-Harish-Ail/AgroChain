@@ -7,26 +7,23 @@ description: When the user says "Reset Hardhat", run the full local blockchain r
 
 When the user says **"Reset Hardhat"** (or mentions MetaMask issues like "no network fee", "insufficient funds", "Review alert won't click", or "transaction revert"), perform the following steps in order from the `Blockchain/` directory:
 
-## Step 1: Re-authorize Wallets on Smart Contracts
+## Step 1: Run All-in-One Local Setup Script
+
+This single command funds all wallets with 100 ETH and configures all necessary roles (Inspectors, Testers, Admins) on the smart contracts:
 
 ```bash
-# Authorize Inspector wallet on FarmerRegistry
-$env:WALLET_ADDRESS="0xab00e9c32ce055f9cf0b057c580e2408be35ac22"; $env:ROLE_TYPE="INSPECTOR"; npx hardhat run scripts/grant-role.js --network localhost
-
-# Authorize Tester wallet on ProductRegistry
-$env:WALLET_ADDRESS="0x180b3ed8cc0d8a5a0e15bf896f3ebedc1fd5a485"; $env:ROLE_TYPE="TESTER"; npx hardhat run scripts/grant-role.js --network localhost
+npx hardhat run scripts/setup-localhost.js --network localhost
 ```
 
-## Step 2: Fund All Wallets with ETH
-
-```bash
-npx hardhat run scripts/fund-wallets.js --network localhost
-```
-
-This sends 10 ETH from the Hardhat deployer account to each user wallet:
-- Inspector (Agri): `0xab00e9c32ce055f9cf0b057c580e2408be35ac22`
-- Tester (Quality): `0x180b3ed8cc0d8a5a0e15bf896f3ebedc1fd5a485`
-- Inspector2 (Vedh2): `0x1c6e1bcc8f86077fbfc4ac7f99e77de409bae1c6`
+This automates the following actions:
+- Sends **100 ETH** to:
+  - Inspector (Agri): `0xab00e9c32ce055f9cf0b057c580e2408be35ac22`
+  - Tester (Quality): `0x180b3ed8cc0d8a5a0e15bf896f3ebedc1fd5a485`
+  - Admin (System Admin): `0x14fc193387B4340a376DE19eF53016b955f3403a`
+  - Inspector2: `0x1c6e1bcc8f86077fbfc4ac7f99e77de409bae1c6`
+- Authorizes `Agri` and `Inspector2` on the `FarmerRegistry` contract.
+- Authorizes `Tester` on the `ProductRegistry` contract.
+- Grants contract `ADMIN_ROLE` to the `admin` wallet address.
 
 ## Step 3: Restart Backend (if needed)
 

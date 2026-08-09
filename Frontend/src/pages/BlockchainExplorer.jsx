@@ -748,6 +748,11 @@ export default function BlockchainExplorer() {
                         </div>
                         <div className="text-left md:text-right font-mono text-xs text-slate-400">
                           <p>Crop Reference ID: #{crop.id}</p>
+                          {crop.product_lot_number && (
+                            <p className="text-emerald-600 dark:text-emerald-400 font-bold">
+                              Product Lot ID: #{crop.product_lot_number}
+                            </p>
+                          )}
                           <p className="text-[10px]">Registered: {new Date(crop.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>

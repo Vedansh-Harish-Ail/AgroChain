@@ -31,7 +31,8 @@ def register_product(current_user):
         certification_status = 'APPROVED'
         
     # Check if lot already exists
-    if Product.query.get(lot_number):
+    existing_product = Product.query.get(lot_number)
+    if existing_product and existing_product.certification_status != 'PENDING':
         return jsonify({'message': f'Product batch with Lot Number {lot_number} already registered'}), 400
         
     # Check if farmer crop project is approved
@@ -52,6 +53,39 @@ def register_product(current_user):
     except ValueError:
         return jsonify({'message': 'Invalid format for numeric or date fields'}), 400
 
+    if existing_product:
+        # Update existing pending lot
+        existing_product.crop_name = crop_name
+        existing_product.quality_grade = quality_grade
+        existing_product.price = price
+        existing_product.test_date = test_date
+        existing_product.expiry_date = expiry_date
+        existing_product.certification_status = certification_status
+        existing_product.tx_hash = tx_hash
+        existing_product.block_number = block_number
+        
+        if certification_status == 'APPROVED':
+            farmer_project.timeline_status = 'PRODUCT_AVAILABLE'
+        elif certification_status == 'REJECTED':
+            farmer_project.timeline_status = 'REJECTED'
+            farmer_project.is_approved = False
+            
+        db.session.commit()
+        
+        audit = AuditLog(
+            user_id=current_user.id,
+            action='PRODUCT_LOT_CERTIFIED',
+            details=f"Certified pending product Lot {lot_number} for farmer ID {farmer_id} with grade {quality_grade}."
+        )
+        db.session.add(audit)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Product lot certified successfully!',
+            'product': existing_product.to_dict()
+        }), 200
+
+    # Otherwise create a new product lot (fallback)
     new_product = Product(
         lot_number=lot_number,
         farmer_id=farmer_id,
@@ -70,7 +104,7 @@ def register_product(current_user):
     elif certification_status == 'REJECTED':
         farmer_project.timeline_status = 'REJECTED'
         farmer_project.is_approved = False
-
+ 
     db.session.add(new_product)
     db.session.commit()
     

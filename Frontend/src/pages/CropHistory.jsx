@@ -387,7 +387,17 @@ export default function CropHistory() {
                       <Sprout className="h-6 w-6" />
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-bold text-slate-900 dark:text-white text-lg">{crop.crop_type}</h4>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-lg leading-tight">{crop.crop_type}</h4>
+                      <div className="flex gap-2 items-center flex-wrap">
+                        <span className="px-2 py-0.5 text-[9px] font-extrabold font-mono bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-350 rounded-md">
+                          Crop ID: #{crop.id}
+                        </span>
+                        {crop.product_lot_number && (
+                          <span className="px-2 py-0.5 text-[9px] font-extrabold font-mono bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-350 rounded-md">
+                            Lot ID: #{crop.product_lot_number}
+                          </span>
+                        )}
+                      </div>
                       <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
                         <p><span className="font-semibold text-slate-700 dark:text-slate-300">Location:</span> {crop.farm_location}</p>
                         <p><span className="font-semibold text-slate-700 dark:text-slate-300">Size:</span> {crop.farm_size}</p>
@@ -443,21 +453,21 @@ export default function CropHistory() {
                             <FileText className="h-4 w-4" /> View Approval Letter
                           </button>
 
-                          {matchedProduct ? (
+                          {matchedProduct && matchedProduct.certification_status === 'APPROVED' ? (
                             <button
                               onClick={() => setSelectedCropForCertificate({ crop, product: matchedProduct })}
                               className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60 hover:bg-amber-50/50 dark:hover:bg-amber-955/30 py-2.5 rounded-xl transition"
                             >
                               <Award className="h-4 w-4" /> Print Certificate & QR
                             </button>
-                          ) : crop.timeline_status === 'HARVEST_COMPLETED' ? (
-                            <div className="text-[10px] text-center text-slate-400 dark:text-slate-500 italic py-1 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                          ) : (crop.timeline_status === 'READY_TO_HARVEST' || crop.timeline_status === 'HARVEST_COMPLETED' || (matchedProduct && matchedProduct.certification_status === 'PENDING')) ? (
+                            <div className="text-[10px] text-center text-slate-400 dark:text-slate-500 italic py-2 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                               Awaiting Tester Certification
                             </div>
                           ) : null}
 
                           {/* Nudge Tester button if action is pending for more than 14 days */}
-                          {!matchedProduct && crop.timeline_status !== 'PRODUCT_AVAILABLE' && crop.timeline_status !== 'REJECTED' && ((new Date() - new Date(crop.verification_date || crop.created_at)) / (1000 * 60 * 60 * 24)) > 14 && (
+                          {(!matchedProduct || matchedProduct.certification_status === 'PENDING') && crop.timeline_status !== 'PRODUCT_AVAILABLE' && crop.timeline_status !== 'REJECTED' && ((new Date() - new Date(crop.verification_date || crop.created_at)) / (1000 * 60 * 60 * 24)) > 14 && (
                             <button
                               disabled={nudging[crop.id]}
                               onClick={() => handleNudge(crop.id, 'Quality Tester')}
@@ -580,14 +590,14 @@ export default function CropHistory() {
               {/* Remarks and Sign */}
               <div className="flex justify-between items-end pt-6 border-t border-slate-100 dark:border-slate-800">
                 <div className="space-y-1 font-sans text-xs max-w-md">
-                  <span className="text-slate-400 block font-semibold uppercase tracking-wider text-[9px]">Tester Remarks</span>
-                  <p className="italic text-slate-650 dark:text-slate-400 print:text-black">"{selectedCropForLetter.tester_remarks || 'All chemical and organic indicators check out. Approved.'}"</p>
+                  <span className="text-slate-400 block font-semibold uppercase tracking-wider text-[9px]">Inspector Remarks</span>
+                  <p className="italic text-slate-650 dark:text-slate-400 print:text-black">"{selectedCropForLetter.inspection_notes || selectedCropForLetter.tester_remarks || 'Physical land inspection completed. Approved.'}"</p>
                 </div>
                 <div className="text-center shrink-0 w-36 font-sans">
                   <div className="border-b border-slate-300 pb-1">
-                    <span className="font-mono text-xs text-slate-700 dark:text-slate-300 italic font-bold print:text-black"> {selectedCropForLetter.tester_name || 'Dr. Anita Sharma'} </span>
+                    <span className="font-mono text-xs text-slate-700 dark:text-slate-300 italic font-bold print:text-black"> {selectedCropForLetter.tester_name || selectedCropForLetter.assigned_inspector_name || 'Authorized Inspector'} </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 block mt-1 uppercase tracking-wider">Authorized Tester</span>
+                  <span className="text-[10px] text-slate-400 block mt-1 uppercase tracking-wider">Authorized Inspector</span>
                 </div>
               </div>
 
