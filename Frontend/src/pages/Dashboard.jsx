@@ -1650,16 +1650,7 @@ export default function Dashboard() {
               </p>
             </div>
 
-            {createSuccess && (
-              <div className="rounded-xl bg-emerald-50 p-4 text-xs text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 font-semibold space-y-2">
-                <p>{createSuccess}</p>
-                {generatedTempPassword && (
-                  <div className="font-mono bg-white dark:bg-slate-955 p-2.5 rounded border border-emerald-200 dark:border-emerald-800/40 inline-block">
-                    Temporary Password: <strong className="text-emerald-700 dark:text-emerald-455 select-all">{generatedTempPassword}</strong> (Copy and share with verifier)
-                  </div>
-                )}
-              </div>
-            )}
+
 
             {createError && (
               <div className="rounded-xl bg-rose-50 p-4 text-xs text-rose-600 dark:bg-rose-955/30 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">

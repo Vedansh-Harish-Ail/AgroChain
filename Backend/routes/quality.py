@@ -4,14 +4,27 @@ from utils.auth import roles_allowed
 
 quality_bp = Blueprint('quality', __name__)
 
-@quality_bp.route('/crop/<int:crop_id>', methods=['GET'])
+@quality_bp.route('/crop/<string:crop_id>', methods=['GET'])
 @roles_allowed('TESTER', 'ADMIN')
 def get_crop_for_certification(current_user, crop_id):
     """Fetch crop details for the quality tester certification form (auto-fill on Crop ID entry)."""
-    crop = Farmer.query.filter_by(id=crop_id, is_approved=True).first()
+    val = crop_id.strip()
+    if val.upper().startswith('CRP-2026-'):
+        try:
+            numeric_id = int(val.upper().replace('CRP-2026-', ''))
+        except ValueError:
+            return jsonify({'message': 'Invalid Crop ID format.'}), 400
+    else:
+        try:
+            numeric_id = int(val)
+        except ValueError:
+            return jsonify({'message': 'Invalid Crop ID format.'}), 400
+            
+    crop = Farmer.query.filter_by(id=numeric_id, is_approved=True).first()
     if not crop:
         return jsonify({'message': 'No approved crop found with this ID.'}), 404
     return jsonify({'crop': crop.to_dict()}), 200
+
 
 @quality_bp.route('/approve/<int:crop_id>', methods=['POST'])
 @roles_allowed('INSPECTOR', 'ADMIN')

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useToast } from '../context/ToastContext';
@@ -94,8 +94,10 @@ export default function ProductRegistration() {
 
     try {
       showLoading('Broadcasting quality certificate and lot registry transaction...');
-      const lot = lotNumber;
-      const farmerId = parseInt(cropId);
+      const cleanCropId = String(cropId).toUpperCase().startsWith('CRP-2026-') 
+        ? String(cropId).toUpperCase().replace('CRP-2026-', '') 
+        : cropId;
+      const farmerId = parseInt(cleanCropId);
       const derivedStatus = qualityGrade === 'C' ? 'REJECTED' : 'APPROVED';
       const priceWei = ethers.parseEther('1.0');
       const testTimestamp = Math.floor(Date.now() / 1000);

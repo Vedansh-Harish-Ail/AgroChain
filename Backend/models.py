@@ -233,6 +233,7 @@ class Farmer(db.Model):
 
         return {
             'id': self.id,
+            'formatted_crop_id': f"CRP-2026-{self.id:04d}",
             'product_lot_number': lot_number,
             'user_id': self.user_id,
             'farmer_name': self.user.name if self.user else None,

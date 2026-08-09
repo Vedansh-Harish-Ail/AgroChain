@@ -1020,7 +1020,7 @@ export default function QualityTesting() {
                                 )}
                               </button>
                               <button
-                                onClick={() => navigate('/tester/product', { state: { cropId: selectedCrop.id, cropName: selectedCrop.crop_type } })}
+                                onClick={() => navigate('/tester/product', { state: { cropId: selectedCrop.formatted_crop_id, cropName: selectedCrop.crop_type } })}
                                 disabled={loading || isActionDisabled}
                                 className="flex justify-center items-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 text-xs font-bold transition disabled:opacity-50"
                               >
