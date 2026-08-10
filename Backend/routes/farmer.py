@@ -205,7 +205,14 @@ def register_crop(current_user):
     if not tester:
         tester = User.query.filter_by(role='TESTER', status='ACTIVE').first()
 
+    # Generate a unique random crop ID that doesn't exist in the database
+    import random
+    crop_id = random.randint(1000, 99999)
+    while Farmer.query.get(crop_id) is not None:
+        crop_id = random.randint(1000, 99999)
+
     new_farmer_project = Farmer(
+        id=crop_id,
         user_id=current_user.id,
         farm_location=farm_location,
         farm_address=farm_address,
@@ -330,8 +337,7 @@ def get_farmer_profiles():
         if ratings:
             reliability_avg = sum([r.reliability for r in ratings]) / len(ratings)
             quality_avg = sum([r.product_quality for r in ratings]) / len(ratings)
-            delivery_avg = sum([r.delivery_satisfaction for r in ratings]) / len(ratings)
-            overall_avg = round((reliability_avg + quality_avg + delivery_avg) / 3, 1)
+            overall_avg = round((reliability_avg + quality_avg) / 2, 1)
             rating_count = len(ratings)
         else:
             overall_avg = 0.0
@@ -371,8 +377,7 @@ def get_farmer_profile_details(user_id):
     if ratings:
         reliability_avg = sum([r.reliability for r in ratings]) / len(ratings)
         quality_avg = sum([r.product_quality for r in ratings]) / len(ratings)
-        delivery_avg = sum([r.delivery_satisfaction for r in ratings]) / len(ratings)
-        overall_avg = round((reliability_avg + quality_avg + delivery_avg) / 3, 1)
+        overall_avg = round((reliability_avg + quality_avg) / 2, 1)
         rating_count = len(ratings)
     else:
         overall_avg = 0.0

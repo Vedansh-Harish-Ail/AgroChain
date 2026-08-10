@@ -206,6 +206,13 @@ export default function ConsumerTracking() {
   const handleRatingSubmit = async (e) => {
     e.preventDefault();
     if (!selectedCrop || !product) return;
+    const wordCount = comment.trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount > 50) {
+      setError('Comments cannot exceed 50 words.');
+      setLoadingRating(false);
+      return;
+    }
+
     setError('');
     setLoadingRating(true);
     showLoading(isConnected ? 'Broadcasting review transaction to blockchain...' : 'Recording review details...');
@@ -916,7 +923,7 @@ export default function ConsumerTracking() {
                             <p className="text-[10px] text-slate-400">Lot Ref: {review.lot_number}</p>
                           </div>
                           <div className="flex gap-0.5 text-amber-500">
-                            {Array.from({ length: Math.round((review.reliability + review.product_quality + review.delivery_satisfaction) / 3) }).map((_, i) => (
+                            {Array.from({ length: Math.round((review.reliability + review.product_quality) / 2) }).map((_, i) => (
                               <Star key={i} className="h-3 w-3 fill-amber-500 text-amber-500" />
                             ))}
                           </div>
@@ -1130,10 +1137,6 @@ export default function ConsumerTracking() {
                       <span className="text-slate-400">Product Quality</span>
                       <span className="font-semibold">{credibility.quality_avg}/5.0</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Delivery Satisfaction</span>
-                      <span className="font-semibold">{credibility.delivery_avg}/5.0</span>
-                    </div>
                   </div>
                 </div>
               )}
@@ -1180,18 +1183,12 @@ export default function ConsumerTracking() {
                       </div>
 
                       <div>
-                        <label className="block font-semibold text-slate-700 dark:text-slate-350 mb-1">Delivery Satisfaction (1-5)</label>
-                        <select value={satisfaction} onChange={(e) => setSatisfaction(e.target.value)} className="w-full rounded-xl border border-slate-200 py-2 px-2.5 dark:border-slate-800 dark:bg-slate-950">
-                          <option value="5">5 - Instant & Secure</option>
-                          <option value="4">4 - Ontime</option>
-                          <option value="3">3 - Acceptable</option>
-                          <option value="2">2 - Delayed</option>
-                          <option value="1">1 - Damaged / Never Arrived</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block font-semibold text-slate-700 dark:text-slate-350 mb-1">Public Review Comments</label>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block font-semibold text-slate-700 dark:text-slate-350">Public Review Comments</label>
+                          <span className={`text-[10px] font-medium ${comment.trim().split(/\s+/).filter(Boolean).length > 50 ? 'text-rose-500 font-bold' : 'text-slate-400'}`}>
+                            {comment.trim().split(/\s+/).filter(Boolean).length} / 50 words
+                          </span>
+                        </div>
                         <textarea
                           value={comment}
                           onChange={(e) => setComment(e.target.value)}

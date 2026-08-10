@@ -106,8 +106,7 @@ def get_public_stats():
     # 4. Batch Trust Rating: Calculate average rating from ratings + baseline of 99.8%
     avg_scores = db.session.query(
         db.func.avg(Rating.reliability),
-        db.func.avg(Rating.product_quality),
-        db.func.avg(Rating.delivery_satisfaction)
+        db.func.avg(Rating.product_quality)
     ).first()
     
     if avg_scores and any(score is not None for score in avg_scores):

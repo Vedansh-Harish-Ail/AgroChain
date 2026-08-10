@@ -13,13 +13,18 @@ def add_rating(current_user):
     lot_number = data.get('lot_number')
     reliability = data.get('reliability')
     product_quality = data.get('product_quality')
-    delivery_satisfaction = data.get('delivery_satisfaction')
+    delivery_satisfaction = data.get('delivery_satisfaction', 5)
     comment = data.get('comment', '')
     tx_hash = data.get('tx_hash')
     block_number = data.get('block_number')
     
-    if not farmer_id or not lot_number or reliability is None or product_quality is None or delivery_satisfaction is None:
+    if not farmer_id or not lot_number or reliability is None or product_quality is None:
         return jsonify({'message': 'Missing required rating metrics'}), 400
+
+    if comment:
+        comment_words = len(comment.strip().split())
+        if comment_words > 50:
+            return jsonify({'message': 'Public review comments must not exceed 50 words.'}), 400
         
     try:
         reliability = int(reliability)
@@ -100,7 +105,7 @@ def get_farmer_credibility(farmer_id):
     quality_avg = round(quality_sum / count, 1)
     delivery_avg = round(delivery_sum / count, 1)
     
-    overall_avg = round((reliability_avg + quality_avg + delivery_avg) / 3, 1)
+    overall_avg = round((reliability_avg + quality_avg) / 2, 1)
     
     # Trust Badge mapping
     if overall_avg >= 4.5:

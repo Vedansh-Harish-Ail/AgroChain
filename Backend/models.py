@@ -220,8 +220,7 @@ class Farmer(db.Model):
         if ratings:
             reliability_avg = sum([r.reliability for r in ratings]) / len(ratings)
             quality_avg = sum([r.product_quality for r in ratings]) / len(ratings)
-            delivery_avg = sum([r.delivery_satisfaction for r in ratings]) / len(ratings)
-            overall_avg = round((reliability_avg + quality_avg + delivery_avg) / 3, 1)
+            overall_avg = round((reliability_avg + quality_avg) / 2, 1)
             rating_count = len(ratings)
         else:
             overall_avg = 0.0
@@ -308,8 +307,7 @@ class Product(db.Model):
         if ratings:
             reliability_avg = sum([r.reliability for r in ratings]) / len(ratings)
             quality_avg = sum([r.product_quality for r in ratings]) / len(ratings)
-            delivery_avg = sum([r.delivery_satisfaction for r in ratings]) / len(ratings)
-            overall_avg = round((reliability_avg + quality_avg + delivery_avg) / 3, 1)
+            overall_avg = round((reliability_avg + quality_avg) / 2, 1)
             rating_count = len(ratings)
         else:
             overall_avg = 0.0

@@ -251,8 +251,8 @@ def get_pending_crops(current_user):
         from models import Product
         crops = []
         for crop in all_crops:
-            has_product = Product.query.filter_by(farmer_id=crop.id).first() is not None
-            if not has_product:
+            product = Product.query.filter_by(farmer_id=crop.id).first()
+            if not product or product.certification_status == 'PENDING':
                 crops.append(crop)
     else:
         crops = []

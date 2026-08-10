@@ -19,7 +19,7 @@ export default function ProductRegistration() {
   const [fetchStatus, setFetchStatus] = useState('idle'); // idle | loading | found | not_found | error
   const [qualityGrade, setQualityGrade] = useState('A+');
   const [testerRemarks, setTesterRemarks] = useState('');
-  const [lotNumber] = useState(Math.floor(1000 + Math.random() * 9000));
+  const [lotNumber, setLotNumber] = useState(() => Math.floor(1000 + Math.random() * 9000));
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -34,8 +34,17 @@ export default function ProductRegistration() {
     }
   }, [location.state]);
 
-  const fetchCropDetails = async (id) => {
-    if (!id || isNaN(parseInt(id))) {
+  const fetchCropDetails = async (rawId) => {
+    if (!rawId) {
+      setCropData(null);
+      setFetchStatus('idle');
+      return;
+    }
+    const cleanId = String(rawId).toUpperCase().startsWith('CRP-2026-') 
+      ? String(rawId).toUpperCase().replace('CRP-2026-', '') 
+      : rawId;
+    const id = parseInt(cleanId);
+    if (isNaN(id)) {
       setCropData(null);
       setFetchStatus('idle');
       return;
@@ -43,11 +52,15 @@ export default function ProductRegistration() {
     setFetchStatus('loading');
     setCropData(null);
     try {
-      const res = await axios.get(`/api/quality/crop/${id}`);
+      const res = await axios.get(`/api/quality/crop/${cleanId}`);
       const crop = res.data?.crop || res.data;
       if (crop && crop.crop_type) {
         setCropData(crop);
         setFetchStatus('found');
+        setCropId(crop.formatted_crop_id);
+        if (crop.product_lot_number) {
+          setLotNumber(crop.product_lot_number);
+        }
       } else {
         setFetchStatus('not_found');
       }
@@ -81,6 +94,12 @@ export default function ProductRegistration() {
       return;
     }
 
+    const wordCount = testerRemarks.trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount > 50) {
+      setError('Remarks cannot exceed 50 words.');
+      return;
+    }
+
     setLoading(true);
 
     if (!isConnected) {
@@ -105,7 +124,7 @@ export default function ProductRegistration() {
       const cropName = cropData.crop_type;
 
       const tx = await contracts.productRegistry.registerProduct(
-        lot,
+        lotNumber,
         farmerId,
         cropName,
         qualityGrade,
@@ -127,13 +146,13 @@ export default function ProductRegistration() {
         to_address: tx.to,
         amount: 0,
         method_name: 'registerProduct',
-        event_data: JSON.stringify({ lotNumber: lot, farmerId, cropName, qualityGrade })
+        event_data: JSON.stringify({ lotNumber, farmerId, cropName, qualityGrade })
       });
 
       const today = new Date().toISOString().split('T')[0];
       const expiry = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       await axios.post('/api/product/register', {
-        lot_number: lot,
+        lot_number: lotNumber,
         farmer_id: farmerId,
         crop_name: cropName,
         quality_grade: qualityGrade,
@@ -148,7 +167,7 @@ export default function ProductRegistration() {
 
       setLoading(false);
       hideLoading();
-      showToast(`Product Lot ${lot} certified and registered on the blockchain successfully!`, 'success');
+      showToast(`Product Lot ${lotNumber} certified and registered on the blockchain successfully!`, 'success');
       navigate('/dashboard');
 
     } catch (err) {
@@ -215,11 +234,14 @@ export default function ProductRegistration() {
                 <Search className="h-4 w-4 text-slate-400" />
               </div>
               <input
-                type="number"
+                type="text"
                 value={cropId}
                 onChange={handleCropIdChange}
-                className="block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-10 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm"
-                placeholder="Enter Crop ID (e.g. 5)"
+                disabled={!!location.state?.cropId}
+                className={`block w-full rounded-xl border border-slate-200 py-3 pl-10 pr-10 text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:text-sm ${
+                  location.state?.cropId ? 'bg-slate-100 dark:bg-slate-900 cursor-not-allowed opacity-75' : ''
+                }`}
+                placeholder="Enter Crop ID (e.g. CRP-2026-0005)"
                 required
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3">
@@ -240,6 +262,10 @@ export default function ProductRegistration() {
                 <CheckCircle className="h-3.5 w-3.5" /> Crop Details
               </div>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <div>
+                  <span className="text-slate-400 dark:text-slate-500 text-xs block">Crop ID</span>
+                  <p className="font-semibold text-slate-800 dark:text-white">{cropData.formatted_crop_id || `#${cropData.id}`}</p>
+                </div>
                 <div>
                   <span className="text-slate-400 dark:text-slate-500 text-xs block">Crop Name</span>
                   <p className="font-semibold text-slate-800 dark:text-white">{cropData.crop_type}</p>
@@ -298,9 +324,14 @@ export default function ProductRegistration() {
 
           {/* Tester Remarks */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Tester Remarks <span className="text-slate-400 text-xs font-normal">(optional)</span>
-            </label>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Tester Remarks <span className="text-slate-400 text-xs font-normal">(optional)</span>
+              </label>
+              <span className={`text-[10px] font-medium ${testerRemarks.trim().split(/\s+/).filter(Boolean).length > 50 ? 'text-rose-500 font-bold' : 'text-slate-400'}`}>
+                {testerRemarks.trim().split(/\s+/).filter(Boolean).length} / 50 words
+              </span>
+            </div>
             <textarea
               value={testerRemarks}
               onChange={(e) => setTesterRemarks(e.target.value)}

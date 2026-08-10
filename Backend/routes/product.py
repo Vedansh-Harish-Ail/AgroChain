@@ -19,9 +19,15 @@ def register_product(current_user):
     expiry_date_str = data.get('expiry_date')
     tx_hash = data.get('tx_hash')
     block_number = data.get('block_number')
+    tester_remarks = data.get('tester_remarks', '')
     
     if not lot_number or not farmer_id or not crop_name or not quality_grade or price is None or not test_date_str or not expiry_date_str:
         return jsonify({'message': 'Missing required fields'}), 400
+
+    if tester_remarks:
+        remarks_words = len(tester_remarks.strip().split())
+        if remarks_words > 50:
+            return jsonify({'message': 'Tester remarks must not exceed 50 words.'}), 400
         
     # Derive status automatically: if grade is C, reject the lot.
     norm_grade = quality_grade.replace('Grade ', '').strip()
