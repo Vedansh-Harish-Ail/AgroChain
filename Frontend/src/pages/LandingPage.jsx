@@ -263,30 +263,26 @@ export default function LandingPage({ theme, toggleTheme }) {
 
       <main className="w-full">
         {/* ── Hero ── */}
-        <section 
+        <section
           className="relative overflow-hidden pt-28 pb-16 bg-white dark:bg-slate-950"
           style={{ clipPath: 'inset(0)' }}
         >
           {/* Fixed Background Image Overlay */}
-          <div 
+          <div
             className="fixed inset-0 bg-cover bg-center opacity-35 dark:opacity-50 pointer-events-none"
             style={{ backgroundImage: "url('/hero_background.png')" }}
           />
           {/* Gradient Overlay for Text Readability */}
           <div className="absolute inset-0 bg-gradient-to-b from-white via-white/95 to-white/70 lg:bg-gradient-to-r lg:from-white lg:via-white/92 lg:to-transparent dark:from-slate-950 dark:via-slate-950/92 dark:to-transparent pointer-events-none" />
-          
+
           <div className="max-w-screen-xl mx-auto px-6 md:px-16 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="z-10">
-              <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-4 py-1.5 rounded-full mb-6">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 ac-pulse" />
-                <span className="text-xs font-bold uppercase tracking-wider">Active on Localhost Node</span>
-              </div>
               <h1 className="text-4xl md:text-5.5xl font-extrabold text-slate-900 dark:text-white mb-6 leading-tight tracking-tight">
-                Sell Your Harvest.<br />
-                <span className="text-emerald-600 dark:text-emerald-400">Get Funded. No Middlemen.</span>
+                Every Crop. Every Verification.<br />
+                <span className="text-emerald-600 dark:text-emerald-400">One Trusted Journey..</span>
               </h1>
               <p className="text-lg text-slate-700 dark:text-slate-200 mb-10 max-w-xl leading-relaxed font-medium">
-                Farmers list certified cultivations, buyers fund harvests through secure smart contract escrows, and money releases only after independent laboratory safety check approvals.
+                Farmers register and track their cultivations, Agricultural Inspectors verify crop details, and accredited Quality Labs certify the harvested produce, creating a transparent and trusted journey from farm to consumer.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mb-10">
                 <Link to="/register" className="bg-emerald-700 dark:bg-emerald-600 text-white px-8 py-3.5 rounded-xl text-sm font-semibold hover:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-700/20 dark:shadow-emerald-950/20 text-center flex items-center justify-center gap-2">
@@ -410,9 +406,9 @@ export default function LandingPage({ theme, toggleTheme }) {
             <div className="mt-16 relative max-w-4xl mx-auto z-10">
               <div className="relative z-10 glass-card p-2 rounded-3xl shadow-2xl border border-slate-200/40 dark:border-slate-800/40">
                 <div className="relative rounded-2xl overflow-hidden bg-slate-950">
-                  <video 
-                    className="w-full h-auto block" 
-                    controls 
+                  <video
+                    className="w-full h-auto block"
+                    controls
                     preload="metadata"
                     playsInline
                   >
