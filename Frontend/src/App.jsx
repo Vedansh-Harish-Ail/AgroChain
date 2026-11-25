@@ -25,6 +25,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import CropHistory from './pages/CropHistory';
 import SubmittedLOIs from './pages/SubmittedLOIs';
 import TermsPage from './pages/TermsPage';
+import TestSessionWidget from './components/TestSessionWidget';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, roles }) => {
@@ -301,6 +302,9 @@ const MainLayout = ({ theme, toggleTheme }) => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
       {/* Only show the app Navbar on non-landing pages */}
       {!isLanding && <Navbar theme={theme} toggleTheme={toggleTheme} />}
+
+      {/* Floating Entry Limit & Session Tracker for Test Accounts */}
+      <TestSessionWidget />
 
       {isLanding ? (
         /* Landing page gets full-width, no padding */

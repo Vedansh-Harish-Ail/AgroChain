@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLoading } from '../context/LoadingContext';
 import { Mail, Lock, Eye, EyeOff, Sparkles, SunIcon as Sunburst } from 'lucide-react';
+import TestCredentialsNotice from '../components/TestCredentialsNotice';
 
 export default function LoginPage() {
   const { login, sendLoginOtp, loginWithOtp } = useAuth();
@@ -17,6 +18,12 @@ export default function LoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpMessage, setOtpMessage] = useState("");
   const navigate = useNavigate();
+
+  const handleAutoFill = ({ identifier, password: credPassword }) => {
+    setEmail(identifier);
+    setPassword(credPassword);
+    setError("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -119,11 +126,15 @@ export default function LoginPage() {
 
         {/* Right Login Section */}
         <div className="p-8 md:p-12 md:w-1/2 flex flex-col justify-center bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 z-10">
-          <div className="flex flex-col items-start mb-8">
-            <div className="text-emerald-600 mb-4 bg-emerald-500/10 p-2.5 rounded-2xl">
+          
+          {/* Test Credentials & Role Showcase Banner */}
+          <TestCredentialsNotice onSelectCredentials={handleAutoFill} />
+
+          <div className="flex flex-col items-start mb-6">
+            <div className="text-emerald-600 mb-3 bg-emerald-500/10 p-2.5 rounded-2xl">
               <Sunburst className="h-8 w-8" />
             </div>
-            <h2 className="text-3xl font-medium mb-1.5 tracking-tight text-slate-900 dark:text-white">
+            <h2 className="text-2xl md:text-3xl font-medium mb-1 tracking-tight text-slate-900 dark:text-white">
               {isOtpLogin ? "OTP Password Bypass" : "Welcome Back"}
             </h2>
             <p className="text-left text-slate-500 dark:text-slate-400 text-sm">
@@ -134,16 +145,17 @@ export default function LoginPage() {
           <form onSubmit={isOtpLogin ? (otpSent ? handleOtpSubmit : handleSendOtp) : handleSubmit} className="flex flex-col gap-4" noValidate>
             <div>
               <label htmlFor="email" className="block text-sm mb-2 font-semibold text-slate-700 dark:text-slate-300">
-                Email Address
+                Email Address or Test Username
               </label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <Mail className="h-5 w-5 text-slate-400" />
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   id="email"
-                  placeholder="name@example.com"
+                  autoComplete="username"
+                  placeholder="name@example.com or test username (e.g. farmer)"
                   className="text-sm w-full py-2.5 pl-10 pr-3 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 disabled:opacity-60"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -207,6 +219,7 @@ export default function LoginPage() {
                     <input
                       type={showPassword ? "text" : "password"}
                       id="password"
+                      autoComplete="current-password"
                       placeholder="••••••••"
                       className="text-sm w-full py-2.5 pl-10 pr-10 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400"
                       value={password}
@@ -217,6 +230,7 @@ export default function LoginPage() {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                      aria-label="Toggle password visibility"
                     >
                       {showPassword ? (
                         <EyeOff className="size-4" />

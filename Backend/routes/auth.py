@@ -385,6 +385,56 @@ def login():
         
     email = email.strip().lower()
     password = password.strip()
+
+    # ------------------------------------------------------------------
+    # Test Account Login Recognition (Portfolio / Recruiter Demo Mode)
+    # ------------------------------------------------------------------
+    test_accounts = {
+        'farmer': {'role': 'FARMER', 'name': 'Rajesh Patel (Test Farmer)', 'email': 'farmer@gmail.com'},
+        'farmer@gmail.com': {'role': 'FARMER', 'name': 'Rajesh Patel (Test Farmer)', 'email': 'farmer@gmail.com'},
+        'investor': {'role': 'INVESTOR', 'name': 'Suresh Mehta (Test Investor)', 'email': 'investor@gmail.com'},
+        'investor@gmail.com': {'role': 'INVESTOR', 'name': 'Suresh Mehta (Test Investor)', 'email': 'investor@gmail.com'},
+        'inspector': {'role': 'INSPECTOR', 'name': 'Rajiv Kumar (Test Agri Inspector)', 'email': 'inspector@gmail.com'},
+        'inspector@gmail.com': {'role': 'INSPECTOR', 'name': 'Rajiv Kumar (Test Agri Inspector)', 'email': 'inspector@gmail.com'},
+        'cop': {'role': 'INSPECTOR', 'name': 'Officer Vikram Singh (Test Field Cop)', 'email': 'cop@gmail.com'},
+        'cop@gmail.com': {'role': 'INSPECTOR', 'name': 'Officer Vikram Singh (Test Field Cop)', 'email': 'cop@gmail.com'},
+        'tester': {'role': 'TESTER', 'name': 'Dr. Anita Sharma (Test Quality Analyst)', 'email': 'tester@gmail.com'},
+        'tester@gmail.com': {'role': 'TESTER', 'name': 'Dr. Anita Sharma (Test Quality Analyst)', 'email': 'tester@gmail.com'},
+        'consumer': {'role': 'CONSUMER', 'name': 'Amit Kumar (Test Consumer)', 'email': 'consumer@gmail.com'},
+        'consumer@gmail.com': {'role': 'CONSUMER', 'name': 'Amit Kumar (Test Consumer)', 'email': 'consumer@gmail.com'},
+        'admin': {'role': 'ADMIN', 'name': 'System Admin (Test Administrator)', 'email': 'admin@gmail.com'},
+        'admin@gmail.com': {'role': 'ADMIN', 'name': 'System Admin (Test Administrator)', 'email': 'admin@gmail.com'},
+    }
+    
+    if email in test_accounts:
+        acc = test_accounts[email]
+        base = email.split('@')[0]
+        valid_passes = [f"{base}@1", f"{base}@2", f"{base}@3", "test@123"]
+        if password in valid_passes:
+            token = generate_token(
+                user_id=9990,
+                role=acc['role'],
+                is_test=True,
+                email=acc['email'],
+                name=acc['name']
+            )
+            return jsonify({
+                'message': 'Test account login successful',
+                'token': token,
+                'user': {
+                    'id': 9990,
+                    'name': acc['name'],
+                    'email': acc['email'],
+                    'role': acc['role'],
+                    'wallet_address': '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
+                    'wallet_type': 'METAMASK',
+                    'is_approved': True,
+                    'onboarding_complete': True,
+                    'is_verified_farmer': True,
+                    'status': 'ACTIVE',
+                    'is_test': True
+                }
+            }), 200
     
     user = User.query.filter_by(email=email).first()
     

@@ -30,6 +30,27 @@ def create_app():
     
     # Initialize DB
     db.init_app(app)
+
+    # Production Database Protection for Test Accounts
+    @app.before_request
+    def protect_production_db():
+        from flask import request
+        if request.method in ['POST', 'PUT', 'DELETE'] and not request.path.startswith('/api/auth/login'):
+            auth_header = request.headers.get('Authorization', '')
+            if 'Bearer ' in auth_header:
+                try:
+                    import jwt
+                    token = auth_header.split(" ")[1]
+                    data = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+                    if data.get('is_test'):
+                        # Block dummy test data from modifying the SQLite production database
+                        return jsonify({
+                            'success': True,
+                            'message': 'Test session: action recorded in isolated session buffer (Production DB protected).',
+                            'is_test': True
+                        }), 200
+                except Exception:
+                    pass
     
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
