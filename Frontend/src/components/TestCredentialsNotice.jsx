@@ -53,9 +53,6 @@ export default function TestCredentialsNotice({ onSelectCredentials, activeRole,
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                Demo & Reviewer Access
-              </span>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
                 <ShieldAlert className="size-3 text-amber-600" /> Max {MAX_TEST_ENTRIES} Entries / Session
               </span>
@@ -184,14 +181,6 @@ export default function TestCredentialsNotice({ onSelectCredentials, activeRole,
                   {copiedKey === 'pwd' ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
                 </button>
               </div>
-            </div>
-
-            {/* Session Limits & Protection Notice */}
-            <div className="mt-2 pt-2 border-t border-slate-200 flex items-start gap-2 text-[11px] text-slate-600 leading-tight">
-              <Info className="size-3.5 text-amber-600 shrink-0 mt-0.5" />
-              <span>
-                <strong className="text-slate-800">Session Entry Policy:</strong> Capped at <strong>{MAX_TEST_ENTRIES} entries</strong> per session. You will receive an alert upon reaching {WARNING_THRESHOLD} entries. If a 6th entry is attempted, the earliest entry is automatically deleted. Production database writes are safely bypassed.
-              </span>
             </div>
           </div>
         </div>
